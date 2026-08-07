@@ -19,6 +19,10 @@
       "migrations_dir": "./drizzle/migrations"
     }
   ],
+  "triggers": {
+    // 抽選締切チェックと通知ディスパッチ(5分毎)
+    "crons": ["*/5 * * * *"]
+  },
   "rules": [
     {
       "type": "ESModule",

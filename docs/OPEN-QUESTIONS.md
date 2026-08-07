@@ -46,9 +46,20 @@ AP URI(`/events/{ulid}`)は不変なのでどちらでも壊れない。
 | wrangler の D1 `database_id` | プレースホルダ UUID | 本番デプロイ前に `wrangler d1 create yorox-db` で置換が必要 |
 | 通知 outbox | `domain_events` テーブル + `processed_at` ポーリング | MVP はメール1本なので Queues 導入前の最小構成 |
 
-## 実装状況メモ
+## 実装状況メモ(2026-08-08 未明時点)
 
-- webfinger は D1 実データを解決する(ローカル actors の handle 一致)。動作確認済み。
-- `/inbox` 系は URL 予約のみで 501 応答。
-- nodeinfo 2.1 は最小実装(usage 等は空)。
-- 抽選・繰上の Cron Triggers、メールドライバは未着手。
+動作確認済み(wrangler dev + ローカル D1):
+- webfinger(D1 実データ解決)、nodeinfo 2.1 最小実装、`/inbox` 系は URL 予約のみ 501
+- 閲覧ページ: トップ(イベント一覧)/ `/g/[handle]` / `/g/[handle]/events/[id]`、404
+- Cron Trigger(5分毎)→ 締切超過の抽選枠を自動実行 → domain_events → ディスパッチャ
+  → コンソールドライバ通知、の一連をエンドツーエンドで確認
+- テスト 29 件(ap 10 + app 19)、typecheck / build 通過
+
+実装済みだが未検証・未接続:
+- 先着枠の原子的 join / キャンセル繰上 / 承諾型繰上(コードはあるが UI・認証がなく呼び出せない)
+- Resend ドライバ(APIキー未設定。`.dev.vars.example` 参照)
+- グループ作成サービス(UI なし)
+
+未着手:
+- 認証・セッション(要判断 #1 に依存)、イベント作成/申込 UI、Markdown レンダリング、
+  出欠管理 UI、手動抽選 UI、AP 連合一式
