@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yorox-slot-coordinator",
+  "main": "./src/index.ts",
+  "compatibility_date": "2025-11-17",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SLOT_DO",
+        "class_name": "SlotSerializer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SlotSerializer"]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "yorox-db",
+      // packages/app と同じ D1 データベースを参照する。
+      // TODO: 本番デプロイ前に `wrangler d1 create yorox-db` で発行された ID に置き換える
+      // (packages/app/wrangler.jsonc と同じ値にすること)
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}

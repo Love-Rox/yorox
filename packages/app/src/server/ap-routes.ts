@@ -6,7 +6,7 @@
  * MVP では連合は行わない(docs/DECISIONS.md)が、
  * 連合前提の ID/URL 設計(docs/URL-DESIGN.md)はここで確立しておく。
  */
-import { JRD_MEDIA_TYPE, parseAcct } from '@yorox/ap';
+import { acceptsActivityPub, JRD_MEDIA_TYPE, parseAcct } from '@yorox/ap';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
@@ -100,6 +100,53 @@ ap.post('/inbox', notFederatedYet);
 ap.post('/users/:id/inbox', notFederatedYet);
 ap.post('/groups/:id/inbox', notFederatedYet);
 ap.post('/events/:id/inbox', notFederatedYet);
+
+/** イベントの人間向け URL を引く(短縮 URL・正規 URI からのリダイレクト用) */
+async function findEventHumanUrl(origin: string, eventId: string): Promise<string | null> {
+  const db = createDb((await getEnv()).DB);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, eventId),
+  });
+  if (!event) return null;
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!group?.handle) return null;
+  return `${origin}/g/${group.handle}/events/${event.id}`;
+}
+
+/** 短縮 URL: /e/{ulid} → 正規の人間向け URL */
+ap.get('/e/:id', async (c) => {
+  const url = await findEventHumanUrl(new URL(c.req.url).origin, c.req.param('id'));
+  if (!url) return c.notFound();
+  return c.redirect(url, 302);
+});
+
+/**
+ * 正規 AP URI /events/{ulid} への HTML アクセスは人間向け URL へ 302。
+ * AP メディアタイプ要求は連合実装まで 406(URL は不変で予約済み)。
+ */
+ap.get('/events/:id', async (c) => {
+  if (acceptsActivityPub(c.req.header('accept'))) {
+    return c.text('ActivityPub representation is not available yet', 406);
+  }
+  const url = await findEventHumanUrl(new URL(c.req.url).origin, c.req.param('id'));
+  if (!url) return c.notFound();
+  return c.redirect(url, 302);
+});
+
+/** 正規 AP URI /groups/{ulid} も同様に人間向け URL へ */
+ap.get('/groups/:id', async (c) => {
+  if (acceptsActivityPub(c.req.header('accept'))) {
+    return c.text('ActivityPub representation is not available yet', 406);
+  }
+  const db = createDb((await getEnv()).DB);
+  const actor = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, c.req.param('id')),
+  });
+  if (!actor?.handle || actor.kind !== 'group') return c.notFound();
+  return c.redirect(`${new URL(c.req.url).origin}/g/${actor.handle}`, 302);
+});
 
 /**
  * middlewareFn 本体: AP ルートを Hono アプリへマウントする。
