@@ -220,6 +220,73 @@ body {
   text-underline-offset: 4px;
 }
 
+/* ---- Markdown 本文 ---- */
+.markdown {
+  line-height: 1.75;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.markdown h1 {
+  font-size: var(--yorox-text-lg);
+}
+.markdown h2 {
+  font-size: var(--yorox-text-md);
+  border-bottom: 1px solid var(--yorox-rule);
+  padding-bottom: 0.25em;
+}
+.markdown h3 {
+  font-size: var(--yorox-text-base);
+}
+.markdown p {
+  margin-block: 0.75em;
+}
+.markdown ul,
+.markdown ol {
+  margin-block: 0.75em;
+  padding-inline-start: 1.5em;
+}
+.markdown ul {
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown a {
+  color: var(--yorox-accent-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.markdown code {
+  font-family: var(--yorox-font-mono);
+  font-size: 0.9em;
+  background: var(--yorox-paper-2);
+  padding: 0.1em 0.35em;
+  border-radius: var(--yorox-radius);
+}
+.markdown pre {
+  background: var(--yorox-paper-2);
+  border: 1px solid var(--yorox-rule);
+  border-radius: var(--yorox-radius);
+  padding: 1em;
+  overflow-x: auto;
+  margin-block: 1em;
+}
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+.markdown blockquote {
+  border-inline-start: 3px solid var(--yorox-rule);
+  padding-inline-start: 1em;
+  color: var(--yorox-neutral);
+  margin-block: 1em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

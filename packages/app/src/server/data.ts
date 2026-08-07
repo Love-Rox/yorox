@@ -48,15 +48,21 @@ export async function getGroupByHandle(db: Db, handle: string) {
   return { actor, group };
 }
 
-/** グループの公開イベント(新しい順) */
-export async function listGroupEvents(db: Db, groupActorId: string, limit = 50) {
+/** グループのイベント(新しい順)。主催メンバー向けには下書きも含める */
+export async function listGroupEvents(
+  db: Db,
+  groupActorId: string,
+  opts: { includeDrafts?: boolean; limit?: number } = {},
+) {
   return db.query.events.findMany({
-    where: and(
-      eq(schema.events.groupActorId, groupActorId),
-      eq(schema.events.visibility, 'public'),
-    ),
+    where: opts.includeDrafts
+      ? eq(schema.events.groupActorId, groupActorId)
+      : and(
+          eq(schema.events.groupActorId, groupActorId),
+          eq(schema.events.visibility, 'public'),
+        ),
     orderBy: [desc(schema.events.startsAt)],
-    limit,
+    limit: opts.limit ?? 50,
   });
 }
 
@@ -98,4 +104,40 @@ export async function getEventDetail(db: Db, eventId: string) {
   });
 
   return { event, groupActor, slots, slotStats, sessions, materials };
+}
+
+/** 自分の参加状態(イベント内の全枠分) */
+export async function getOwnParticipations(db: Db, eventId: string, actorId: string) {
+  const rows = await db
+    .select({
+      id: schema.participations.id,
+      slotId: schema.participations.slotId,
+      status: schema.participations.status,
+    })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .where(and(eq(schema.slots.eventId, eventId), eq(schema.participations.actorId, actorId)));
+  return new Map(rows.filter((r) => r.status !== 'cancelled').map((r) => [r.slotId, r]));
+}
+
+/** 参加者一覧(確定者のみ、本人が隠している人を除く) */
+export async function listVisibleParticipants(db: Db, eventId: string) {
+  return db
+    .select({
+      actorId: schema.actors.id,
+      displayName: schema.actors.displayName,
+      handle: schema.actors.handle,
+      slotId: schema.participations.slotId,
+    })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .innerJoin(schema.actors, eq(schema.participations.actorId, schema.actors.id))
+    .where(
+      and(
+        eq(schema.slots.eventId, eventId),
+        eq(schema.participations.status, 'accepted'),
+        eq(schema.participations.hiddenFromList, false),
+      ),
+    )
+    .orderBy(asc(schema.participations.appliedAt));
 }
