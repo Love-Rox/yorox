@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yorox",
+  "main": "./src/waku.server",
+  // nodejs_als is required for Waku server-side request context
+  "compatibility_flags": ["nodejs_als"],
+  "compatibility_date": "2025-11-17",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/public",
+    "html_handling": "drop-trailing-slash"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "yorox-db",
+      // TODO: 本番デプロイ前に `wrangler d1 create yorox-db` で発行された ID に置き換える
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "./drizzle/migrations"
+    }
+  ],
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
+}

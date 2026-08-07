@@ -1,0 +1,19 @@
+{
+  "name": "@yorox/ap",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Zero-dependency ActivityPub library for Yorox",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

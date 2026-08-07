@@ -1,0 +1,10 @@
+node_modules
+dist
+.wrangler
+.env*
+!.env.example
+*.tsbuildinfo
+.cache
+.DS_Store
+*.pem
+worker-configuration.d.ts

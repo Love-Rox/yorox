@@ -1,0 +1,355 @@
+/**
+ * Yorox のデータスキーマ(D1 / SQLite + Drizzle)。
+ *
+ * 設計の根拠は docs/DECISIONS.md を参照。
+ * - 統一アクターモデル: ローカル/リモートを同一テーブルで扱う
+ * - イベントの所有者は常にグループ(個人主催 = 個人グループ)
+ * - 枠(スロット)は5要素の枠ポリシーを持つ
+ * - ID は ULID。AP オブジェクト URI の不変部分になるため再割当しない
+ */
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
+
+// ---------------------------------------------------------------------------
+// アクター(統一モデル)
+// ---------------------------------------------------------------------------
+
+export const actors = sqliteTable(
+  'actors',
+  {
+    id: text('id').primaryKey(), // ULID
+    /** user = 人間(Person)。group = グループ(Group) */
+    kind: text('kind', { enum: ['user', 'group'] }).notNull(),
+    /**
+     * local          = このインスタンスのアカウント
+     * remote_unclaimed = リモートユーザーの自動生成エイリアス(未claim)
+     * remote_claimed   = claim 済みリモートアカウント
+     */
+    state: text('state', {
+      enum: ['local', 'remote_unclaimed', 'remote_claimed'],
+    }).notNull(),
+    /** ローカルアクターのハンドル。ユーザーとグループで単一の名前空間 */
+    handle: text('handle'),
+    /** リモートアクターのドメイン。ローカルは null */
+    domain: text('domain'),
+    /** AP アクター URI(ローカルは https://{host}/users/{id} 等)。露出前でも予約する */
+    uri: text('uri').notNull(),
+    inboxUrl: text('inbox_url'),
+    sharedInboxUrl: text('shared_inbox_url'),
+    displayName: text('display_name').notNull(),
+    summary: text('summary'),
+    avatarUrl: text('avatar_url'),
+    /** アカウント統合(Move)で吸収された側が向き先を持つ */
+    movedToActorId: text('moved_to_actor_id'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('actors_uri_unique').on(t.uri),
+    // ローカルのハンドルはドメイン込みで一意(handle, domain) — domain が null のローカル同士で衝突を防ぐ
+    uniqueIndex('actors_handle_domain_unique').on(t.handle, t.domain),
+    index('actors_kind_idx').on(t.kind),
+  ],
+);
+
+/** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
+export const users = sqliteTable('users', {
+  actorId: text('actor_id')
+    .primaryKey()
+    .references(() => actors.id),
+  email: text('email').notNull().unique(),
+  emailVerifiedAt: integer('email_verified_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// グループ
+// ---------------------------------------------------------------------------
+
+export const groups = sqliteTable('groups', {
+  actorId: text('actor_id')
+    .primaryKey()
+    .references(() => actors.id),
+  /** 個人グループ(GitHub のユーザー名前空間方式)かどうか */
+  isPersonal: integer('is_personal', { mode: 'boolean' }).notNull().default(false),
+  descriptionMd: text('description_md'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+/**
+ * カスタムロール。permissions は権限フラグ文字列の JSON 配列。
+ * 例: ["event.create", "event.edit", "attendance.manage", "lottery.run",
+ *      "member.manage", "group.settings"]
+ * プリセット(オーナー/共同主催/メンバー)はグループ作成時に投入する。
+ */
+export const groupRoles = sqliteTable(
+  'group_roles',
+  {
+    id: text('id').primaryKey(),
+    groupActorId: text('group_actor_id')
+      .notNull()
+      .references(() => groups.actorId),
+    name: text('name').notNull(),
+    permissions: text('permissions', { mode: 'json' }).$type<string[]>().notNull(),
+    isPreset: integer('is_preset', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('group_roles_group_idx').on(t.groupActorId)],
+);
+
+export const groupMembers = sqliteTable(
+  'group_members',
+  {
+    groupActorId: text('group_actor_id')
+      .notNull()
+      .references(() => groups.actorId),
+    memberActorId: text('member_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => groupRoles.id),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.groupActorId, t.memberActorId] }),
+    index('group_members_member_idx').on(t.memberActorId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// イベント
+// ---------------------------------------------------------------------------
+
+export const events = sqliteTable(
+  'events',
+  {
+    id: text('id').primaryKey(), // ULID = AP オブジェクト URI の不変部分
+    groupActorId: text('group_actor_id')
+      .notNull()
+      .references(() => groups.actorId),
+    title: text('title').notNull(),
+    descriptionMd: text('description_md'),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
+    /** IANA タイムゾーン名(例: Asia/Tokyo)。表示用 */
+    timezone: text('timezone').notNull().default('Asia/Tokyo'),
+    venueName: text('venue_name'),
+    venueAddress: text('venue_address'),
+    onlineUrl: text('online_url'),
+    /** draft は下書き。public のみ一覧・連合に流通する */
+    visibility: text('visibility', { enum: ['draft', 'public'] })
+      .notNull()
+      .default('draft'),
+    /** 参加者一覧の公開(デフォルト公開 = Connpass 流) */
+    participantListPublic: integer('participant_list_public', { mode: 'boolean' })
+      .notNull()
+      .default(true),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    createdByActorId: text('created_by_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    index('events_group_idx').on(t.groupActorId),
+    index('events_starts_at_idx').on(t.startsAt),
+  ],
+);
+
+/** 発表/セッション(任意機能の一級エンティティ) */
+export const eventSessions = sqliteTable(
+  'event_sessions',
+  {
+    id: text('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id),
+    title: text('title').notNull(),
+    descriptionMd: text('description_md'),
+    /** 登壇者。ローカル/リモート問わずアクター参照(任意) */
+    speakerActorId: text('speaker_actor_id').references(() => actors.id),
+    /** アクターに紐付かない登壇者名(外部ゲスト等) */
+    speakerName: text('speaker_name'),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (t) => [index('event_sessions_event_idx').on(t.eventId)],
+);
+
+/** 資料。紐付け先はイベント直下かセッションのどちらか(MVP は外部リンクのみ) */
+export const materials = sqliteTable(
+  'materials',
+  {
+    id: text('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id),
+    sessionId: text('session_id').references(() => eventSessions.id),
+    title: text('title').notNull(),
+    url: text('url').notNull(),
+    createdByActorId: text('created_by_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('materials_event_idx').on(t.eventId)],
+);
+
+// ---------------------------------------------------------------------------
+// 参加枠(スロット)と枠ポリシー5要素
+// ---------------------------------------------------------------------------
+
+/** 参加条件の宣言的ルール(AND で評価) */
+export interface SlotConditions {
+  /** claim 済み(またはローカル)アカウントのみ */
+  requireClaimed?: boolean;
+  /** アカウント作成からの最低日数 */
+  minAccountAgeDays?: number;
+  /** 過去の参加実績の最低回数 */
+  minAttendedCount?: number;
+}
+
+export const slots = sqliteTable(
+  'slots',
+  {
+    id: text('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id),
+    name: text('name').notNull(),
+    capacity: integer('capacity').notNull(),
+    /** 1. 方式 */
+    method: text('method', { enum: ['fcfs', 'lottery'] }).notNull(),
+    /** 2. 補欠モデル: connpass = 落選は自動的に補欠 / separate = 補欠数を主催が設定 */
+    waitlistModel: text('waitlist_model', { enum: ['connpass', 'separate'] })
+      .notNull()
+      .default('connpass'),
+    /** separate のときの補欠定員(connpass のときは null = 無制限) */
+    waitlistCapacity: integer('waitlist_capacity'),
+    /** 3. 繰上ポリシー */
+    promotionPolicy: text('promotion_policy', {
+      enum: ['auto', 'auto_deadline', 'consent'],
+    })
+      .notNull()
+      .default('auto'),
+    /** auto_deadline のとき: 開催 X 時間前で繰上停止 */
+    promotionDeadlineHours: integer('promotion_deadline_hours'),
+    /** 4. 抽選ロジック(method = lottery のときのみ) */
+    lotteryLogic: text('lottery_logic', { enum: ['random', 'manual', 'weighted'] }),
+    /** 抽選実行予定時刻 */
+    lotteryAt: integer('lottery_at', { mode: 'timestamp_ms' }),
+    /** 5. 参加条件(AND 組合せ)。null = 無条件 */
+    conditions: text('conditions', { mode: 'json' }).$type<SlotConditions>(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('slots_event_idx').on(t.eventId)],
+);
+
+/**
+ * 参加。状態遷移:
+ *   applied(申込) → accepted(確定) / waitlisted(補欠・抽選待ち) / rejected(拒否)
+ *   waitlisted → accepted(繰上) / consent_pending(承諾待ち繰上) → accepted
+ *   任意の状態 → cancelled(本人キャンセル)
+ * AP 写像: waitlisted = TentativeAccept、accepted = Accept、rejected = Reject
+ */
+export const participations = sqliteTable(
+  'participations',
+  {
+    id: text('id').primaryKey(),
+    slotId: text('slot_id')
+      .notNull()
+      .references(() => slots.id),
+    actorId: text('actor_id')
+      .notNull()
+      .references(() => actors.id),
+    status: text('status', {
+      enum: [
+        'applied',
+        'accepted',
+        'waitlisted',
+        'consent_pending',
+        'rejected',
+        'cancelled',
+      ],
+    }).notNull(),
+    /** 参加者一覧から自分を隠すオプトアウト */
+    hiddenFromList: integer('hidden_from_list', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    appliedAt: integer('applied_at', { mode: 'timestamp_ms' }).notNull(),
+    decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
+    cancelledAt: integer('cancelled_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('participations_slot_actor_unique').on(t.slotId, t.actorId),
+    index('participations_actor_idx').on(t.actorId),
+    index('participations_slot_status_idx').on(t.slotId, t.status),
+  ],
+);
+
+/** 出欠記録。no-show は抽選の重み付けと主催への表示に使う */
+export const attendances = sqliteTable('attendances', {
+  participationId: text('participation_id')
+    .primaryKey()
+    .references(() => participations.id),
+  status: text('status', { enum: ['attended', 'no_show'] }).notNull(),
+  recordedByActorId: text('recorded_by_actor_id')
+    .notNull()
+    .references(() => actors.id),
+  recordedAt: integer('recorded_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// 通知(プラガブルドライバ)とアクション要求
+// ---------------------------------------------------------------------------
+
+/**
+ * ドメインイベントの outbox。ディスパッチャが未処理分を拾って
+ * 通知ドライバ(MVP はメールのみ)へ配る。
+ */
+export const domainEvents = sqliteTable(
+  'domain_events',
+  {
+    id: text('id').primaryKey(),
+    type: text('type').notNull(), // 例: 'participation.accepted'
+    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    processedAt: integer('processed_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('domain_events_unprocessed_idx').on(t.processedAt, t.createdAt)],
+);
+
+/**
+ * アクション要求(承諾型繰上など「本人が応答しないと進まない」もの)。
+ * 通知ドライバとは別の一級概念。配達保証・既読管理が必要。
+ */
+export const actionRequests = sqliteTable(
+  'action_requests',
+  {
+    id: text('id').primaryKey(),
+    actorId: text('actor_id')
+      .notNull()
+      .references(() => actors.id),
+    type: text('type').notNull(), // 例: 'promotion.consent'
+    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+    status: text('status', {
+      enum: ['pending', 'completed', 'declined', 'expired', 'cancelled'],
+    })
+      .notNull()
+      .default('pending'),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    respondedAt: integer('responded_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('action_requests_actor_status_idx').on(t.actorId, t.status)],
+);
