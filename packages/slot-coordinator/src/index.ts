@@ -13,20 +13,9 @@
  * 直列化する。
  */
 import { DurableObject, WorkerEntrypoint } from 'cloudflare:workers';
+import type { AcceptJoinInput, AcceptJoinResult } from './types';
 
-/** 先着枠の参加確定処理に必要な入力 */
-export interface AcceptJoinInput {
-  participationId: string;
-  slotId: string;
-  actorId: string;
-  capacity: number;
-  waitlistModel: 'connpass' | 'separate';
-  waitlistCapacity: number | null;
-  /** 申込時刻(epoch ミリ秒)。applied_at / decided_at に使う */
-  appliedAtMs: number;
-}
-
-export type AcceptJoinResult = 'accepted' | 'waitlisted' | 'full';
+export type { AcceptJoinInput, AcceptJoinResult } from './types';
 
 /**
  * slotId をインスタンス名として呼び出す DO。

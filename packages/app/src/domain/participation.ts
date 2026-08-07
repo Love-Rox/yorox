@@ -9,6 +9,7 @@
  * 先着枠の定員は D1 の単一ステートメント(条件付き INSERT)の原子性で守る。
  * D1 は単一書き込みなので MVP 規模ではこれで十分(docs/OPEN-QUESTIONS.md #3)。
  */
+import type { AcceptJoinInput, AcceptJoinResult } from '@yorox/slot-coordinator';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
@@ -16,6 +17,15 @@ import { ulid } from '../lib/ulid';
 import { evaluateConditions, type ApplicantInfo } from './conditions';
 import { emitDomainEvent } from './events';
 import { drawRandom, drawWeighted, type LotteryApplicant } from './lottery';
+
+/**
+ * 先着枠の定員直列化を担う外部コーディネータ(slot-coordinator の RPC)。
+ * ドメイン層を platform-free に保つため、binding は呼び出し側から注入する。
+ * 未注入なら D1 の条件付き INSERT に直接フォールバックする。
+ */
+export interface SlotCoordinatorLike {
+  acceptJoin(input: AcceptJoinInput): Promise<AcceptJoinResult>;
+}
 
 export class SlotFullError extends Error {
   constructor() {
@@ -74,6 +84,7 @@ async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo>
 export async function joinSlot(
   db: Db,
   input: { slotId: string; actorId: string; now?: Date },
+  deps: { slotCoordinator?: SlotCoordinatorLike } = {},
 ): Promise<{ participationId: string; status: 'accepted' | 'waitlisted' | 'applied' }> {
   const now = input.now ?? new Date();
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, input.slotId) });
@@ -113,7 +124,28 @@ export async function joinSlot(
     return { participationId, status: 'applied' };
   }
 
-  // 先着: 単一ステートメントの条件付き INSERT で定員を原子的に守る
+  // 先着: slot-coordinator(DO)があれば slot 単位で直列化して確定する
+  if (deps.slotCoordinator) {
+    const result = await deps.slotCoordinator.acceptJoin({
+      participationId,
+      slotId: input.slotId,
+      actorId: input.actorId,
+      capacity: slot.capacity,
+      waitlistModel: slot.waitlistModel,
+      waitlistCapacity: slot.waitlistCapacity,
+      appliedAtMs: now.getTime(),
+    });
+    if (result === 'full') throw new SlotFullError();
+    await emitDomainEvent(
+      db,
+      result === 'accepted' ? 'participation.accepted' : 'participation.waitlisted',
+      { participationId, slotId: input.slotId, actorId: input.actorId },
+      now,
+    );
+    return { participationId, status: result };
+  }
+
+  // フォールバック: 単一ステートメントの条件付き INSERT で定員を原子的に守る
   const acceptedInsert = await db.run(sql`
     INSERT INTO participations (id, slot_id, actor_id, status, hidden_from_list, applied_at, decided_at)
     SELECT ${participationId}, ${input.slotId}, ${input.actorId}, 'accepted', 0, ${now.getTime()}, ${now.getTime()}

@@ -26,6 +26,9 @@ importers:
       '@yorox/ap':
         specifier: workspace:*
         version: link:../ap
+      '@yorox/slot-coordinator':
+        specifier: workspace:*
+        version: link:../slot-coordinator
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2

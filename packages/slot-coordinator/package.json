@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "main": "./src/types.ts",
+  "types": "./src/types.ts",
+  "exports": {
+    ".": "./src/types.ts",
+    "./types": "./src/types.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "cf-typegen": "wrangler types",
