@@ -1,0 +1,90 @@
+/**
+ * ドメインイベント → 通知のディスパッチャ。
+ * domain_events の未処理分を拾い、宛先を解決してドライバ群へ配る。
+ * Cron Trigger やリクエスト後の waitUntil から呼ぶ想定。
+ */
+import { asc, eq, isNull } from 'drizzle-orm';
+import type { Db } from '../db/client';
+import { schema } from '../db/client';
+import type { Notification, NotificationDriver } from './driver';
+
+/** ドメインイベント種別ごとの文面テンプレート */
+const TEMPLATES: Record<
+  string,
+  { subject: string; body: string } | undefined
+> = {
+  'participation.accepted': {
+    subject: '参加が確定しました',
+    body: 'イベントへの参加が確定しました。詳細はイベントページをご確認ください。',
+  },
+  'participation.waitlisted': {
+    subject: '補欠として受け付けました',
+    body: '定員に達していたため補欠として受け付けました。繰上がり次第お知らせします。',
+  },
+  'participation.applied': {
+    subject: '抽選の申込を受け付けました',
+    body: '抽選結果が確定しましたらお知らせします。',
+  },
+  'participation.rejected': {
+    subject: '参加いただけませんでした',
+    body: '抽選の結果、今回はご参加いただけませんでした。',
+  },
+  'participation.promoted': {
+    subject: '補欠から繰り上がりました',
+    body: '空きが出たため参加が確定しました。詳細はイベントページをご確認ください。',
+  },
+  'participation.consent_requested': {
+    subject: '【要確認】繰上参加の承諾のお願い',
+    body: '空きが出ました。参加するにはイベントページから承諾してください。承諾がない場合、次の方に繰り上がります。',
+  },
+};
+
+/**
+ * 未処理のドメインイベントを最大 limit 件処理する。
+ * 個別ドライバの失敗は他のドライバ・他のイベントの処理を止めない。
+ */
+export async function dispatchPendingEvents(
+  db: Db,
+  drivers: NotificationDriver[],
+  limit = 50,
+): Promise<number> {
+  const pending = await db.query.domainEvents.findMany({
+    where: isNull(schema.domainEvents.processedAt),
+    orderBy: [asc(schema.domainEvents.createdAt)],
+    limit,
+  });
+
+  let processed = 0;
+  for (const event of pending) {
+    const template = TEMPLATES[event.type];
+    if (template) {
+      const actorId = (event.payload as { actorId?: string }).actorId;
+      if (actorId) {
+        const user = await db.query.users.findFirst({
+          where: eq(schema.users.actorId, actorId),
+        });
+        const notification: Notification = {
+          actorId,
+          subject: `[Yorox] ${template.subject}`,
+          bodyText: template.body,
+          eventType: event.type,
+        };
+        if (user?.email !== undefined) notification.email = user.email;
+        for (const driver of drivers) {
+          try {
+            await driver.send(notification);
+          } catch (err) {
+            // ドライバ単位の失敗はログに残して継続(配達保証が必要なものは action_requests で担保)
+            console.error(`[dispatcher] driver=${driver.name} event=${event.id} failed:`, err);
+          }
+        }
+      }
+    }
+    await db
+      .update(schema.domainEvents)
+      .set({ processedAt: new Date() })
+      .where(eq(schema.domainEvents.id, event.id));
+    processed++;
+  }
+  return processed;
+}
