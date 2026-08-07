@@ -12,33 +12,33 @@ export default async function LoginPage() {
   const error = url.searchParams.get('error');
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="max-w-sm">
       <title>ログイン - Yorox</title>
-      <h1 className="text-3xl font-bold tracking-tight">ログイン</h1>
-      <p className="mt-2 text-sm text-gray-600">
+      <h1 className="display t-xl">ログイン</h1>
+      <p className="mt-3 text-sm text-neutral">
         メールアドレスにログインリンクを送ります。アカウントがなければ、そのまま新規登録に進めます。
       </p>
       {error && (
-        <p className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="mt-4 border-2 border-accent p-3 text-sm text-accent"
+        >
           {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>
       )}
-      <form method="post" action="/auth/magic-link/request" className="mt-6 space-y-4">
+      <form method="post" action="/auth/magic-link/request" className="mt-6 space-y-5">
         <label className="block">
-          <span className="text-sm font-medium">メールアドレス</span>
+          <span className="text-sm font-bold">メールアドレス</span>
           <input
             type="email"
             name="email"
             required
             autoComplete="email"
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="input mt-1"
             placeholder="you@example.com"
           />
         </label>
-        <button
-          type="submit"
-          className="w-full rounded bg-black px-4 py-2 font-medium text-white"
-        >
+        <button type="submit" className="btn w-full cursor-pointer">
           ログインリンクを送る
         </button>
       </form>

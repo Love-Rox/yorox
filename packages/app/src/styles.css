@@ -1,1 +1,230 @@
 @import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* トークンを Tailwind ユーティリティへ橋渡しする(inline なので実行時の
+ * --yorox-* 上書きがそのまま利く = インスタンステーマの仕組み) */
+@theme inline {
+  --color-paper: var(--yorox-paper);
+  --color-paper-2: var(--yorox-paper-2);
+  --color-rule: var(--yorox-rule);
+  --color-neutral: var(--yorox-neutral);
+  --color-ink: var(--yorox-ink);
+  --color-accent: var(--yorox-accent);
+  --color-accent-2: var(--yorox-accent-2);
+  --color-focus: var(--yorox-focus);
+  --font-display: var(--yorox-font-display);
+  --font-body: var(--yorox-font-body);
+  --font-mono: var(--yorox-font-mono);
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  background: var(--yorox-paper);
+  color: var(--yorox-ink);
+  font-family: var(--yorox-font-body);
+  line-height: 1.6;
+}
+
+::selection {
+  background: var(--yorox-accent);
+  color: var(--yorox-paper);
+}
+
+/* フォーカスリングは即時表示・アニメーションなし */
+:focus-visible {
+  outline: 2px solid var(--yorox-focus);
+  outline-offset: 2px;
+}
+
+/* ---- 見出し ---- */
+.display {
+  font-family: var(--yorox-font-display);
+  font-weight: 400; /* Dela Gothic One は単一ウェイト */
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+/* タイプスケールのユーティリティ(Tailwind の text-[var(...)] は
+ * 色と曖昧なため使わず、こちらを使う) */
+.t-md {
+  font-size: var(--yorox-text-md);
+}
+.t-lg {
+  font-size: var(--yorox-text-lg);
+}
+.t-xl {
+  font-size: var(--yorox-text-xl);
+}
+.t-2xl {
+  font-size: var(--yorox-text-2xl);
+}
+.t-display {
+  font-size: var(--yorox-text-display);
+}
+
+.meta-mono {
+  font-family: var(--yorox-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- ボタン(8状態。リソの版ズレシャドウが署名) ---- */
+.btn {
+  display: inline-block;
+  font-family: var(--yorox-font-body);
+  font-weight: 700;
+  font-size: var(--yorox-text-base);
+  color: var(--yorox-paper);
+  background: var(--yorox-ink);
+  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  border-radius: var(--yorox-radius);
+  padding: 0.625rem 1.5rem;
+  min-height: 44px;
+  white-space: nowrap;
+  box-shadow: var(--yorox-offset-shadow);
+  transition:
+    transform var(--yorox-dur-fast) var(--yorox-ease-out),
+    box-shadow var(--yorox-dur-fast) var(--yorox-ease-out);
+}
+.btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--yorox-accent);
+}
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--yorox-accent);
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  background: var(--yorox-neutral);
+  border-color: var(--yorox-neutral);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+.btn[data-state='loading'] {
+  opacity: 0.7;
+  pointer-events: none;
+}
+.btn[data-state='error'] {
+  border-color: var(--yorox-accent);
+  background: var(--yorox-paper);
+  color: var(--yorox-accent);
+}
+.btn[data-state='success'] {
+  background: var(--yorox-accent-2);
+  border-color: var(--yorox-accent-2);
+}
+
+/* 控えめな二次ボタン(アウトライン) */
+.btn-quiet {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--yorox-ink);
+  background: transparent;
+  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  border-radius: var(--yorox-radius);
+  padding: 0.5rem 1.25rem;
+  min-height: 44px;
+  white-space: nowrap;
+  transition: background-color var(--yorox-dur-base) var(--yorox-ease-out);
+}
+.btn-quiet:hover {
+  background: var(--yorox-paper-2);
+}
+.btn-quiet:active {
+  background: var(--yorox-rule);
+}
+
+/* ---- 入力欄 ---- */
+.input {
+  width: 100%;
+  font-family: var(--yorox-font-body);
+  font-size: var(--yorox-text-base);
+  color: var(--yorox-ink);
+  background: var(--yorox-paper);
+  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  border-radius: var(--yorox-radius);
+  padding: 0.625rem 0.875rem;
+  min-height: 44px;
+  transition: border-color var(--yorox-dur-base) var(--yorox-ease-out);
+}
+.input::placeholder {
+  color: var(--yorox-neutral);
+}
+.input:hover {
+  border-color: var(--yorox-accent-2);
+}
+.input:disabled {
+  background: var(--yorox-paper-2);
+  border-color: var(--yorox-rule);
+  cursor: not-allowed;
+}
+.input[aria-invalid='true'] {
+  border-color: var(--yorox-accent);
+}
+
+/* ---- リンク ---- */
+.link {
+  color: var(--yorox-accent-2);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-thickness var(--yorox-dur-fast) var(--yorox-ease-out);
+}
+.link:hover {
+  text-decoration-thickness: 3px;
+  text-decoration-color: var(--yorox-accent);
+}
+
+/* ---- マストヘッドの二重罫線(版ズレ: ピンク + 青) ---- */
+.rule-duo {
+  border: none;
+  height: calc(var(--yorox-rule-w) * 2 + 2px);
+  background:
+    linear-gradient(var(--yorox-accent), var(--yorox-accent)) 0 0 / 100% var(--yorox-rule-w)
+      no-repeat,
+    linear-gradient(var(--yorox-accent-2), var(--yorox-accent-2)) 3px 100% / 100%
+      var(--yorox-rule-w) no-repeat;
+}
+
+/* ---- イベント一覧の行 ---- */
+.event-row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 1.25rem;
+  padding-block: 1.25rem;
+  border-bottom: 1px solid var(--yorox-rule);
+}
+@media (max-width: 40rem) {
+  .event-row {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 1rem;
+  }
+}
+.event-row__title {
+  font-weight: 700;
+  font-size: var(--yorox-text-md);
+  color: var(--yorox-ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.event-row__title:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--yorox-accent);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

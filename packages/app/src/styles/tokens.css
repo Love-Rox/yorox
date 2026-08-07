@@ -1,0 +1,52 @@
+/* Hallmark · genre: editorial · macrostructure: Index-First · theme: Riso · enrichment: none · nav: N6 · footer: Ft4
+ * tone: レトロポップ(リソグラフ) · anchor hue: warm-cream 95 / ink 265 · accent: 蛍光ピンク ~3%
+ * N6 knobs: issue=below-wordmark, wordmark=2xl, rule=double(版ズレ) · Ft4 knobs: family=monospace, layout=single-block, includes=instance+version
+ * audience=技術コミュニティ · use=イベントを見つけて申し込む
+ * Hallmark · pre-emit critique: P4 H5 E4 S5 R4 V5
+ */
+
+/**
+ * Yorox デザイントークン — インスタンスのテーマカスタマイズはこのファイルの
+ * :root を上書きする(または後続の CSS で --yorox-* を再定義する)だけでよい。
+ * アプリ側は必ず var(--yorox-*) 経由で参照し、生の色値・フォント名を書かない。
+ * 詳細は docs/THEMING.md。
+ */
+:root {
+  /* ---- 紙とインク(リソグラフ: クリーム紙 × 藍インク) ---- */
+  --yorox-paper: oklch(96.5% 0.02 95);
+  --yorox-paper-2: oklch(92.5% 0.028 95);
+  --yorox-rule: oklch(80% 0.025 90);
+  --yorox-neutral: oklch(48% 0.02 85);
+  --yorox-ink: oklch(24% 0.04 265);
+
+  /* ---- アクセント(蛍光ピンク + リソブルーの2色刷り) ---- */
+  --yorox-accent: oklch(62% 0.24 5);
+  --yorox-accent-2: oklch(44% 0.14 255);
+  --yorox-focus: oklch(55% 0.22 5);
+
+  /* ---- フォント(2+1: 見出し / 本文 / メタ情報mono) ---- */
+  --yorox-font-display: 'Dela Gothic One', 'Hiragino Sans', sans-serif;
+  --yorox-font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+  --yorox-font-mono: 'Space Mono', ui-monospace, monospace;
+
+  /* ---- タイプスケール(1.25 major third) ---- */
+  --yorox-text-sm: 0.8rem;
+  --yorox-text-base: 1rem;
+  --yorox-text-md: 1.25rem;
+  --yorox-text-lg: 1.5625rem;
+  --yorox-text-xl: 1.9531rem;
+  --yorox-text-2xl: 2.4414rem;
+  --yorox-text-display: clamp(2rem, 4vw + 0.75rem, 3.5rem);
+
+  /* ---- 動き ---- */
+  --yorox-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --yorox-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --yorox-dur-fast: 120ms;
+  --yorox-dur-base: 180ms;
+
+  /* ---- 形 ---- */
+  --yorox-radius: 2px;
+  --yorox-rule-w: 2px;
+  /* リソ印刷の「版ズレ」シャドウ(ボタン・カードの署名ディテール) */
+  --yorox-offset-shadow: 4px 4px 0 var(--yorox-accent);
+}

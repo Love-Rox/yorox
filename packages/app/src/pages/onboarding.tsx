@@ -13,49 +13,49 @@ export default async function OnboardingPage() {
   const error = url.searchParams.get('error');
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="max-w-sm">
       <title>アカウント作成 - Yorox</title>
-      <h1 className="text-3xl font-bold tracking-tight">アカウント作成</h1>
-      <p className="mt-2 text-sm text-gray-600">
+      <h1 className="display t-xl">アカウント作成</h1>
+      <p className="mt-3 text-sm text-neutral">
         メールアドレスを確認しました。ハンドルと表示名を決めてください。
         同じハンドルであなたの個人グループも作成されます。
       </p>
       {error && (
-        <p className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="mt-4 border-2 border-accent p-3 text-sm text-accent"
+        >
           {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>
       )}
-      <form method="post" action="/auth/signup" className="mt-6 space-y-4">
+      <form method="post" action="/auth/signup" className="mt-6 space-y-5">
         <input type="hidden" name="ticket" value={ticket} />
         <label className="block">
-          <span className="text-sm font-medium">ハンドル</span>
+          <span className="text-sm font-bold">ハンドル</span>
           <input
             type="text"
             name="handle"
             required
             pattern="[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?"
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="input meta-mono mt-1"
             placeholder="kyoto-taro"
           />
-          <span className="mt-1 block text-xs text-gray-500">
+          <span className="mt-1 block text-sm text-neutral">
             英小文字・数字・ハイフン。プロフィール URL(/@ハンドル)になります
           </span>
         </label>
         <label className="block">
-          <span className="text-sm font-medium">表示名</span>
+          <span className="text-sm font-bold">表示名</span>
           <input
             type="text"
             name="display_name"
             required
             maxLength={80}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="input mt-1"
             placeholder="京都 太郎"
           />
         </label>
-        <button
-          type="submit"
-          className="w-full rounded bg-black px-4 py-2 font-medium text-white"
-        >
+        <button type="submit" className="btn w-full cursor-pointer">
           登録する
         </button>
       </form>

@@ -7,36 +7,25 @@ import { Header } from '../components/header';
 type RootLayoutProps = { children: ReactNode };
 
 export default async function RootLayout({ children }: RootLayoutProps) {
-  const data = await getData();
-
   return (
-    <div className="font-['Nunito']">
-      <meta name="description" content={data.description} />
-      <link rel="icon" type="image/png" href={data.icon} />
+    <div className="flex min-h-svh flex-col">
+      <meta name="description" content="分散型で運用できるイベント管理プラットフォーム" />
+      <link rel="icon" type="image/png" href="/images/favicon.png" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&family=Space+Mono:wght@400;700&display=swap"
         precedence="font"
       />
       <Header />
-      <main className="m-6 flex items-center *:min-h-64 *:min-w-64 lg:m-0 lg:min-h-svh lg:justify-center">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-[clamp(1rem,4vw,1.5rem)] py-10">
         {children}
       </main>
       <Footer />
     </div>
   );
 }
-
-const getData = async () => {
-  const data = {
-    description: 'An internet website!',
-    icon: '/images/favicon.png',
-  };
-
-  return data;
-};
 
 export const getConfig = async () => {
   return {
