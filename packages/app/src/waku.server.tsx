@@ -1,10 +1,11 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 import apRoutes from './server/ap-routes';
+import authRoutes from './server/auth-routes';
 import { runScheduledJobs } from './server/scheduled';
 
 export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
-  middlewareFns: [apRoutes],
+  middlewareFns: [apRoutes, authRoutes],
   middlewareModules: import.meta.glob('./middleware/*.ts'),
   handlers: {
     // Cron Trigger: 抽選締切の実行と通知 outbox のディスパッチ

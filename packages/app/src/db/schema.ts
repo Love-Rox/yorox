@@ -52,8 +52,9 @@ export const actors = sqliteTable(
   },
   (t) => [
     uniqueIndex('actors_uri_unique').on(t.uri),
-    // ローカルのハンドルはドメイン込みで一意(handle, domain) — domain が null のローカル同士で衝突を防ぐ
-    uniqueIndex('actors_handle_domain_unique').on(t.handle, t.domain),
+    // ユーザーと個人グループは同じ handle を共有できる(docs/OPEN-QUESTIONS.md #2)。
+    // DB 制約は kind 込みの一意までとし、personal ペア以外の cross-kind 重複はアプリ層で禁止する
+    uniqueIndex('actors_handle_domain_kind_unique').on(t.handle, t.domain, t.kind),
     index('actors_kind_idx').on(t.kind),
   ],
 );
@@ -67,6 +68,50 @@ export const users = sqliteTable('users', {
   emailVerifiedAt: integer('email_verified_at', { mode: 'timestamp_ms' }),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// 認証(docs/OPEN-QUESTIONS.md #5〜#7)
+// ---------------------------------------------------------------------------
+
+/**
+ * ログインセッション。httpOnly cookie にトークンを持たせ、SHA-256 ハッシュを保存する。
+ * D1 行の削除 = 即時失効。
+ */
+export const authSessions = sqliteTable(
+  'auth_sessions',
+  {
+    id: text('id').primaryKey(),
+    /** セッショントークンの SHA-256(hex)。平文は保存しない */
+    tokenHash: text('token_hash').notNull(),
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => users.actorId),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('auth_sessions_token_hash_unique').on(t.tokenHash),
+    index('auth_sessions_user_idx').on(t.userActorId),
+  ],
+);
+
+/**
+ * マジックリンクのワンタイムトークン。
+ * 既存ユーザーのログインと新規サインアップの両方で使う(メール検証を兼ねる)。
+ */
+export const loginTokens = sqliteTable(
+  'login_tokens',
+  {
+    id: text('id').primaryKey(),
+    /** トークンの SHA-256(hex) */
+    tokenHash: text('token_hash').notNull(),
+    email: text('email').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [uniqueIndex('login_tokens_token_hash_unique').on(t.tokenHash)],
+);
 
 // ---------------------------------------------------------------------------
 // グループ

@@ -4,6 +4,7 @@
  * - 通知 outbox のディスパッチ
  */
 import { and, eq, isNotNull, lte, ne, sql } from 'drizzle-orm';
+import { purgeExpiredSessions } from '../auth/session';
 import { createDb, schema } from '../db/client';
 import { runLottery } from '../domain/participation';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
@@ -51,4 +52,7 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
   if (processed > 0) {
     console.log(`[scheduled] dispatched ${processed} domain event(s)`);
   }
+
+  // 期限切れセッション・トークンの掃除
+  await purgeExpiredSessions(db, now);
 }

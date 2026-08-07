@@ -112,6 +112,18 @@
 
 連合を意識するのはID/URL設計のみ。連合前提のURL設計をMVP時点で守ること。
 
+## 追記(2026-08-08)
+
+- **Docker コンテナ対応を最終目標に含める**: Cloudflare ファーストは維持しつつ、
+  将来 Docker(Node ランタイム + SQLite)でもセルフホストできるようにする。
+  分散型の思想上、CF アカウントなしでインスタンスを建てられることに価値がある。
+  - 移植の縫い目: ドメイン層は `Db`(Drizzle)注入で platform-free に保つ /
+    `cloudflare:workers` の参照は `getEnv()` / `getDb()` 等のヘルパーに集約 /
+    D1 ↔ SQLite は同一 SQL 方言なので Drizzle ドライバ差し替えで対応
+  - CF 固有機能の代替: Cron → node-cron 等 / DO(枠直列化)→ 単一プロセス内 mutex /
+    Queues → 未使用のうちは影響なし
+  - 具体的な adapter 実装は MVP 後
+
 ## 命名
 
 - プロダクト名: **Yorox**(寄合 + Rox)

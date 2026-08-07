@@ -40,6 +40,7 @@ const getData = async () => {
 
 export const getConfig = async () => {
   return {
-    render: 'static',
+    // ヘッダがログイン状態を表示するためリクエスト毎に描画する
+    render: 'dynamic',
   } as const;
 };
