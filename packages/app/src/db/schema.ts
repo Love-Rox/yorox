@@ -184,6 +184,8 @@ export const events = sqliteTable(
     descriptionMd: text('description_md'),
     /** 参加確定者(と主催)だけに表示する案内(接続URL・会場の入館方法など) */
     participantInfoMd: text('participant_info_md'),
+    /** サムネイル画像 URL(外部リンク。OGP og:image にも使う) */
+    thumbnailUrl: text('thumbnail_url'),
     startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
     endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
     /** IANA タイムゾーン名(例: Asia/Tokyo)。表示用 */

@@ -126,6 +126,19 @@ export default async function EditEventPage({
           />
         </label>
         <label className="block">
+          <span className="text-sm font-bold">サムネイル画像 URL</span>
+          <input
+            type="url"
+            name="thumbnail_url"
+            defaultValue={event.thumbnailUrl ?? ''}
+            className="input meta-mono mt-1"
+            placeholder="https://example.com/banner.png"
+          />
+          <span className="mt-1 block text-sm text-neutral">
+            イベントページとシェア時(OGP)に表示されます。横長(1200×630 目安)推奨
+          </span>
+        </label>
+        <label className="block">
           <span className="text-sm font-bold">セッション欄の表示ラベル</span>
           <select
             name="sessions_label"

@@ -72,6 +72,18 @@ export default async function NewEventPage({ handle }: { handle: string }) {
           />
         </label>
         <label className="block">
+          <span className="text-sm font-bold">サムネイル画像 URL</span>
+          <input
+            type="url"
+            name="thumbnail_url"
+            className="input meta-mono mt-1"
+            placeholder="https://example.com/banner.png"
+          />
+          <span className="mt-1 block text-sm text-neutral">
+            イベントページとシェア時(OGP)に表示されます。横長(1200×630 目安)推奨
+          </span>
+        </label>
+        <label className="block">
           <span className="text-sm font-bold">参加者への案内(Markdown)</span>
           <textarea
             name="participant_info_md"

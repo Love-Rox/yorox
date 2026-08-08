@@ -13,6 +13,7 @@ export interface CreateEventInput {
   title: string;
   descriptionMd?: string | undefined;
   participantInfoMd?: string | undefined;
+  thumbnailUrl?: string | undefined;
   startsAt: Date;
   endsAt?: Date | undefined;
   timezone?: string | undefined;
@@ -38,6 +39,7 @@ export async function createEvent(
     title: input.title.trim(),
     descriptionMd: input.descriptionMd ?? null,
     participantInfoMd: input.participantInfoMd ?? null,
+    thumbnailUrl: input.thumbnailUrl ?? null,
     startsAt: input.startsAt,
     endsAt: input.endsAt ?? null,
     timezone: input.timezone ?? 'Asia/Tokyo',
@@ -58,6 +60,7 @@ export interface UpdateEventInput {
   title: string;
   descriptionMd?: string | undefined;
   participantInfoMd?: string | undefined;
+  thumbnailUrl?: string | undefined;
   startsAt: Date;
   endsAt?: Date | undefined;
   venueName?: string | undefined;
@@ -82,6 +85,7 @@ export async function updateEvent(
       title: input.title.trim(),
       descriptionMd: input.descriptionMd ?? null,
       participantInfoMd: input.participantInfoMd ?? null,
+      thumbnailUrl: input.thumbnailUrl ?? null,
       startsAt: input.startsAt,
       endsAt: input.endsAt ?? null,
       venueName: input.venueName ?? null,
