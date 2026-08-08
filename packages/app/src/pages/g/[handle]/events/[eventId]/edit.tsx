@@ -207,6 +207,28 @@ export default async function EditEventPage({
             参加確定者と主催メンバーにのみ表示されます
           </span>
         </label>
+        <fieldset className="block">
+          <legend className="text-sm font-bold">Fediverse からの参加申込</legend>
+          <label className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="remote_join_reply"
+              defaultChecked={(event.remoteJoinMethods ?? []).includes('reply')}
+            />
+            <span>告知へのリプライ(「参加」)で申込を受け付ける</span>
+          </label>
+          <label className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="remote_join_activity"
+              defaultChecked={(event.remoteJoinMethods ?? []).includes('join')}
+            />
+            <span>Join アクティビティ(Mobilizon 等)を受け付ける</span>
+          </label>
+          <span className="mt-1 block text-sm text-neutral">
+            実際に申込できるのは「連合参加可」に設定した枠だけです
+          </span>
+        </fieldset>
         <button type="submit" className="btn cursor-pointer">
           保存する
         </button>

@@ -72,6 +72,9 @@ export async function upsertRemoteActor(db: Db, doc: ApActor) {
     id: ulid(),
     state: 'remote_unclaimed' as const,
     uri,
+    profileLinks: null,
+    privateKeyPem: null,
+    movedToActorId: null,
     createdAt: now,
     ...values,
   };

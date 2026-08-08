@@ -129,6 +129,7 @@ export async function listManageParticipations(db: Db, eventId: string) {
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
+      domain: schema.actors.domain,
       attendanceStatus: schema.attendances.status,
       paymentId: schema.payments.id,
       paymentStatus: schema.payments.status,
@@ -233,6 +234,8 @@ export async function listVisibleParticipants(db: Db, eventId: string) {
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
+      domain: schema.actors.domain,
+      uri: schema.actors.uri,
       avatarUrl: schema.actors.avatarUrl,
       slotId: schema.participations.slotId,
     })

@@ -134,6 +134,46 @@ export async function enqueueEventAnnouncement(db: Db, eventId: string): Promise
 }
 
 /**
+ * 単一 inbox への即時配信。成功すればそれで終わり、失敗したときだけ
+ * キューに積んで cron のバックオフ再試行に委ねる。
+ * inbox 応答(Accept 返送・参加結果通知など)のリアルタイム経路。
+ */
+export async function deliverWithRetry(
+  db: Db,
+  input: { signerActorId: string; inboxUrl: string; activity: ApActivity },
+): Promise<boolean> {
+  const signer = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, input.signerActorId),
+  });
+  if (!signer) return false;
+  const keys = await ensureActorKeys(db, input.signerActorId);
+  const ok = await deliverActivity({
+    activity: input.activity,
+    inboxUrl: input.inboxUrl,
+    actorUri: signer.uri,
+    privateKeyPem: keys.privateKeyPem,
+  });
+  if (!ok) {
+    const now = new Date();
+    await db
+      .insert(schema.apDeliveries)
+      .values({
+        id: ulid(),
+        signerActorId: input.signerActorId,
+        inboxUrl: input.inboxUrl,
+        activityUri: (input.activity.id as string) ?? null,
+        activityJson: input.activity as unknown as Record<string, unknown>,
+        attempts: 1,
+        lastError: 'immediate delivery failed',
+        nextAttemptAt: new Date(now.getTime() + retryBackoffMs(1)),
+        createdAt: now,
+      })
+      .onConflictDoNothing();
+  }
+  return ok;
+}
+
+/**
  * 公開直後の即時配信。fan-out してすぐキューを処理する。
  * リクエストの waitUntil から呼ぶ想定。失敗分は cron が拾い直す。
  */

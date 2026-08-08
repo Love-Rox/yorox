@@ -142,6 +142,7 @@ export default async function ManagePage({
                         {p.handle && (
                           <span className="meta-mono ml-2 text-sm text-neutral">
                             @{p.handle}
+                            {p.domain && `@${p.domain}`}
                           </span>
                         )}
                         <div className="meta-mono mt-0.5 text-sm text-neutral">

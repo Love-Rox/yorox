@@ -9,6 +9,7 @@ import { createDb, schema, type Db } from '../db/client';
 import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
+import { ApNoteDriver } from '../notifications/ap-driver';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
 import { ConsoleDriver, QueueEmailDriver, type NotificationDriver } from '../notifications/driver';
 import { enqueueEventAnnouncement, processApDeliveries } from './ap-delivery';
@@ -19,6 +20,8 @@ function buildDrivers(env: Env, db: Db): NotificationDriver[] {
   if (createTransportFromEnv(env)) {
     drivers.push(new QueueEmailDriver(db));
   }
+  // リモート参加者(Fediverse エイリアス)にはダイレクト Note で通知
+  drivers.push(new ApNoteDriver(db));
   return drivers;
 }
 

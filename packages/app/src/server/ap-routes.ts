@@ -30,6 +30,14 @@ import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { resolveRemoteActorByKeyId } from '../lib/remote-actor';
 import { ulid } from '../lib/ulid';
+import {
+  eventIdFromUri,
+  parseReplyCommand,
+  processRemoteCancel,
+  processRemoteJoin,
+  sendJoinResponse,
+  sendReplyNote,
+} from './remote-join';
 
 async function getEnv(): Promise<Env> {
   // cloudflare:workers はビルド時に workerd ランタイムでのみ解決される
@@ -119,7 +127,6 @@ const notFederatedYet = (c: Context) =>
 
 ap.post('/inbox', notFederatedYet);
 ap.post('/users/:id/inbox', notFederatedYet);
-ap.post('/events/:id/inbox', notFederatedYet);
 
 /** Date ヘッダの許容時刻ずれ(リプレイ攻撃の緩和) */
 const MAX_CLOCK_SKEW_MS = 60 * 60 * 1000;
@@ -171,34 +178,43 @@ async function verifyInboxRequest(c: Context, body: string) {
   return null;
 }
 
-/**
- * グループの inbox。Follow / Undo(Follow) を処理する。
- * それ以外のアクティビティは受領のみ(202)。
- */
-ap.post('/groups/:id/inbox', async (c, next) => {
-  if (!ULID_RE.test(c.req.param('id'))) return next();
-  const db = createDb((await getEnv()).DB);
-  const group = await db.query.actors.findFirst({
-    where: eq(schema.actors.id, c.req.param('id')),
+/** 埋め込みオブジェクトを安全に取り出す */
+function embeddedObject(activity: ApActivity): Record<string, unknown> | null {
+  const object = activity.object;
+  if (typeof object === 'object' && object !== null && !Array.isArray(object)) {
+    return object as Record<string, unknown>;
+  }
+  return null;
+}
+
+/** activity.object からイベント行を引く(このグループ主催のものに限る) */
+async function findTargetEvent(
+  db: ReturnType<typeof createDb>,
+  group: { id: string },
+  objectUri: string | undefined,
+): Promise<typeof schema.events.$inferSelect | null> {
+  if (!objectUri) return null;
+  const eventId = eventIdFromUri(objectUri);
+  if (!eventId) return null;
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, eventId),
   });
-  if (!group || group.kind !== 'group' || group.state !== 'local') return c.notFound();
+  if (!event || event.groupActorId !== group.id || event.visibility !== 'public') return null;
+  return event;
+}
 
-  const body = await c.req.text();
-  let activity: ApActivity;
-  try {
-    activity = JSON.parse(body) as ApActivity;
-  } catch {
-    return c.text('invalid json', 400);
-  }
-  if (!activity?.type || typeof activity.actor !== 'string') {
-    return c.text('invalid activity', 400);
-  }
-
-  const signer = await verifyInboxRequest(c, body);
-  if (!signer) return c.text('signature verification failed', 401);
-  // なりすまし防止: アクティビティの actor と署名者が一致すること
-  if (activity.actor !== signer.uri) return c.text('actor mismatch', 401);
-
+/**
+ * グループ宛アクティビティの処理本体。
+ * Follow / Undo(Follow) / Join / Undo(Join) / 告知リプライ(Create Note)を扱う。
+ * 対応しないアクティビティは受領のみ(202)。
+ */
+async function handleGroupActivity(
+  c: Context,
+  db: ReturnType<typeof createDb>,
+  group: typeof schema.actors.$inferSelect,
+  activity: ApActivity,
+  signer: typeof schema.actors.$inferSelect,
+): Promise<Response> {
   if (activity.type === 'Follow') {
     const objectUri = typeof activity.object === 'string' ? activity.object : undefined;
     if (objectUri !== group.uri) return c.text('object mismatch', 400);
@@ -236,14 +252,27 @@ ap.post('/groups/:id/inbox', async (c, next) => {
     return c.body(null, 202);
   }
 
+  // 参加申込(Mobilizon 等のイベント対応クライアント)
+  if (activity.type === 'Join') {
+    const objectUri = typeof activity.object === 'string' ? activity.object : undefined;
+    const event = await findTargetEvent(db, group, objectUri);
+    if (!event) return c.text('unknown event', 404);
+    const result = await processRemoteJoin(db, {
+      event,
+      group,
+      remoteActor: signer,
+      method: 'join',
+    });
+    console.log(`[ap] remote join (activity): ${signer.uri} -> ${event.id}: ${result.outcome}`);
+    c.executionCtx.waitUntil(
+      sendJoinResponse(db, { group, remoteActor: signer, joinActivity: activity, result }),
+    );
+    return c.body(null, 202);
+  }
+
   if (activity.type === 'Undo') {
-    const object = activity.object;
-    const isUndoFollow =
-      typeof object === 'object' &&
-      object !== null &&
-      !Array.isArray(object) &&
-      object.type === 'Follow';
-    if (isUndoFollow) {
+    const object = embeddedObject(activity);
+    if (object?.type === 'Follow') {
       await db
         .delete(schema.follows)
         .where(
@@ -252,12 +281,108 @@ ap.post('/groups/:id/inbox', async (c, next) => {
             eq(schema.follows.followedActorId, group.id),
           ),
         );
+      return c.body(null, 202);
     }
+    if (object?.type === 'Join') {
+      const objectUri = typeof object.object === 'string' ? object.object : undefined;
+      const event = await findTargetEvent(db, group, objectUri);
+      if (event) {
+        const result = await processRemoteCancel(db, { event, remoteActor: signer });
+        console.log(`[ap] remote cancel (Undo): ${signer.uri} -> ${event.id}: ${result.outcome}`);
+      }
+      return c.body(null, 202);
+    }
+    return c.body(null, 202);
+  }
+
+  // 告知 Note へのリプライ(「参加」「キャンセル」)
+  if (activity.type === 'Create') {
+    const note = embeddedObject(activity);
+    const inReplyTo = typeof note?.inReplyTo === 'string' ? note.inReplyTo : undefined;
+    const event = await findTargetEvent(db, group, inReplyTo);
+    if (!event || note?.type !== 'Note') return c.body(null, 202);
+    const content = typeof note.content === 'string' ? note.content : '';
+    const command = parseReplyCommand(content);
+    if (!command) return c.body(null, 202); // ただの感想リプライ等は無視
+    const result =
+      command === 'join'
+        ? await processRemoteJoin(db, { event, group, remoteActor: signer, method: 'reply' })
+        : await processRemoteCancel(db, { event, remoteActor: signer });
+    console.log(`[ap] remote ${command} (reply): ${signer.uri} -> ${event.id}: ${result.outcome}`);
+    const noteUri = typeof note.id === 'string' ? note.id : inReplyTo!;
+    c.executionCtx.waitUntil(
+      sendReplyNote(db, {
+        group,
+        remoteActor: signer,
+        inReplyToUri: noteUri,
+        eventId: event.id,
+        text: result.message,
+      }),
+    );
     return c.body(null, 202);
   }
 
   // 未対応のアクティビティは受領のみ
   return c.body(null, 202);
+}
+
+/** inbox 共通の前処理(パース → 署名検証 → actor 一致確認) */
+async function parseAndVerifyInbox(
+  c: Context,
+): Promise<
+  | { ok: true; db: ReturnType<typeof createDb>; activity: ApActivity; signer: typeof schema.actors.$inferSelect }
+  | { ok: false; response: Response }
+> {
+  const db = createDb((await getEnv()).DB);
+  const body = await c.req.text();
+  let activity: ApActivity;
+  try {
+    activity = JSON.parse(body) as ApActivity;
+  } catch {
+    return { ok: false, response: c.text('invalid json', 400) };
+  }
+  if (!activity?.type || typeof activity.actor !== 'string') {
+    return { ok: false, response: c.text('invalid activity', 400) };
+  }
+  const signer = await verifyInboxRequest(c, body);
+  if (!signer) return { ok: false, response: c.text('signature verification failed', 401) };
+  // なりすまし防止: アクティビティの actor と署名者が一致すること
+  if (activity.actor !== signer.uri) {
+    return { ok: false, response: c.text('actor mismatch', 401) };
+  }
+  return { ok: true, db, activity, signer };
+}
+
+/** グループの inbox */
+ap.post('/groups/:id/inbox', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, c.req.param('id')),
+  });
+  if (!group || group.kind !== 'group' || group.state !== 'local') return c.notFound();
+
+  const parsed = await parseAndVerifyInbox(c);
+  if (!parsed.ok) return parsed.response;
+  return handleGroupActivity(c, parsed.db, group, parsed.activity, parsed.signer);
+});
+
+/** イベントの inbox(Join 等)。主催グループ宛として処理する */
+ap.post('/events/:id/inbox', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!group || group.state !== 'local') return c.notFound();
+
+  const parsed = await parseAndVerifyInbox(c);
+  if (!parsed.ok) return parsed.response;
+  return handleGroupActivity(c, parsed.db, group, parsed.activity, parsed.signer);
 });
 
 /** イベントの人間向け URL を引く(短縮 URL・正規 URI からのリダイレクト用) */

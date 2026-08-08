@@ -99,6 +99,7 @@ events.post('/g/:handle/events', async (c) => {
       venueLat: geo?.lat,
       venueLng: geo?.lng,
       onlineUrl: str(form.online_url) || undefined,
+      remoteJoinMethods: parseRemoteJoinMethods(form),
       createdByActorId: actorId,
     });
     return c.redirect(`/g/${handle}/events/${eventId}`, 302);
@@ -106,6 +107,15 @@ events.post('/g/:handle/events', async (c) => {
     return c.redirect(`/g/${handle}/events/new?error=invalid_input`, 302);
   }
 });
+
+
+/** チェックボックス群から remoteJoinMethods を組み立てる */
+function parseRemoteJoinMethods(form: Record<string, unknown>): ('reply' | 'join')[] {
+  const methods: ('reply' | 'join')[] = [];
+  if (form.remote_join_reply !== undefined) methods.push('reply');
+  if (form.remote_join_activity !== undefined) methods.push('join');
+  return methods;
+}
 
 /** ドメイン共通: イベントに対する編集権限チェック */
 async function canEditEvent(
@@ -162,6 +172,7 @@ events.post('/events/:id/update', async (c) => {
       venueLng: geo?.lng ?? undefined,
       onlineUrl: str(form.online_url) || undefined,
       sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
+      remoteJoinMethods: parseRemoteJoinMethods(form),
     });
     return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
   } catch {
@@ -250,6 +261,7 @@ events.post('/events/:id/slots', async (c) => {
           : undefined,
       lotteryAt: method === 'lottery' ? parseLocalDateTime(form.lottery_at) : undefined,
       conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
+      allowRemote: form.allow_remote !== undefined,
       price: price && price > 0 ? price : undefined,
       paymentMethod: price && price > 0 ? (paymentMethod ?? undefined) : undefined,
       paymentUrl: paymentMethod === 'external' ? paymentUrl : undefined,

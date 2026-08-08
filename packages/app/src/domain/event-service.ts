@@ -22,6 +22,7 @@ export interface CreateEventInput {
   venueLat?: number | undefined;
   venueLng?: number | undefined;
   onlineUrl?: string | undefined;
+  remoteJoinMethods?: ('reply' | 'join')[] | undefined;
   createdByActorId: string;
 }
 
@@ -48,6 +49,7 @@ export async function createEvent(
     venueLat: input.venueLat ?? null,
     venueLng: input.venueLng ?? null,
     onlineUrl: input.onlineUrl ?? null,
+    remoteJoinMethods: input.remoteJoinMethods ?? ['reply', 'join'],
     visibility: 'draft',
     createdByActorId: input.createdByActorId,
     createdAt: now,
@@ -69,6 +71,7 @@ export interface UpdateEventInput {
   venueLng?: number | undefined;
   onlineUrl?: string | undefined;
   sessionsLabel?: 'sessions' | 'timetable' | undefined;
+  remoteJoinMethods?: ('reply' | 'join')[] | undefined;
 }
 
 /** イベントの基本情報を更新する */
@@ -94,6 +97,7 @@ export async function updateEvent(
       venueLng: input.venueLng ?? null,
       onlineUrl: input.onlineUrl ?? null,
       sessionsLabel: input.sessionsLabel ?? 'sessions',
+      remoteJoinMethods: input.remoteJoinMethods ?? ['reply', 'join'],
       updatedAt: now,
     })
     .where(eq(schema.events.id, eventId));
@@ -128,6 +132,8 @@ export interface AddSlotInput {
   paymentMethod?: 'onsite' | 'external' | undefined;
   paymentUrl?: string | undefined;
   paymentConfirm?: 'independent' | 'required' | undefined;
+  /** Fediverse からのリモート参加を受け入れる枠か */
+  allowRemote?: boolean | undefined;
 }
 
 /** 参加枠を追加する(枠ポリシー5要素はすべて呼び出し側で選択済み) */
@@ -166,6 +172,7 @@ export async function addSlot(
     paymentMethod: input.paymentMethod ?? null,
     paymentUrl: input.paymentUrl ?? null,
     paymentConfirm: input.paymentConfirm ?? 'independent',
+    allowRemote: input.allowRemote ?? false,
     sortOrder: existing.length,
     createdAt: now,
   });

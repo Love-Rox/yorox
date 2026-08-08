@@ -290,6 +290,11 @@ export default async function EventPage({
                               抽選 {FULL_FMT.format(slot.lotteryAt)}
                             </div>
                           )}
+                          {slot.allowRemote && (
+                            <span className="mt-1 inline-block border border-neutral px-1.5 py-0.5 text-sm text-neutral">
+                              Fediverse 参加可
+                            </span>
+                          )}
                         </div>
                         <div className="meta-mono shrink-0 text-right">
                           <span className="t-md font-bold">{stats?.accepted ?? 0}</span>
@@ -375,6 +380,15 @@ export default async function EventPage({
                 })}
               </ul>
             )}
+            {event.visibility === 'public' &&
+              (event.remoteJoinMethods ?? []).includes('reply') &&
+              slots.some((s) => s.allowRemote) && (
+                <p className="border-t border-rule p-3 text-sm text-neutral">
+                  Fediverse(Misskey / Mastodon 等)からは、主催グループをフォローして
+                  このイベントの告知に「参加」とリプライすると申込できます。
+                  キャンセルは「キャンセル」とリプライしてください。
+                </p>
+              )}
             {canEdit && (
               <details className="border-t-2 border-ink">
                 <summary className="cursor-pointer p-3 text-sm font-bold">
@@ -525,6 +539,13 @@ export default async function EventPage({
                         min={0}
                         className="input meta-mono mt-1"
                       />
+                    </label>
+                  </fieldset>
+                  <fieldset>
+                    <legend className="text-sm font-bold">連合(Fediverse)</legend>
+                    <label className="mt-1 flex min-h-11 items-center gap-2">
+                      <input type="checkbox" name="allow_remote" />
+                      リモート参加を受け入れる(Misskey / Mastodon 等からの申込)
                     </label>
                   </fieldset>
                   <button type="submit" className="btn cursor-pointer">
@@ -745,7 +766,15 @@ export default async function EventPage({
                 {participants.map((p) => (
                   <li key={`${p.slotId}-${p.actorId}`} className="flex items-center gap-2">
                     <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} size="sm" />
-                    {p.handle ? (
+                    {p.domain ? (
+                      // リモート参加者は本人の Fediverse プロフィールへ
+                      <a href={p.uri} className="link" rel="noreferrer" target="_blank">
+                        {p.displayName}
+                        <span className="meta-mono ml-1 text-neutral">
+                          @{p.handle}@{p.domain}
+                        </span>
+                      </a>
+                    ) : p.handle ? (
                       <Link to={`/u/${p.handle}`} className="link">
                         {p.displayName}
                       </Link>

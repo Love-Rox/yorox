@@ -268,6 +268,15 @@ export const events = sqliteTable(
     participantListPublic: integer('participant_list_public', { mode: 'boolean' })
       .notNull()
       .default(true),
+    /**
+     * Fediverse からの参加申込を受け付ける方法(イベント単位で選択)。
+     * reply = 告知 Note へのリプライ / join = Join アクティビティ(Mobilizon 等)。
+     * 実際に申込可能かは枠側の allowRemote も必要。
+     */
+    remoteJoinMethods: text('remote_join_methods', { mode: 'json' })
+      .$type<('reply' | 'join')[]>()
+      .notNull()
+      .default(['reply', 'join']),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
     createdByActorId: text('created_by_actor_id')
       .notNull()
@@ -368,6 +377,8 @@ export const slots = sqliteTable(
     lotteryAt: integer('lottery_at', { mode: 'timestamp_ms' }),
     /** 5. 参加条件(AND 組合せ)。null = 無条件 */
     conditions: text('conditions', { mode: 'json' }).$type<SlotConditions>(),
+    /** Fediverse からのリモート参加を受け入れるか(主催者が枠ごとに明示) */
+    allowRemote: integer('allow_remote', { mode: 'boolean' }).notNull().default(false),
     /** 参加費(通貨最小単位。JPY なら円)。null = 無料 */
     price: integer('price'),
     currency: text('currency').notNull().default('JPY'),

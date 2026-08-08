@@ -83,7 +83,8 @@ export async function dispatchPendingEvents(
     }
     const template = TEMPLATES[event.type];
     if (template) {
-      const actorId = (event.payload as { actorId?: string }).actorId;
+      const payload = event.payload as { actorId?: string; slotId?: string };
+      const actorId = payload.actorId;
       if (actorId) {
         const user = await db.query.users.findFirst({
           where: eq(schema.users.actorId, actorId),
@@ -95,6 +96,7 @@ export async function dispatchPendingEvents(
           eventType: event.type,
         };
         if (user?.email !== undefined) notification.email = user.email;
+        if (payload.slotId !== undefined) notification.slotId = payload.slotId;
         for (const driver of drivers) {
           try {
             await driver.send(notification);

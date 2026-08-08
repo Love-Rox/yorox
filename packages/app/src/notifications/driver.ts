@@ -16,6 +16,8 @@ export interface Notification {
   bodyText: string;
   /** 由来のドメインイベント種別(例: 'participation.accepted') */
   eventType: string;
+  /** 由来の枠 ID(あれば)。AP ドライバがイベント・主催グループの解決に使う */
+  slotId?: string;
 }
 
 export interface NotificationDriver {
