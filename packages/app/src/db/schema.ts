@@ -48,6 +48,9 @@ export const actors = sqliteTable(
     avatarUrl: text('avatar_url'),
     /** プロフィールのリンク(SNS・サイト等の URL 配列) */
     profileLinks: text('profile_links', { mode: 'json' }).$type<string[]>(),
+    /** AP 用 RSA 鍵ペア(PEM)。アクター文書の初回参照時に遅延生成 */
+    publicKeyPem: text('public_key_pem'),
+    privateKeyPem: text('private_key_pem'),
     /** アカウント統合(Move)で吸収された側が向き先を持つ */
     movedToActorId: text('moved_to_actor_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),

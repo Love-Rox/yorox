@@ -95,3 +95,56 @@ describe('activities', () => {
     expect(a.to).toEqual(['https://www.w3.org/ns/activitystreams#Public']);
   });
 });
+
+describe('buildGroupActor', () => {
+  it('Mastodon が解決できる最小構成を満たす', async () => {
+    const { buildGroupActor } = await import('./documents');
+    const actor = buildGroupActor({
+      uri: 'https://yorox.example/groups/01ABC',
+      handle: 'kyoto-tech',
+      name: 'Kyoto Tech Meetup',
+      summary: '京都の技術コミュニティ',
+      url: 'https://yorox.example/g/kyoto-tech',
+      publicKeyPem: '-----BEGIN PUBLIC KEY-----\nAAA\n-----END PUBLIC KEY-----',
+    });
+    expect(actor.type).toBe('Group');
+    expect(actor.preferredUsername).toBe('kyoto-tech');
+    expect(actor.inbox).toBe('https://yorox.example/groups/01ABC/inbox');
+    expect(actor.outbox).toBe('https://yorox.example/groups/01ABC/outbox');
+    expect(actor.publicKey?.id).toBe('https://yorox.example/groups/01ABC#main-key');
+    expect(actor.publicKey?.owner).toBe('https://yorox.example/groups/01ABC');
+    expect(actor['@context']).toContain('https://w3id.org/security/v1');
+  });
+});
+
+describe('buildEventObject', () => {
+  it('Event に Place と Public 宛先を持たせる', async () => {
+    const { buildEventObject } = await import('./documents');
+    const event = buildEventObject({
+      uri: 'https://yorox.example/events/01DEF',
+      name: '開発ミートアップ',
+      attributedTo: 'https://yorox.example/groups/01ABC',
+      startTime: '2026-08-28T10:00:00Z',
+      endTime: '2026-08-28T12:00:00Z',
+      locationName: '京都リサーチパーク',
+      locationAddress: '京都市下京区',
+      latitude: 34.99,
+      longitude: 135.74,
+      url: 'https://yorox.example/g/kyoto-tech/events/01DEF',
+    });
+    expect(event.type).toBe('Event');
+    expect(event.to).toContain('https://www.w3.org/ns/activitystreams#Public');
+    const loc = event.location as Record<string, unknown>;
+    expect(loc.type).toBe('Place');
+    expect(loc.latitude).toBe(34.99);
+  });
+});
+
+describe('buildEmptyOutbox', () => {
+  it('空の OrderedCollection を返す', async () => {
+    const { buildEmptyOutbox } = await import('./documents');
+    const outbox = buildEmptyOutbox('https://yorox.example/groups/01ABC/outbox');
+    expect(outbox.type).toBe('OrderedCollection');
+    expect(outbox.totalItems).toBe(0);
+  });
+});

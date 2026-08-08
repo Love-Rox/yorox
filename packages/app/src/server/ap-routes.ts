@@ -6,11 +6,21 @@
  * MVP では連合は行わない(docs/DECISIONS.md)が、
  * 連合前提の ID/URL 設計(docs/URL-DESIGN.md)はここで確立しておく。
  */
-import { acceptsActivityPub, JRD_MEDIA_TYPE, parseAcct } from '@yorox/ap';
+import {
+  acceptsActivityPub,
+  AP_MEDIA_TYPE,
+  buildEmptyOutbox,
+  buildEventObject,
+  buildGroupActor,
+  JRD_MEDIA_TYPE,
+  parseAcct,
+} from '@yorox/ap';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { ensureActorKeys } from '../lib/actor-keys';
+import { renderMarkdownToHtml } from '../lib/markdown';
 
 async function getEnv(): Promise<Env> {
   // cloudflare:workers はビルド時に workerd ランタイムでのみ解決される
@@ -132,10 +142,43 @@ ap.get('/e/:id', async (c, next) => {
  */
 ap.get('/events/:id', async (c, next) => {
   if (!ULID_RE.test(c.req.param('id'))) return next();
+  const origin = new URL(c.req.url).origin;
   if (acceptsActivityPub(c.req.header('accept'))) {
-    return c.text('ActivityPub representation is not available yet', 406);
+    const db = createDb((await getEnv()).DB);
+    const event = await db.query.events.findFirst({
+      where: eq(schema.events.id, c.req.param('id')),
+    });
+    if (!event || event.visibility !== 'public') return c.notFound();
+    const group = await db.query.actors.findFirst({
+      where: eq(schema.actors.id, event.groupActorId),
+    });
+    if (!group) return c.notFound();
+    const doc = buildEventObject({
+      uri: `${origin}/events/${event.id}`,
+      name: event.title,
+      attributedTo: group.uri,
+      contentHtml: event.descriptionMd
+        ? renderMarkdownToHtml(event.descriptionMd)
+        : undefined,
+      startTime: event.startsAt.toISOString(),
+      endTime: event.endsAt?.toISOString(),
+      locationName: event.venueName ?? undefined,
+      locationAddress: event.venueAddress ?? undefined,
+      latitude: event.venueLat ?? undefined,
+      longitude: event.venueLng ?? undefined,
+      url: group.handle
+        ? `${origin}/g/${group.handle}/events/${event.id}`
+        : undefined,
+      imageUrl: event.thumbnailUrl
+        ? event.thumbnailUrl.startsWith('/')
+          ? `${origin}${event.thumbnailUrl}`
+          : event.thumbnailUrl
+        : undefined,
+      published: event.publishedAt?.toISOString(),
+    });
+    return c.body(JSON.stringify(doc), 200, { 'content-type': AP_MEDIA_TYPE });
   }
-  const url = await findEventHumanUrl(new URL(c.req.url).origin, c.req.param('id'));
+  const url = await findEventHumanUrl(origin, c.req.param('id'));
   if (!url) return c.notFound();
   return c.redirect(url, 302);
 });
@@ -143,15 +186,44 @@ ap.get('/events/:id', async (c, next) => {
 /** 正規 AP URI /groups/{ulid} も同様に人間向け URL へ */
 ap.get('/groups/:id', async (c, next) => {
   if (!ULID_RE.test(c.req.param('id'))) return next();
-  if (acceptsActivityPub(c.req.header('accept'))) {
-    return c.text('ActivityPub representation is not available yet', 406);
-  }
   const db = createDb((await getEnv()).DB);
   const actor = await db.query.actors.findFirst({
     where: eq(schema.actors.id, c.req.param('id')),
   });
   if (!actor?.handle || actor.kind !== 'group') return c.notFound();
-  return c.redirect(`${new URL(c.req.url).origin}/g/${actor.handle}`, 302);
+  const origin = new URL(c.req.url).origin;
+  if (acceptsActivityPub(c.req.header('accept'))) {
+    const publicKeyPem = await ensureActorKeys(db, actor.id);
+    const doc = buildGroupActor({
+      uri: actor.uri,
+      handle: actor.handle,
+      name: actor.displayName,
+      summary: actor.summary ?? undefined,
+      iconUrl: actor.avatarUrl
+        ? actor.avatarUrl.startsWith('/')
+          ? `${origin}${actor.avatarUrl}`
+          : actor.avatarUrl
+        : undefined,
+      url: `${origin}/g/${actor.handle}`,
+      publicKeyPem,
+      published: actor.createdAt.toISOString(),
+    });
+    return c.body(JSON.stringify(doc), 200, { 'content-type': AP_MEDIA_TYPE });
+  }
+  return c.redirect(`${origin}/g/${actor.handle}`, 302);
+});
+
+/** グループの outbox(配信実装までは空コレクション) */
+ap.get('/groups/:id/outbox', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const actor = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, c.req.param('id')),
+  });
+  if (!actor || actor.kind !== 'group') return c.notFound();
+  return c.body(JSON.stringify(buildEmptyOutbox(`${actor.uri}/outbox`)), 200, {
+    'content-type': AP_MEDIA_TYPE,
+  });
 });
 
 /**

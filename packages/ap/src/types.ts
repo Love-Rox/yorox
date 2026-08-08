@@ -47,6 +47,7 @@ export interface ApActor extends ApObject {
   following?: string;
   endpoints?: { sharedInbox?: string };
   publicKey?: ApPublicKey;
+  icon?: { type: 'Image'; url: string };
   /** アカウント移行(Move)・エイリアス統合に使う */
   alsoKnownAs?: string[];
   movedTo?: string;
@@ -64,6 +65,7 @@ export interface ApEvent extends ApObject {
   startTime?: string;
   endTime?: string;
   location?: ApObject | string;
+  attachment?: { type: 'Image'; url: string }[];
 }
 
 /** 資料(スライド・動画等)は Document として流通させる */

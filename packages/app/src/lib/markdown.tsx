@@ -20,6 +20,11 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
+/** AP の content 等、HTML 文字列が必要な場合に使う(html:false でエスケープ済み) */
+export function renderMarkdownToHtml(source: string): string {
+  return md.render(source);
+}
+
 export function Markdown({ source }: { source: string }) {
   return (
     <div
