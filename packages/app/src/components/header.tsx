@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { Link } from 'waku';
+import { LogoMark, Wordmark } from './logo';
 import { schema } from '../db/client';
 import { getCurrentUser } from '../server/current-user';
 import { getDb } from '../server/data';
@@ -29,8 +30,11 @@ export const Header = async () => {
     <header className="w-full">
       <div className="mx-auto w-full max-w-3xl px-[clamp(1rem,4vw,1.5rem)] pt-8 pb-4">
         <div className="flex items-end justify-between gap-4">
-          <h1 className="wordmark t-2xl leading-none">
-            <Link to="/">Yorox</Link>
+          <h1 className="leading-none">
+            <Link to="/" className="flex items-center gap-3">
+              <LogoMark size={40} />
+              <Wordmark height={30} />
+            </Link>
           </h1>
           <nav className="flex min-h-11 items-center gap-4 text-sm">
             {user ? (

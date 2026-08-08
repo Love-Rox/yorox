@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Yorox ロゴマーク: リソグラフの版ズレ(ピンク下版+クリーム上版)による Y -->
+  <defs>
+    <path id="y" d="M146 128 L256 262 M366 128 L256 262 M256 262 L256 396"
+      fill="none" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="#1B2240"/>
+  <use href="#y" stroke="#F0357F" transform="translate(-12,-9)"/>
+  <use href="#y" stroke="#F4EFDE" transform="translate(8,8)"/>
+</svg>

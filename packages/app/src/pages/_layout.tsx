@@ -10,12 +10,14 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <div className="flex min-h-svh flex-col">
       <meta name="description" content="分散型で運用できるイベント管理プラットフォーム" />
-      <link rel="icon" type="image/png" href="/images/favicon.png" />
+      <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
+      <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png" />
+      <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@700&family=Zen+Kaku+Gothic+New:wght@400;700&family=Space+Mono:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&family=Zen+Kaku+Gothic+New:wght@400;700&family=Space+Mono:wght@400;700&display=swap"
         precedence="font"
       />
       <Header />

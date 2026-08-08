@@ -24,14 +24,12 @@
   --yorox-accent-2: oklch(44% 0.14 255);
   --yorox-focus: oklch(55% 0.22 5);
 
-  /* ---- フォント(見出し / 本文 / メタ情報mono / ワードマーク専用) ---- */
-  /* 見出しは視認性優先で M PLUS Rounded 1c 700(Dela は漢字が潰れるため
-   * ワードマーク「Yorox」欧文のみに限定) */
+  /* ---- フォント(見出し / 本文 / メタ情報mono) ---- */
+  /* ワードマークは SVG ロゴ(components/logo.tsx)になったためフォント不要 */
   --yorox-font-display: 'M PLUS Rounded 1c', 'Hiragino Sans', sans-serif;
   --yorox-font-display-weight: 700;
   --yorox-font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
   --yorox-font-mono: 'Space Mono', ui-monospace, monospace;
-  --yorox-font-wordmark: 'Dela Gothic One', 'Hiragino Sans', sans-serif;
 
   /* ---- タイプスケール(1.25 major third) ---- */
   --yorox-text-sm: 0.8rem;

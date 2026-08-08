@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 348 120">
+  <!-- Yorox 文字ロゴ: ロゴマークと同じ丸ストローク+版ズレ(ピンク下版+藍上版) -->
+  <defs>
+    <g id="word" fill="none" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Y -->
+      <path d="M16 14 L44 50 M72 14 L44 50 M44 50 L44 102"/>
+      <!-- o -->
+      <circle cx="115" cy="75" r="27"/>
+      <!-- r -->
+      <path d="M166 52 L166 102 M166 78 Q166 52 196 54"/>
+      <!-- o -->
+      <circle cx="243" cy="75" r="27"/>
+      <!-- x -->
+      <path d="M296 52 L332 102 M332 52 L296 102"/>
+    </g>
+  </defs>
+  <use href="#word" stroke="#F0357F" transform="translate(-4,-3)"/>
+  <use href="#word" stroke="#1B2240" transform="translate(2.5,2.5)"/>
+</svg>
