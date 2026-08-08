@@ -5,17 +5,29 @@
  */
 import { and, eq, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import { purgeExpiredSessions } from '../auth/session';
-import { createDb, schema } from '../db/client';
+import { createDb, schema, type Db } from '../db/client';
 import { runLottery } from '../domain/participation';
+import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
+import { createTransportFromEnv } from '../mail/transport';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
-import { ConsoleDriver, ResendDriver, type NotificationDriver } from '../notifications/driver';
+import { ConsoleDriver, QueueEmailDriver, type NotificationDriver } from '../notifications/driver';
 
-function buildDrivers(env: Env): NotificationDriver[] {
+function buildDrivers(env: Env, db: Db): NotificationDriver[] {
   const drivers: NotificationDriver[] = [new ConsoleDriver()];
-  if (env.RESEND_API_KEY && env.MAIL_FROM) {
-    drivers.push(new ResendDriver(env.RESEND_API_KEY, env.MAIL_FROM));
+  // トランスポートが設定されているときだけキューへ積む(未設定で溜め続けない)
+  if (createTransportFromEnv(env)) {
+    drivers.push(new QueueEmailDriver(db));
   }
   return drivers;
+}
+
+function rateLimitsFromEnv(env: Env): RateLimits {
+  const perMinute = Number.parseInt(env.MAIL_RATE_PER_MINUTE ?? '', 10);
+  const perHour = Number.parseInt(env.MAIL_RATE_PER_HOUR ?? '', 10);
+  return {
+    perMinute: Number.isNaN(perMinute) ? DEFAULT_RATE_LIMITS.perMinute : perMinute,
+    perHour: Number.isNaN(perHour) ? DEFAULT_RATE_LIMITS.perHour : perHour,
+  };
 }
 
 export async function runScheduledJobs(env: Env, now: Date = new Date()): Promise<void> {
@@ -48,9 +60,18 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
     }
   }
 
-  const processed = await dispatchPendingEvents(db, buildDrivers(env));
+  const processed = await dispatchPendingEvents(db, buildDrivers(env, db));
   if (processed > 0) {
     console.log(`[scheduled] dispatched ${processed} domain event(s)`);
+  }
+
+  // メール送信キューの処理(レート制御付き)
+  const transport = createTransportFromEnv(env);
+  if (transport) {
+    const sent = await processMailQueue(db, transport, rateLimitsFromEnv(env), now);
+    if (sent > 0) {
+      console.log(`[scheduled] sent ${sent} queued mail(s) via ${transport.name}`);
+    }
   }
 
   // 期限切れセッション・トークンの掃除

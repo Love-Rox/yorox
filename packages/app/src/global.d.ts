@@ -4,6 +4,20 @@ declare module '*.css';
 // 注: SLOT_COORDINATOR は wrangler types が Fetcher として生成する。
 //     RPC の型付けは src/server/coordinator.ts の境界ヘルパーで行う
 interface Env {
-  RESEND_API_KEY?: string;
+  /** 'resend' | 'smtp'。未指定時は RESEND_API_KEY があれば resend */
+  MAIL_TRANSPORT?: string;
+  /** 送信元(例: Yorox <noreply@yorox.example>)。未設定ならメール送信無効 */
   MAIL_FROM?: string;
+  RESEND_API_KEY?: string;
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  SMTP_USERNAME?: string;
+  SMTP_PASSWORD?: string;
+  /** '1' で implicit TLS(465)。既定はポートから推定 */
+  SMTP_SECURE?: string;
+  /** '0' で STARTTLS 無効。既定は 465 以外で有効 */
+  SMTP_START_TLS?: string;
+  /** 送信レート上限。既定 10/分・100/時 */
+  MAIL_RATE_PER_MINUTE?: string;
+  MAIL_RATE_PER_HOUR?: string;
 }

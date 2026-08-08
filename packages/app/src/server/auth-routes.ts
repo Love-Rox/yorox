@@ -19,20 +19,12 @@ import {
 import { createDb, schema } from '../db/client';
 import { HandleTakenError, validateHandle } from '../domain/groups';
 import { createUser, EmailTakenError, isHandleAvailable } from '../domain/users';
-import { ConsoleDriver, ResendDriver, type NotificationDriver } from '../notifications/driver';
+import { createDirectSender } from '../mail/send';
 import { eq } from 'drizzle-orm';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
   return env;
-}
-
-function buildMailDrivers(env: Env): NotificationDriver[] {
-  const drivers: NotificationDriver[] = [new ConsoleDriver()];
-  if (env.RESEND_API_KEY && env.MAIL_FROM) {
-    drivers.push(new ResendDriver(env.RESEND_API_KEY, env.MAIL_FROM));
-  }
-  return drivers;
 }
 
 function isSecure(c: Context): boolean {
@@ -60,7 +52,7 @@ auth.post('/auth/magic-link/request', async (c) => {
   const env = await getEnv();
   const db = createDb(env.DB);
   // メールの存在有無を露出しないため、結果に関わらず同じ画面へ
-  await requestMagicLink(db, buildMailDrivers(env), {
+  await requestMagicLink(db, createDirectSender(env), {
     email,
     origin: new URL(c.req.url).origin,
   });

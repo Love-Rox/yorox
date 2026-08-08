@@ -12,7 +12,7 @@ import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { generateToken, hashToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
-import type { NotificationDriver } from '../notifications/driver';
+import type { MailMessage } from '../mail/transport';
 
 const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000; // 15分
 const SIGNUP_TICKET_TTL_MS = 30 * 60 * 1000; // オンボーディング入力の猶予 30分
@@ -34,26 +34,26 @@ export async function issueLoginToken(
   return token;
 }
 
+/**
+ * マジックリンクを発行して送信する。
+ * ユーザーが待っているためキューを通さず即時送信する(送信手段は呼び出し側が注入)。
+ */
 export async function requestMagicLink(
   db: Db,
-  drivers: NotificationDriver[],
+  sendMail: (message: MailMessage) => Promise<void>,
   input: { email: string; origin: string },
   now: Date = new Date(),
 ): Promise<void> {
   const token = await issueLoginToken(db, input.email, LOGIN_TOKEN_TTL_MS, now);
   const url = `${input.origin}/auth/magic-link/verify?token=${token}`;
-  for (const driver of drivers) {
-    try {
-      await driver.send({
-        actorId: '-',
-        email: input.email,
-        subject: '[Yorox] ログインリンク',
-        bodyText: `以下のリンクからログインしてください(15分間有効):\n\n${url}\n\n心当たりがない場合はこのメールを無視してください。`,
-        eventType: 'auth.magic_link',
-      });
-    } catch (err) {
-      console.error(`[auth] magic link send failed (driver=${driver.name}):`, err);
-    }
+  try {
+    await sendMail({
+      to: input.email,
+      subject: '[Yorox] ログインリンク',
+      bodyText: `以下のリンクからログインしてください(15分間有効):\n\n${url}\n\n心当たりがない場合はこのメールを無視してください。`,
+    });
+  } catch (err) {
+    console.error('[auth] magic link send failed:', err);
   }
 }
 

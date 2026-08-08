@@ -355,6 +355,39 @@ export const attendances = sqliteTable('attendances', {
 });
 
 // ---------------------------------------------------------------------------
+// メール送信キュー(docs/MAIL.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * メールの送信キュー。通知メールはここに積まれ、Cron がレート制御しながら
+ * トランスポート(Resend / SMTP)経由で送る。
+ * マジックリンク等の即時性が必要なメールはキューを通さず直接送る。
+ */
+export const mailQueue = sqliteTable(
+  'mail_queue',
+  {
+    id: text('id').primaryKey(),
+    toEmail: text('to_email').notNull(),
+    subject: text('subject').notNull(),
+    bodyText: text('body_text').notNull(),
+    status: text('status', { enum: ['pending', 'sent', 'failed'] })
+      .notNull()
+      .default('pending'),
+    /** 送信試行回数。上限に達すると failed */
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    /** この時刻以降に送る(再試行のバックオフに使う) */
+    scheduledAt: integer('scheduled_at', { mode: 'timestamp_ms' }).notNull(),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    index('mail_queue_pending_idx').on(t.status, t.scheduledAt),
+    index('mail_queue_sent_at_idx').on(t.sentAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // 通知(プラガブルドライバ)とアクション要求
 // ---------------------------------------------------------------------------
 

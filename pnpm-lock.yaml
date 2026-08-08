@@ -50,6 +50,9 @@ importers:
       waku:
         specifier: 1.0.0-beta.8
         version: 1.0.0-beta.8(@rolldown/plugin-babel@0.2.3(@babel/core@8.0.1)(rolldown@1.2.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)))(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(esbuild@0.28.1)(jiti@2.7.0)(react-dom@19.2.8(react@19.2.8))(react-server-dom-webpack@19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(webpack@5.109.2(esbuild@0.28.1)))(react@19.2.8)(terser@5.49.2)(tsx@4.23.11)
+      worker-mailer:
+        specifier: ^1.2.1
+        version: 1.2.1
       wrangler:
         specifier: ^4.120.0
         version: 4.120.0
@@ -2133,6 +2136,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  worker-mailer@1.2.1:
+    resolution: {integrity: sha512-gS2ei/mrpRqNs+AHmqxhT6vFPwCLw2qnz5ShmyGD0ULaU0Q9hxnFAcx9jhAip/MnD6+MjgnQu6hQQgA8mlOkVA==}
+
   workerd@1.20260730.1:
     resolution: {integrity: sha512-zmfNIjwYSWFY5chGBOjWtH3xAE7p97FTC6vR4Ep98290ho6AeAR/NVcBD274YCLEUYzqm8yxdtZlxMybU8a3jA==}
     engines: {node: '>=16'}
@@ -3726,6 +3732,8 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  worker-mailer@1.2.1: {}
 
   workerd@1.20260730.1:
     optionalDependencies:
