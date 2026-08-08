@@ -33,6 +33,14 @@ const TEMPLATES: Record<
     subject: '補欠から繰り上がりました',
     body: '空きが出たため参加が確定しました。詳細はイベントページをご確認ください。',
   },
+  'participation.payment_pending': {
+    subject: '参加受付 — お支払いのご案内',
+    body: '参加を受け付けました。お支払いの確認をもって参加確定となります。詳細はイベントページをご確認ください。',
+  },
+  'payment.paid': {
+    subject: 'お支払いを確認しました',
+    body: 'お支払いを確認しました。ありがとうございます。',
+  },
   'participation.consent_requested': {
     subject: '【要確認】繰上参加の承諾のお願い',
     body: '空きが出ました。参加するにはイベントページから承諾してください。承諾がない場合、次の方に繰り上がります。',

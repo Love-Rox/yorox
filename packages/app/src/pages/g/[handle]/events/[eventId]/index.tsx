@@ -39,10 +39,13 @@ const SLOT_METHOD_LABEL = { fcfs: '先着', lottery: '抽選' } as const;
 const STATUS_LABEL: Record<string, string> = {
   applied: '抽選待ち',
   accepted: '参加確定',
+  payment_pending: '支払い待ち',
   waitlisted: '補欠',
   consent_pending: '繰上承諾待ち',
   rejected: '落選',
 };
+
+const YEN = new Intl.NumberFormat('ja-JP');
 
 const ERROR_MESSAGES: Record<string, string> = {
   full: 'この枠は満席です(補欠枠も含む)。',
@@ -272,6 +275,14 @@ export default async function EventPage({
                           <div className="font-bold">{slot.name}</div>
                           <div className="mt-0.5 text-sm text-neutral">
                             {SLOT_METHOD_LABEL[slot.method]} · 定員 {slot.capacity} 名
+                            {slot.price != null && slot.price > 0 && (
+                              <span className="ml-1 font-bold text-ink">
+                                · ¥{YEN.format(slot.price)}
+                                <span className="font-normal text-neutral">
+                                  ({slot.paymentMethod === 'onsite' ? '現地払い' : '事前決済'})
+                                </span>
+                              </span>
+                            )}
                           </div>
                           {slot.method === 'lottery' && slot.lotteryAt && (
                             <div className="meta-mono text-sm text-neutral">
@@ -293,9 +304,30 @@ export default async function EventPage({
                         <div className="mt-3">
                           {own ? (
                             <div className="flex flex-wrap items-center gap-3">
-                              <span className="border-2 border-accent-2 px-3 py-1.5 text-sm font-bold text-accent-2">
+                              <span
+                                className={`border-2 px-3 py-1.5 text-sm font-bold ${
+                                  own.status === 'payment_pending'
+                                    ? 'border-accent text-accent'
+                                    : 'border-accent-2 text-accent-2'
+                                }`}
+                              >
                                 {STATUS_LABEL[own.status] ?? own.status}
                               </span>
+                              {own.status === 'payment_pending' &&
+                                (slot.paymentMethod === 'external' && slot.paymentUrl ? (
+                                  <a
+                                    href={slot.paymentUrl}
+                                    className="btn cursor-pointer"
+                                    rel="noreferrer"
+                                    target="_blank"
+                                  >
+                                    支払いへ進む
+                                  </a>
+                                ) : (
+                                  <span className="text-sm text-neutral">
+                                    当日、会場でお支払いください
+                                  </span>
+                                ))}
                               <form
                                 method="post"
                                 action={`/participations/${own.id}/visibility`}
@@ -433,6 +465,42 @@ export default async function EventPage({
                       className="input meta-mono mt-1"
                     />
                   </label>
+                  <fieldset>
+                    <legend className="text-sm font-bold">参加費</legend>
+                    <label className="mt-1 block">
+                      <span className="text-sm">金額(円。空欄で無料)</span>
+                      <input
+                        type="number"
+                        name="price"
+                        min={0}
+                        className="input meta-mono mt-1"
+                        placeholder="1000"
+                      />
+                    </label>
+                    <label className="mt-2 block">
+                      <span className="text-sm">支払方法</span>
+                      <select name="payment_method" className="input mt-1">
+                        <option value="onsite">現地払い</option>
+                        <option value="external">外部決済リンク</option>
+                      </select>
+                    </label>
+                    <label className="mt-2 block">
+                      <span className="text-sm">決済 URL(外部決済リンク時)</span>
+                      <input
+                        type="url"
+                        name="payment_url"
+                        className="input meta-mono mt-1"
+                        placeholder="https://buy.stripe.com/…"
+                      />
+                    </label>
+                    <label className="mt-2 block">
+                      <span className="text-sm">確定条件</span>
+                      <select name="payment_confirm" className="input mt-1">
+                        <option value="independent">申込/当選で確定(支払いは別管理)</option>
+                        <option value="required">支払い確認で確定</option>
+                      </select>
+                    </label>
+                  </fieldset>
                   <fieldset>
                     <legend className="text-sm font-bold">参加条件(AND)</legend>
                     <label className="mt-1 flex min-h-11 items-center gap-2">

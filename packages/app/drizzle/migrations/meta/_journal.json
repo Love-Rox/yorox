@@ -57,6 +57,13 @@
       "when": 1786164492837,
       "tag": "0007_speaker-url",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786165359844,
+      "tag": "0008_payments",
+      "breakpoints": true
     }
   ]
 }

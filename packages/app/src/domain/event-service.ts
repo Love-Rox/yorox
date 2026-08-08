@@ -124,6 +124,10 @@ export interface AddSlotInput {
   lotteryLogic?: 'random' | 'manual' | 'weighted' | undefined;
   lotteryAt?: Date | undefined;
   conditions?: SlotConditions | undefined;
+  price?: number | undefined;
+  paymentMethod?: 'onsite' | 'external' | undefined;
+  paymentUrl?: string | undefined;
+  paymentConfirm?: 'independent' | 'required' | undefined;
 }
 
 /** 参加枠を追加する(枠ポリシー5要素はすべて呼び出し側で選択済み) */
@@ -158,6 +162,10 @@ export async function addSlot(
     lotteryLogic: input.method === 'lottery' ? (input.lotteryLogic ?? 'random') : null,
     lotteryAt: input.lotteryAt ?? null,
     conditions: input.conditions ?? null,
+    price: input.price ?? null,
+    paymentMethod: input.paymentMethod ?? null,
+    paymentUrl: input.paymentUrl ?? null,
+    paymentConfirm: input.paymentConfirm ?? 'independent',
     sortOrder: existing.length,
     createdAt: now,
   });

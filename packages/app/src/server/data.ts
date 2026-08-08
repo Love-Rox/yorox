@@ -2,7 +2,7 @@
  * RSC から使う読み取りクエリ集。
  * cloudflare:workers の env は workerd ランタイム内でのみ解決される。
  */
-import { and, asc, desc, eq, gte, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm';
 import { createDb, schema, type Db } from '../db/client';
 
 export async function getDb(): Promise<Db> {
@@ -88,7 +88,10 @@ export async function getEventDetail(db: Db, eventId: string) {
       where: eq(schema.participations.slotId, slot.id),
     });
     slotStats.set(slot.id, {
-      accepted: rows.filter((r) => r.status === 'accepted').length,
+      // payment_pending も席を保持しているため確定数に含める
+      accepted: rows.filter(
+        (r) => r.status === 'accepted' || r.status === 'payment_pending',
+      ).length,
       waitlisted: rows.filter((r) => r.status === 'waitlisted' || r.status === 'consent_pending')
         .length,
     });
@@ -126,6 +129,9 @@ export async function listManageParticipations(db: Db, eventId: string) {
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
       attendanceStatus: schema.attendances.status,
+      paymentId: schema.payments.id,
+      paymentStatus: schema.payments.status,
+      paymentAmount: schema.payments.amount,
     })
     .from(schema.participations)
     .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
@@ -134,7 +140,21 @@ export async function listManageParticipations(db: Db, eventId: string) {
       schema.attendances,
       eq(schema.attendances.participationId, schema.participations.id),
     )
-    .where(and(eq(schema.slots.eventId, eventId), ne(schema.participations.status, 'cancelled')))
+    .leftJoin(
+      schema.payments,
+      eq(schema.payments.participationId, schema.participations.id),
+    )
+    .where(
+      and(
+        eq(schema.slots.eventId, eventId),
+        // キャンセル済みは非表示。ただし要返金の支払いが残っている行は主催が
+        // 対応する必要があるため表示し続ける
+        or(
+          ne(schema.participations.status, 'cancelled'),
+          eq(schema.payments.status, 'refund_required'),
+        ),
+      ),
+    )
     .orderBy(asc(schema.participations.appliedAt));
 
   // 過去実績(このイベントを除く全履歴)をアクター毎に集計

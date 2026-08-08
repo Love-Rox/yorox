@@ -15,10 +15,22 @@ import { hasGroupPermission } from '../../../../../server/route-auth';
 const STATUS_LABEL: Record<string, string> = {
   applied: '抽選待ち',
   accepted: '参加確定',
+  payment_pending: '支払い待ち',
   waitlisted: '補欠',
   consent_pending: '繰上承諾待ち',
   rejected: '落選',
+  cancelled: 'キャンセル済み',
 };
+
+const PAYMENT_LABEL: Record<string, string> = {
+  pending: '未払い',
+  paid: '支払済み',
+  refund_required: '要返金',
+  refunded: '返金済み',
+  waived: '免除',
+};
+
+const YEN = new Intl.NumberFormat('ja-JP');
 
 const SLOT_METHOD_LABEL = { fcfs: '先着', lottery: '抽選' } as const;
 const LOTTERY_LABEL: Record<string, string> = {
@@ -170,6 +182,37 @@ export default async function ManagePage({
                             </form>
                           </>
                         )}
+                        {/* 支払い管理 */}
+                        {p.paymentId && p.paymentStatus && (
+                          <span
+                            className={`border px-2 py-1 text-sm font-bold ${
+                              p.paymentStatus === 'paid' || p.paymentStatus === 'waived'
+                                ? 'border-accent-2 text-accent-2'
+                                : 'border-accent text-accent'
+                            }`}
+                          >
+                            {PAYMENT_LABEL[p.paymentStatus]}
+                            {p.paymentAmount != null && ` ¥${YEN.format(p.paymentAmount)}`}
+                          </span>
+                        )}
+                        {canAttendance && p.paymentId && p.paymentStatus === 'pending' && (
+                          <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                            <input type="hidden" name="status" value="paid" />
+                            <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                              支払済みにする
+                            </button>
+                          </form>
+                        )}
+                        {canAttendance &&
+                          p.paymentId &&
+                          p.paymentStatus === 'refund_required' && (
+                            <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                              <input type="hidden" name="status" value="refunded" />
+                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                                返金済みにする
+                              </button>
+                            </form>
+                          )}
                         {/* 出欠記録(確定者のみ) */}
                         {canAttendance && p.status === 'accepted' && (
                           <>

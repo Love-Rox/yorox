@@ -11,6 +11,7 @@ import {
   respondToPromotion,
   runLottery,
 } from '../domain/participation';
+import { markPayment } from '../domain/payment';
 import { ulid } from '../lib/ulid';
 import type { Permission } from '../domain/permissions';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
@@ -178,6 +179,34 @@ manage.post('/participations/:id/visibility', async (c) => {
     event && groupActor?.handle ? `/g/${groupActor.handle}/events/${event.id}` : '/',
     302,
   );
+});
+
+/** 支払い状態の変更(支払済み/返金済み/免除) */
+manage.post('/payments/:id/mark', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const payment = await db.query.payments.findFirst({
+    where: eq(schema.payments.id, c.req.param('id')),
+  });
+  if (!payment) return c.notFound();
+  const ctx = await authorizeForParticipation(
+    db,
+    payment.participationId,
+    actorId,
+    'attendance.manage',
+  );
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const status = str(form.status);
+  if (status !== 'paid' && status !== 'refunded' && status !== 'waived') {
+    return c.text('invalid status', 400);
+  }
+  await markPayment(db, payment.id, status, actorId);
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
 });
 
 /** 承諾型繰上への応答(本人) */

@@ -196,6 +196,25 @@ events.post('/events/:id/slots', async (c) => {
   const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
 
   const method = str(form.method) === 'lottery' ? 'lottery' : 'fcfs';
+
+  // 決済設定の検証
+  const price = optionalInt(form.price);
+  const paymentMethod =
+    str(form.payment_method) === 'onsite'
+      ? 'onsite'
+      : str(form.payment_method) === 'external'
+        ? 'external'
+        : null;
+  const paymentUrl = str(form.payment_url);
+  if (price && price > 0) {
+    if (!paymentMethod) {
+      return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
+    }
+    if (paymentMethod === 'external' && !/^https?:\/\//.test(paymentUrl)) {
+      return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
+    }
+  }
+
   const conditions: SlotConditions = {};
   if (form.require_claimed === 'on') conditions.requireClaimed = true;
   const minAge = optionalInt(form.min_account_age_days);
@@ -228,6 +247,10 @@ events.post('/events/:id/slots', async (c) => {
           : undefined,
       lotteryAt: method === 'lottery' ? parseLocalDateTime(form.lottery_at) : undefined,
       conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
+      price: price && price > 0 ? price : undefined,
+      paymentMethod: price && price > 0 ? (paymentMethod ?? undefined) : undefined,
+      paymentUrl: paymentMethod === 'external' ? paymentUrl : undefined,
+      paymentConfirm: str(form.payment_confirm) === 'required' ? 'required' : 'independent',
     });
     return c.redirect(eventUrl, 302);
   } catch {

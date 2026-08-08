@@ -308,6 +308,20 @@ export const slots = sqliteTable(
     lotteryAt: integer('lottery_at', { mode: 'timestamp_ms' }),
     /** 5. 参加条件(AND 組合せ)。null = 無条件 */
     conditions: text('conditions', { mode: 'json' }).$type<SlotConditions>(),
+    /** 参加費(通貨最小単位。JPY なら円)。null = 無料 */
+    price: integer('price'),
+    currency: text('currency').notNull().default('JPY'),
+    /** 支払方法: onsite = 現地払い / external = 外部決済リンク。null = 無料枠 */
+    paymentMethod: text('payment_method', { enum: ['onsite', 'external'] }),
+    /** external のときの決済 URL(Stripe Payment Links 等) */
+    paymentUrl: text('payment_url'),
+    /**
+     * 確定条件: independent = 申込/当選で確定(支払いは別管理、Connpass 流)
+     *            required   = 支払い確認で確定(それまで payment_pending で定員は保持)
+     */
+    paymentConfirm: text('payment_confirm', { enum: ['independent', 'required'] })
+      .notNull()
+      .default('independent'),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
@@ -335,6 +349,7 @@ export const participations = sqliteTable(
       enum: [
         'applied',
         'accepted',
+        'payment_pending',
         'waitlisted',
         'consent_pending',
         'rejected',
@@ -398,6 +413,45 @@ export const mailQueue = sqliteTable(
   (t) => [
     index('mail_queue_pending_idx').on(t.status, t.scheduledAt),
     index('mail_queue_sent_at_idx').on(t.sentAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// 決済(docs/DECISIONS.md 追記参照。将来の Stripe 等は PaymentProvider IF で拡張)
+// ---------------------------------------------------------------------------
+
+/**
+ * 参加に紐づく支払い記録。
+ * MVP は現地払い/外部決済リンクで、確認は主催の手動マーク。
+ * 将来 Stripe 統合時は provider/provider_ref に Checkout 情報を持たせ、
+ * webhook がここを 'paid' にする。
+ */
+export const payments = sqliteTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    participationId: text('participation_id')
+      .notNull()
+      .references(() => participations.id),
+    amount: integer('amount').notNull(),
+    currency: text('currency').notNull().default('JPY'),
+    method: text('method', { enum: ['onsite', 'external'] }).notNull(),
+    status: text('status', {
+      enum: ['pending', 'paid', 'refund_required', 'refunded', 'waived'],
+    })
+      .notNull()
+      .default('pending'),
+    /** 将来の決済プロバイダ識別子(stripe 等)と外部参照 */
+    provider: text('provider'),
+    providerRef: text('provider_ref'),
+    /** 手動マークした主催者 */
+    markedByActorId: text('marked_by_actor_id').references(() => actors.id),
+    paidAt: integer('paid_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('payments_participation_unique').on(t.participationId),
+    index('payments_status_idx').on(t.status),
   ],
 );
 

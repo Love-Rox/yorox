@@ -17,6 +17,7 @@ import { ulid } from '../lib/ulid';
 import { evaluateConditions, type ApplicantInfo } from './conditions';
 import { emitDomainEvent } from './events';
 import { drawRandom, drawWeighted, type LotteryApplicant } from './lottery';
+import { confirmedStatus, ensurePayment, flagRefundIfPaid } from './payment';
 
 /**
  * 先着枠の定員直列化を担う外部コーディネータ(slot-coordinator の RPC)。
@@ -124,6 +125,9 @@ export async function joinSlot(
     return { participationId, status: 'applied' };
   }
 
+  // 先着の確定ステータス(支払い確認で確定の有料枠は payment_pending で定員保持)
+  const target = confirmedStatus(slot);
+
   // 先着: slot-coordinator(DO)があれば slot 単位で直列化して確定する
   if (deps.slotCoordinator) {
     const result = await deps.slotCoordinator.acceptJoin({
@@ -134,32 +138,46 @@ export async function joinSlot(
       waitlistModel: slot.waitlistModel,
       waitlistCapacity: slot.waitlistCapacity,
       appliedAtMs: now.getTime(),
+      confirmStatus: target,
     });
     if (result === 'full') throw new SlotFullError();
+    const status = result === 'accepted' ? target : 'waitlisted';
+    if (status !== 'waitlisted') await ensurePayment(db, participationId, slot, now);
     await emitDomainEvent(
       db,
-      result === 'accepted' ? 'participation.accepted' : 'participation.waitlisted',
+      status === 'accepted'
+        ? 'participation.accepted'
+        : status === 'payment_pending'
+          ? 'participation.payment_pending'
+          : 'participation.waitlisted',
       { participationId, slotId: input.slotId, actorId: input.actorId },
       now,
     );
-    return { participationId, status: result };
+    return { participationId, status: status === 'waitlisted' ? 'waitlisted' : 'accepted' };
   }
 
   // フォールバック: 単一ステートメントの条件付き INSERT で定員を原子的に守る
+  // (payment_pending も席を保持するため定員カウントに含める)
   const acceptedInsert = await db.run(sql`
     INSERT INTO participations (id, slot_id, actor_id, status, hidden_from_list, applied_at, decided_at)
-    SELECT ${participationId}, ${input.slotId}, ${input.actorId}, 'accepted', 0, ${now.getTime()}, ${now.getTime()}
+    SELECT ${participationId}, ${input.slotId}, ${input.actorId}, ${target}, 0, ${now.getTime()}, ${now.getTime()}
     WHERE (
       SELECT COUNT(*) FROM participations
-      WHERE slot_id = ${input.slotId} AND status = 'accepted'
+      WHERE slot_id = ${input.slotId} AND status IN ('accepted', 'payment_pending')
     ) < ${slot.capacity}
   `);
   if ((acceptedInsert.meta?.changes ?? 0) > 0) {
-    await emitDomainEvent(db, 'participation.accepted', {
-      participationId,
-      slotId: input.slotId,
-      actorId: input.actorId,
-    }, now);
+    await ensurePayment(db, participationId, slot, now);
+    await emitDomainEvent(
+      db,
+      target === 'accepted' ? 'participation.accepted' : 'participation.payment_pending',
+      {
+        participationId,
+        slotId: input.slotId,
+        actorId: input.actorId,
+      },
+      now,
+    );
     return { participationId, status: 'accepted' };
   }
 
@@ -211,7 +229,10 @@ export async function cancelParticipation(
     actorId: participation.actorId,
   }, now);
 
-  if (participation.status === 'accepted') {
+  // 支払い済みなら要返金フラグ(主催の管理コンソールに表示)
+  await flagRefundIfPaid(db, participationId);
+
+  if (participation.status === 'accepted' || participation.status === 'payment_pending') {
     await promoteFromWaitlist(db, participation.slotId, now);
   }
 }
@@ -240,11 +261,16 @@ export async function promoteFromWaitlist(
     }
   }
 
-  // 空き定員の確認(accepted 数 < capacity のときだけ繰り上げる)
+  // 空き定員の確認(payment_pending も席を保持)
   const [acceptedRow] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.participations)
-    .where(and(eq(schema.participations.slotId, slotId), eq(schema.participations.status, 'accepted')));
+    .where(
+      and(
+        eq(schema.participations.slotId, slotId),
+        sql`${schema.participations.status} IN ('accepted', 'payment_pending')`,
+      ),
+    );
   if ((acceptedRow?.count ?? 0) >= slot.capacity) return;
 
   const next = await db.query.participations.findFirst({
@@ -278,15 +304,22 @@ export async function promoteFromWaitlist(
     return;
   }
 
+  const target = confirmedStatus(slot);
   await db
     .update(schema.participations)
-    .set({ status: 'accepted', decidedAt: now })
+    .set({ status: target, decidedAt: now })
     .where(eq(schema.participations.id, next.id));
-  await emitDomainEvent(db, 'participation.promoted', {
-    participationId: next.id,
-    slotId,
-    actorId: next.actorId,
-  }, now);
+  await ensurePayment(db, next.id, slot, now);
+  await emitDomainEvent(
+    db,
+    target === 'accepted' ? 'participation.promoted' : 'participation.payment_pending',
+    {
+      participationId: next.id,
+      slotId,
+      actorId: next.actorId,
+    },
+    now,
+  );
 }
 
 /**
@@ -310,11 +343,24 @@ export async function respondToPromotion(
     .where(eq(schema.actionRequests.id, request.id));
 
   if (input.accept) {
+    const participation = await db.query.participations.findFirst({
+      where: eq(schema.participations.id, participationId),
+    });
+    const slot = participation
+      ? await db.query.slots.findFirst({ where: eq(schema.slots.id, participation.slotId) })
+      : null;
+    const target = slot ? confirmedStatus(slot) : 'accepted';
     await db
       .update(schema.participations)
-      .set({ status: 'accepted', decidedAt: now })
+      .set({ status: target, decidedAt: now })
       .where(eq(schema.participations.id, participationId));
-    await emitDomainEvent(db, 'participation.accepted', { participationId }, now);
+    if (slot) await ensurePayment(db, participationId, slot, now);
+    await emitDomainEvent(
+      db,
+      target === 'accepted' ? 'participation.accepted' : 'participation.payment_pending',
+      { participationId },
+      now,
+    );
   } else {
     // 辞退: キャンセル扱いにして次の補欠へ
     const participation = await db.query.participations.findFirst({
@@ -347,17 +393,28 @@ export async function decideParticipation(
   if (participation.status === 'cancelled') return;
   if (participation.status === decision) return;
 
+  const slot = await db.query.slots.findFirst({
+    where: eq(schema.slots.id, participation.slotId),
+  });
+  const effective =
+    decision === 'accepted' && slot ? confirmedStatus(slot) : decision;
+
   await db
     .update(schema.participations)
-    .set({ status: decision, decidedAt: now })
+    .set({ status: effective, decidedAt: now })
     .where(eq(schema.participations.id, participationId));
+  if (decision === 'accepted' && slot) {
+    await ensurePayment(db, participationId, slot, now);
+  }
 
   const eventType =
-    decision === 'accepted'
+    effective === 'accepted'
       ? 'participation.accepted'
-      : decision === 'waitlisted'
-        ? 'participation.waitlisted'
-        : 'participation.rejected';
+      : effective === 'payment_pending'
+        ? 'participation.payment_pending'
+        : effective === 'waitlisted'
+          ? 'participation.waitlisted'
+          : 'participation.rejected';
   await emitDomainEvent(db, eventType, {
     participationId,
     slotId: participation.slotId,
@@ -459,15 +516,22 @@ export async function runLottery(
 
   for (const p of applicants) {
     if (winners.has(p.id)) {
+      const target = confirmedStatus(slot);
       await db
         .update(schema.participations)
-        .set({ status: 'accepted', decidedAt: now })
+        .set({ status: target, decidedAt: now })
         .where(eq(schema.participations.id, p.id));
-      await emitDomainEvent(db, 'participation.accepted', {
-        participationId: p.id,
-        slotId,
-        actorId: p.actorId,
-      }, now);
+      await ensurePayment(db, p.id, slot, now);
+      await emitDomainEvent(
+        db,
+        target === 'accepted' ? 'participation.accepted' : 'participation.payment_pending',
+        {
+          participationId: p.id,
+          slotId,
+          actorId: p.actorId,
+        },
+        now,
+      );
       acceptedCount++;
     } else if (waitlistedCount < waitlistLimit) {
       // 落選 → 補欠(connpass モデルは無制限、separate は定員まで)

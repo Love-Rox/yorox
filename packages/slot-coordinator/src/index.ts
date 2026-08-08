@@ -42,18 +42,20 @@ export class SlotSerializer extends DurableObject<Env> {
       waitlistModel,
       waitlistCapacity,
       appliedAtMs,
+      confirmStatus,
     } = input;
 
-    // 定員内なら即 accepted(participation.ts の先着パスと同じ条件付き INSERT)
+    // 定員内なら確定ステータスへ(participation.ts の先着パスと同じ条件付き INSERT。
+    // payment_pending も席を保持するため定員カウントに含める)
     const acceptedInsert = await this.env.DB.prepare(
       `INSERT INTO participations (id, slot_id, actor_id, status, hidden_from_list, applied_at, decided_at)
-       SELECT ?, ?, ?, 'accepted', 0, ?, ?
+       SELECT ?, ?, ?, ?, 0, ?, ?
        WHERE (
          SELECT COUNT(*) FROM participations
-         WHERE slot_id = ? AND status = 'accepted'
+         WHERE slot_id = ? AND status IN ('accepted', 'payment_pending')
        ) < ?`,
     )
-      .bind(participationId, slotId, actorId, appliedAtMs, appliedAtMs, slotId, capacity)
+      .bind(participationId, slotId, actorId, confirmStatus, appliedAtMs, appliedAtMs, slotId, capacity)
       .run();
     if ((acceptedInsert.meta?.changes ?? 0) > 0) {
       return 'accepted';

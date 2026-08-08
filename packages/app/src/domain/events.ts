@@ -14,6 +14,8 @@ export type DomainEventType =
   | 'participation.cancelled'
   | 'participation.promoted'
   | 'participation.consent_requested'
+  | 'participation.payment_pending'
+  | 'payment.paid'
   | 'lottery.completed'
   | 'event.published';
 
