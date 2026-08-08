@@ -24,6 +24,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # worker-configuration.d.ts は生成物(gitignore)なので CI で生成する
+      - run: pnpm --filter @yorox/app exec wrangler types
+      - run: pnpm --filter @yorox/slot-coordinator exec wrangler types
       - run: pnpm typecheck
       - run: pnpm test
 
