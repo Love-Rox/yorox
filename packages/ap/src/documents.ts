@@ -113,6 +113,41 @@ export function buildEmptyOutbox(uri: string): ApCollection {
   };
 }
 
+export interface EventNoteInput {
+  /** Note の URI(https://host/events/{ulid}/note) */
+  uri: string;
+  /** 主催グループのアクター URI */
+  attributedTo: string;
+  /** 告知本文(HTML) */
+  contentHtml: string;
+  /** 人間向けイベントページ URL */
+  url?: string | undefined;
+  published?: string | undefined;
+  /** cc に載せるフォロワーコレクション URI */
+  followersUri?: string | undefined;
+}
+
+/**
+ * イベント告知の Note。
+ * Event オブジェクトは Mastodon / Misskey のタイムラインに表示されないため、
+ * フォロワーへの告知は Note として配信する(正規の Event 本体とは別 URI)。
+ */
+export function buildEventNote(input: EventNoteInput): ApObject {
+  const note: ApObject = {
+    '@context': AS_CONTEXT,
+    id: input.uri,
+    type: 'Note',
+    attributedTo: input.attributedTo,
+    content: input.contentHtml,
+    mediaType: 'text/html',
+    to: ['https://www.w3.org/ns/activitystreams#Public'],
+  };
+  if (input.followersUri) note.cc = [input.followersUri];
+  if (input.url) note.url = input.url;
+  if (input.published) note.published = input.published;
+  return note;
+}
+
 /**
  * OrderedCollection(followers など)。
  * items 省略時は件数のみ公開する(フォロワー一覧の列挙を避ける Mastodon 互換挙動)。

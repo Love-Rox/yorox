@@ -90,6 +90,31 @@ export const follows = sqliteTable(
   ],
 );
 
+/**
+ * AP アクティビティの配信キュー(server-to-server)。
+ * mail_queue と同じ思想: fan-out 時に行を作り、cron がバックオフ付きで配信する。
+ */
+export const apDeliveries = sqliteTable(
+  'ap_deliveries',
+  {
+    id: text('id').primaryKey(), // ULID
+    /** 署名に使うローカルアクター(通常は主催グループ) */
+    signerActorId: text('signer_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    inboxUrl: text('inbox_url').notNull(),
+    activityJson: text('activity_json', { mode: 'json' })
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }).notNull(),
+    lastError: text('last_error'),
+    sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('ap_deliveries_pending_idx').on(t.sentAt, t.nextAttemptAt)],
+);
+
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
 export const users = sqliteTable('users', {
   actorId: text('actor_id')

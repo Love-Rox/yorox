@@ -20,11 +20,12 @@ import {
   verifyRequest,
   type ApActivity,
 } from '@yorox/ap';
-import { count, eq, and, isNull } from 'drizzle-orm';
+import { count, desc, eq, and, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
+import { buildEventAnnouncement } from './ap-delivery';
 import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { resolveRemoteActorByKeyId } from '../lib/remote-actor';
@@ -328,6 +329,25 @@ ap.get('/events/:id', async (c, next) => {
   return c.redirect(url, 302);
 });
 
+/**
+ * イベント告知 Note(タイムライン互換の配信用オブジェクト)。
+ * フォロワーへ配信した Create の object としてデリファレンスされる。
+ */
+ap.get('/events/:id/note', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event || event.visibility !== 'public') return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!group) return c.notFound();
+  const activity = buildEventAnnouncement(group, event);
+  return c.body(JSON.stringify(activity.object), 200, { 'content-type': AP_MEDIA_TYPE });
+});
+
 /** 正規 AP URI /groups/{ulid} も同様に人間向け URL へ */
 ap.get('/groups/:id', async (c, next) => {
   if (!ULID_RE.test(c.req.param('id'))) return next();
@@ -339,15 +359,32 @@ ap.get('/groups/:id', async (c, next) => {
   const origin = new URL(c.req.url).origin;
   if (acceptsActivityPub(c.req.header('accept'))) {
     const { publicKeyPem } = await ensureActorKeys(db, actor.id);
+    // 個人グループでアバター未設定なら、同ハンドルのオーナーのアバターを使う
+    let avatarUrl = actor.avatarUrl;
+    if (!avatarUrl) {
+      const group = await db.query.groups.findFirst({
+        where: eq(schema.groups.actorId, actor.id),
+      });
+      if (group?.isPersonal) {
+        const owner = await db.query.actors.findFirst({
+          where: and(
+            eq(schema.actors.handle, actor.handle),
+            isNull(schema.actors.domain),
+            eq(schema.actors.kind, 'user'),
+          ),
+        });
+        avatarUrl = owner?.avatarUrl ?? null;
+      }
+    }
     const doc = buildGroupActor({
       uri: actor.uri,
       handle: actor.handle,
       name: actor.displayName,
       summary: actor.summary ?? undefined,
-      iconUrl: actor.avatarUrl
-        ? actor.avatarUrl.startsWith('/')
-          ? `${origin}${actor.avatarUrl}`
-          : actor.avatarUrl
+      iconUrl: avatarUrl
+        ? avatarUrl.startsWith('/')
+          ? `${origin}${avatarUrl}`
+          : avatarUrl
         : undefined,
       url: `${origin}/g/${actor.handle}`,
       publicKeyPem,
@@ -377,7 +414,7 @@ ap.get('/groups/:id/followers', async (c, next) => {
   );
 });
 
-/** グループの outbox(配信実装までは空コレクション) */
+/** グループの outbox: 公開済みイベントの Create(Note) を新しい順に列挙 */
 ap.get('/groups/:id/outbox', async (c, next) => {
   if (!ULID_RE.test(c.req.param('id'))) return next();
   const db = createDb((await getEnv()).DB);
@@ -385,7 +422,19 @@ ap.get('/groups/:id/outbox', async (c, next) => {
     where: eq(schema.actors.id, c.req.param('id')),
   });
   if (!actor || actor.kind !== 'group') return c.notFound();
-  return c.body(JSON.stringify(buildEmptyOutbox(`${actor.uri}/outbox`)), 200, {
+  const published = await db.query.events.findMany({
+    where: and(
+      eq(schema.events.groupActorId, actor.id),
+      eq(schema.events.visibility, 'public'),
+    ),
+    orderBy: [desc(schema.events.createdAt)],
+    limit: 20,
+  });
+  const items = published.map((event) => buildEventAnnouncement(actor, event));
+  const outbox = buildEmptyOutbox(`${actor.uri}/outbox`);
+  outbox.totalItems = items.length;
+  outbox.orderedItems = items;
+  return c.body(JSON.stringify(outbox), 200, {
     'content-type': AP_MEDIA_TYPE,
   });
 });

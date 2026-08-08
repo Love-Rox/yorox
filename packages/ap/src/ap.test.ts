@@ -148,3 +148,22 @@ describe('buildEmptyOutbox', () => {
     expect(outbox.totalItems).toBe(0);
   });
 });
+
+describe('buildEventNote', () => {
+  it('Public 宛の Note を組み立てる', async () => {
+    const { buildEventNote } = await import('./documents');
+    const note = buildEventNote({
+      uri: 'https://yorox.example/events/01DEF/note',
+      attributedTo: 'https://yorox.example/groups/01ABC',
+      contentHtml: '<p><b>Kyoto.rb #42</b></p>',
+      url: 'https://yorox.example/g/kyoto-tech/events/01DEF',
+      followersUri: 'https://yorox.example/groups/01ABC/followers',
+      published: '2026-08-08T12:00:00Z',
+    });
+    expect(note.type).toBe('Note');
+    expect(note.to).toContain('https://www.w3.org/ns/activitystreams#Public');
+    expect(note.cc).toContain('https://yorox.example/groups/01ABC/followers');
+    expect(note.mediaType).toBe('text/html');
+    expect(note.attributedTo).toBe('https://yorox.example/groups/01ABC');
+  });
+});

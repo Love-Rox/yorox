@@ -47,6 +47,12 @@ const TEMPLATES: Record<
   },
 };
 
+/** 通知以外の副作用(AP 配信の fan-out 等)。失敗するとイベントは未処理のまま次回再試行 */
+export type DomainEventHook = (
+  db: Db,
+  event: { id: string; type: string; payload: unknown },
+) => Promise<void>;
+
 /**
  * 未処理のドメインイベントを最大 limit 件処理する。
  * 個別ドライバの失敗は他のドライバ・他のイベントの処理を止めない。
@@ -55,6 +61,7 @@ export async function dispatchPendingEvents(
   db: Db,
   drivers: NotificationDriver[],
   limit = 50,
+  hooks: Record<string, DomainEventHook | undefined> = {},
 ): Promise<number> {
   const pending = await db.query.domainEvents.findMany({
     where: isNull(schema.domainEvents.processedAt),
@@ -64,6 +71,16 @@ export async function dispatchPendingEvents(
 
   let processed = 0;
   for (const event of pending) {
+    const hook = hooks[event.type];
+    if (hook) {
+      try {
+        await hook(db, event);
+      } catch (err) {
+        // フック失敗はイベントを未処理のまま残し、次回の cron で再試行する
+        console.error(`[dispatcher] hook event=${event.id} type=${event.type} failed:`, err);
+        continue;
+      }
+    }
     const template = TEMPLATES[event.type];
     if (template) {
       const actorId = (event.payload as { actorId?: string }).actorId;

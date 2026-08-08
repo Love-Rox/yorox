@@ -11,6 +11,7 @@ import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/
 import { createTransportFromEnv } from '../mail/transport';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
 import { ConsoleDriver, QueueEmailDriver, type NotificationDriver } from '../notifications/driver';
+import { enqueueEventAnnouncement, processApDeliveries } from './ap-delivery';
 
 function buildDrivers(env: Env, db: Db): NotificationDriver[] {
   const drivers: NotificationDriver[] = [new ConsoleDriver()];
@@ -60,9 +61,23 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
     }
   }
 
-  const processed = await dispatchPendingEvents(db, buildDrivers(env, db));
+  const processed = await dispatchPendingEvents(db, buildDrivers(env, db), 50, {
+    // イベント公開 → フォロワーへの AP 告知を配信キューに積む
+    'event.published': async (hookDb, event) => {
+      const eventId = (event.payload as { eventId?: string }).eventId;
+      if (!eventId) return;
+      const queued = await enqueueEventAnnouncement(hookDb, eventId);
+      if (queued > 0) console.log(`[scheduled] queued ${queued} AP delivery(ies) for ${eventId}`);
+    },
+  });
   if (processed > 0) {
     console.log(`[scheduled] dispatched ${processed} domain event(s)`);
+  }
+
+  // AP 配信キューの処理(署名付き server-to-server 配信)
+  const delivered = await processApDeliveries(db, now);
+  if (delivered > 0) {
+    console.log(`[scheduled] delivered ${delivered} AP activity(ies)`);
   }
 
   // メール送信キューの処理(レート制御付き)
