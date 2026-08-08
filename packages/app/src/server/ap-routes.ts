@@ -83,7 +83,7 @@ ap.get('/.well-known/nodeinfo', (c) => {
 ap.get('/nodeinfo/2.1', (c) => {
   return c.json({
     version: '2.1',
-    software: { name: 'yorox', version: '0.0.0' },
+    software: { name: 'yorox', version: __YOROX_VERSION__ },
     protocols: ['activitypub'],
     services: { inbound: [], outbound: [] },
     openRegistrations: false,

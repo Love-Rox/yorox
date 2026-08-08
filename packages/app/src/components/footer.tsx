@@ -26,7 +26,8 @@ export const Footer = () => {
           </Link>
         </nav>
         <div className="meta-mono mt-4 text-sm leading-7 text-neutral">
-          このインスタンスは Yorox v0.0.0 で運営されています。Yorox
+          このインスタンスは Yorox v{__YOROX_VERSION__} ({__YOROX_COMMIT__})
+          で運営されています。Yorox
           は分散型のイベント管理プラットフォームです — 中央に頼らず、自分たちの寄合を自分たちの手で。
           ソースコード:{' '}
           <a href="https://github.com/Love-Rox/yorox" className="link" rel="noreferrer">

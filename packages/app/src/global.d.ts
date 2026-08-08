@@ -1,5 +1,9 @@
 declare module '*.css';
 
+// ビルド時に waku.config.ts の define で注入される
+declare const __YOROX_VERSION__: string;
+declare const __YOROX_COMMIT__: string;
+
 // シークレット(wrangler secret / .dev.vars)は wrangler types に現れないため補完する
 // 注: SLOT_COORDINATOR は wrangler types が Fetcher として生成する。
 //     RPC の型付けは src/server/coordinator.ts の境界ヘルパーで行う
