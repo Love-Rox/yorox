@@ -82,24 +82,43 @@ export default async function EventPage({
         </Link>
       </p>
       <h1 className="display mt-2 t-xl">{event.title}</h1>
-      <div className="meta-mono mt-3 text-sm leading-6 text-neutral">
-        <div>{formatDate(event.startsAt, event.timezone)}</div>
-        {event.endsAt && <div>〜 {formatDate(event.endsAt, event.timezone)}</div>}
-        {event.venueName && (
-          <div>
-            会場: {event.venueName}
-            {event.venueAddress && `(${event.venueAddress})`}
+
+      {/* ---- 開催情報(最重要情報のブロック) ---- */}
+      <dl className="mt-5 border-2 border-ink">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-rule p-3">
+          <dt className="meta-mono w-14 shrink-0 text-sm text-neutral">日時</dt>
+          <dd className="font-bold">
+            {formatDate(event.startsAt, event.timezone)}
+            {event.endsAt && (
+              <span className="font-normal text-neutral">
+                {' 〜 '}
+                {formatDate(event.endsAt, event.timezone)}
+              </span>
+            )}
+          </dd>
+        </div>
+        {(event.venueName || event.venueAddress) && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-rule p-3 last:border-b-0">
+            <dt className="meta-mono w-14 shrink-0 text-sm text-neutral">会場</dt>
+            <dd>
+              <span className="font-bold">{event.venueName}</span>
+              {event.venueAddress && (
+                <span className="block text-sm text-neutral">{event.venueAddress}</span>
+              )}
+            </dd>
           </div>
         )}
         {event.onlineUrl && (
-          <div>
-            オンライン:{' '}
-            <a href={event.onlineUrl} className="link" rel="noreferrer">
-              {event.onlineUrl}
-            </a>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 p-3">
+            <dt className="meta-mono w-14 shrink-0 text-sm text-neutral">配信</dt>
+            <dd className="min-w-0">
+              <a href={event.onlineUrl} className="link break-all" rel="noreferrer">
+                {event.onlineUrl}
+              </a>
+            </dd>
           </div>
         )}
-      </div>
+      </dl>
 
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
@@ -110,7 +129,10 @@ export default async function EventPage({
       )}
 
       {canEdit && (
-        <p className="mt-4">
+        <p className="mt-4 flex gap-3">
+          <Link to={`/g/${handle}/events/${eventId}/edit`} className="btn-quiet inline-block">
+            編集
+          </Link>
           <Link to={`/g/${handle}/events/${eventId}/manage`} className="btn-quiet inline-block">
             管理コンソール
           </Link>
@@ -135,9 +157,27 @@ export default async function EventPage({
 
       {event.descriptionMd && (
         <section className="mt-8">
-          <Markdown source={event.descriptionMd} />
+          <h2 className="display border-b-2 border-ink pb-2 t-md">イベント概要</h2>
+          <div className="mt-3">
+            <Markdown source={event.descriptionMd} />
+          </div>
         </section>
       )}
+
+      {/* ---- 参加者への案内(参加確定者と主催のみ) ---- */}
+      {event.participantInfoMd &&
+        (canEdit ||
+          [...ownParticipations.values()].some((p) => p.status === 'accepted')) && (
+          <section className="mt-8 border-2 border-accent-2 p-4">
+            <h2 className="display t-md text-accent-2">参加者への案内</h2>
+            <p className="meta-mono mt-0.5 text-sm text-neutral">
+              参加確定者にのみ表示されています
+            </p>
+            <div className="mt-3">
+              <Markdown source={event.participantInfoMd} />
+            </div>
+          </section>
+        )}
 
       <section className="mt-10">
         <h2 className="display border-b-2 border-ink pb-2 t-md">参加枠</h2>

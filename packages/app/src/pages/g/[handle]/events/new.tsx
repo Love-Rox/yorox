@@ -71,6 +71,18 @@ export default async function NewEventPage({ handle }: { handle: string }) {
             placeholder="https://meet.example.com/…"
           />
         </label>
+        <label className="block">
+          <span className="text-sm font-bold">参加者への案内(Markdown)</span>
+          <textarea
+            name="participant_info_md"
+            rows={4}
+            className="input mt-1 leading-relaxed"
+            placeholder={'参加確定者だけに表示されます。\n配信URL、入館方法、緊急連絡先など。'}
+          />
+          <span className="mt-1 block text-sm text-neutral">
+            参加確定者と主催メンバーにのみ表示されます
+          </span>
+        </label>
         <button type="submit" className="btn cursor-pointer">
           下書きを作成
         </button>

@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
-import { addSlot, createEvent, publishEvent } from '../domain/event-service';
+import { addSlot, createEvent, publishEvent, updateEvent } from '../domain/event-service';
 import {
   AlreadyJoinedError,
   cancelParticipation,
@@ -85,6 +85,7 @@ events.post('/g/:handle/events', async (c) => {
       groupActorId: groupActor.id,
       title: str(form.title),
       descriptionMd: str(form.description_md) || undefined,
+      participantInfoMd: str(form.participant_info_md) || undefined,
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
       venueName: str(form.venue_name) || undefined,
@@ -113,6 +114,40 @@ async function canEditEvent(
   const allowed = await hasGroupPermission(db, event.groupActorId, actorId, 'event.edit');
   return allowed ? { event, handle: groupActor.handle } : null;
 }
+
+/** 基本情報の更新 */
+events.post('/events/:id/update', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const startsAt = parseLocalDateTime(form.starts_at);
+  const editUrl = `/g/${ctx.handle}/events/${ctx.event.id}/edit`;
+  if (!str(form.title) || !startsAt) {
+    return c.redirect(`${editUrl}?error=invalid_input`, 302);
+  }
+
+  try {
+    await updateEvent(db, ctx.event.id, {
+      title: str(form.title),
+      descriptionMd: str(form.description_md) || undefined,
+      participantInfoMd: str(form.participant_info_md) || undefined,
+      startsAt,
+      endsAt: parseLocalDateTime(form.ends_at),
+      venueName: str(form.venue_name) || undefined,
+      venueAddress: str(form.venue_address) || undefined,
+      onlineUrl: str(form.online_url) || undefined,
+    });
+    return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+  } catch {
+    return c.redirect(`${editUrl}?error=invalid_input`, 302);
+  }
+});
 
 /** 公開 */
 events.post('/events/:id/publish', async (c) => {

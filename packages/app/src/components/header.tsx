@@ -29,7 +29,7 @@ export const Header = async () => {
     <header className="w-full">
       <div className="mx-auto w-full max-w-3xl px-[clamp(1rem,4vw,1.5rem)] pt-8 pb-4">
         <div className="flex items-end justify-between gap-4">
-          <h1 className="display t-2xl leading-none">
+          <h1 className="wordmark t-2xl leading-none">
             <Link to="/">Yorox</Link>
           </h1>
           <nav className="flex min-h-11 items-center gap-4 text-sm">

@@ -12,6 +12,7 @@ export interface CreateEventInput {
   groupActorId: string;
   title: string;
   descriptionMd?: string | undefined;
+  participantInfoMd?: string | undefined;
   startsAt: Date;
   endsAt?: Date | undefined;
   timezone?: string | undefined;
@@ -34,6 +35,7 @@ export async function createEvent(
     groupActorId: input.groupActorId,
     title: input.title.trim(),
     descriptionMd: input.descriptionMd ?? null,
+    participantInfoMd: input.participantInfoMd ?? null,
     startsAt: input.startsAt,
     endsAt: input.endsAt ?? null,
     timezone: input.timezone ?? 'Asia/Tokyo',
@@ -46,6 +48,41 @@ export async function createEvent(
     updatedAt: now,
   });
   return { eventId };
+}
+
+export interface UpdateEventInput {
+  title: string;
+  descriptionMd?: string | undefined;
+  participantInfoMd?: string | undefined;
+  startsAt: Date;
+  endsAt?: Date | undefined;
+  venueName?: string | undefined;
+  venueAddress?: string | undefined;
+  onlineUrl?: string | undefined;
+}
+
+/** イベントの基本情報を更新する */
+export async function updateEvent(
+  db: Db,
+  eventId: string,
+  input: UpdateEventInput,
+  now: Date = new Date(),
+): Promise<void> {
+  if (!input.title.trim()) throw new Error('タイトルは必須です');
+  await db
+    .update(schema.events)
+    .set({
+      title: input.title.trim(),
+      descriptionMd: input.descriptionMd ?? null,
+      participantInfoMd: input.participantInfoMd ?? null,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt ?? null,
+      venueName: input.venueName ?? null,
+      venueAddress: input.venueAddress ?? null,
+      onlineUrl: input.onlineUrl ?? null,
+      updatedAt: now,
+    })
+    .where(eq(schema.events.id, eventId));
 }
 
 /** 下書きイベントを公開する */

@@ -24,10 +24,14 @@
   --yorox-accent-2: oklch(44% 0.14 255);
   --yorox-focus: oklch(55% 0.22 5);
 
-  /* ---- フォント(2+1: 見出し / 本文 / メタ情報mono) ---- */
-  --yorox-font-display: 'Dela Gothic One', 'Hiragino Sans', sans-serif;
+  /* ---- フォント(見出し / 本文 / メタ情報mono / ワードマーク専用) ---- */
+  /* 見出しは視認性優先で M PLUS Rounded 1c 700(Dela は漢字が潰れるため
+   * ワードマーク「Yorox」欧文のみに限定) */
+  --yorox-font-display: 'M PLUS Rounded 1c', 'Hiragino Sans', sans-serif;
+  --yorox-font-display-weight: 700;
   --yorox-font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
   --yorox-font-mono: 'Space Mono', ui-monospace, monospace;
+  --yorox-font-wordmark: 'Dela Gothic One', 'Hiragino Sans', sans-serif;
 
   /* ---- タイプスケール(1.25 major third) ---- */
   --yorox-text-sm: 0.8rem;
@@ -49,4 +53,19 @@
   --yorox-rule-w: 2px;
   /* リソ印刷の「版ズレ」シャドウ(ボタン・カードの署名ディテール) */
   --yorox-offset-shadow: 4px 4px 0 var(--yorox-accent);
+}
+
+/* ---- ダークモード: 紙とインクを反転(藍紙 × クリーム文字)----
+ * 色相は変えず、明度・彩度のみ動かす(リソの2色刷りアイデンティティを維持) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --yorox-paper: oklch(19% 0.03 265);
+    --yorox-paper-2: oklch(24% 0.032 265);
+    --yorox-rule: oklch(36% 0.028 265);
+    --yorox-neutral: oklch(72% 0.02 90);
+    --yorox-ink: oklch(93% 0.018 95);
+    --yorox-accent: oklch(70% 0.21 5);
+    --yorox-accent-2: oklch(72% 0.11 255);
+    --yorox-focus: oklch(72% 0.2 5);
+  }
 }

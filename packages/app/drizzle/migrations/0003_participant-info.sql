@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `participant_info_md` text;

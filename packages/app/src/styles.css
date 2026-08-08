@@ -43,6 +43,14 @@ body {
 /* ---- 見出し ---- */
 .display {
   font-family: var(--yorox-font-display);
+  font-weight: var(--yorox-font-display-weight, 700);
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+/* ワードマーク(欧文ロゴ)専用 */
+.wordmark {
+  font-family: var(--yorox-font-wordmark);
   font-weight: 400; /* Dela Gothic One は単一ウェイト */
   letter-spacing: 0.01em;
   line-height: 1.2;

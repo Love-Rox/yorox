@@ -181,6 +181,8 @@ export const events = sqliteTable(
       .references(() => groups.actorId),
     title: text('title').notNull(),
     descriptionMd: text('description_md'),
+    /** 参加確定者(と主催)だけに表示する案内(接続URL・会場の入館方法など) */
+    participantInfoMd: text('participant_info_md'),
     startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
     endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
     /** IANA タイムゾーン名(例: Asia/Tokyo)。表示用 */
