@@ -7,6 +7,15 @@ import {
 import { getCurrentUser } from '../../../../../server/current-user';
 import { getDb, getEventDetail } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
+import { getUploadConfig } from '../../../../../storage/driver';
+
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_input: '入力内容を確認してください(タイトルと開始日時は必須です)。',
+  uploads_disabled: 'このインスタンスではファイルアップロードが無効です。',
+  no_file: 'ファイルが選択されていません。',
+  too_large: 'ファイルサイズが上限を超えています。',
+  bad_type: '対応していない画像形式です(PNG / JPEG / WebP / GIF)。',
+};
 
 /** Date → datetime-local 値(JST)。MVP は Asia/Tokyo 固定 */
 function toLocalInput(d: Date | null): string {
@@ -39,6 +48,8 @@ export default async function EditEventPage({
   const { event } = detail;
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
+  const { env } = await import('cloudflare:workers');
+  const uploads = getUploadConfig(env);
 
   return (
     <div className="max-w-xl">
@@ -51,8 +62,42 @@ export default async function EditEventPage({
       <h1 className="display mt-2 t-lg">イベントを編集</h1>
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
-          入力内容を確認してください(タイトルと開始日時は必須です)。
+          {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>
+      )}
+
+      {uploads.enabled && (
+        <section className="mt-6 border-2 border-ink p-4">
+          <h2 className="text-sm font-bold">サムネイル画像をアップロード</h2>
+          {event.thumbnailUrl && (
+            <img
+              src={event.thumbnailUrl}
+              alt="現在のサムネイル"
+              className="mt-2 max-h-40 border border-rule object-cover"
+            />
+          )}
+          <form
+            method="post"
+            action={`/events/${eventId}/thumbnail`}
+            encType="multipart/form-data"
+            className="mt-3 flex flex-wrap items-center gap-3"
+          >
+            <input
+              type="file"
+              name="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              required
+              className="text-sm"
+            />
+            <button type="submit" className="btn-quiet cursor-pointer">
+              アップロード
+            </button>
+          </form>
+          <p className="mt-2 text-sm text-neutral">
+            PNG / JPEG / WebP / GIF、{Math.floor(uploads.maxBytes / 1024 / 1024)}MB まで。
+            横長(1200×630 目安)推奨。アップロードすると下の URL 欄より優先されます
+          </p>
+        </section>
       )}
       <form method="post" action={`/events/${eventId}/update`} className="mt-6 space-y-5">
         <label className="block">

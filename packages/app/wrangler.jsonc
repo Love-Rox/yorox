@@ -19,6 +19,13 @@
       "migrations_dir": "./drizzle/migrations"
     }
   ],
+  "r2_buckets": [
+    {
+      // 資料・サムネイル等のファイルホスティング(インスタンス設定で有効化)
+      "binding": "FILES",
+      "bucket_name": "yorox-files"
+    }
+  ],
   "services": [
     {
       // 先着枠の定員直列化(packages/slot-coordinator の DO Worker)

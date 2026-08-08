@@ -100,6 +100,12 @@ export default async function EventPage({
     plainDescription(event.descriptionMd) ||
     `${FULL_FMT.format(event.startsAt)} 開催 · ${groupActor?.displayName ?? ''}`;
   const canonicalUrl = `${url.origin}/g/${handle}/events/${eventId}`;
+  // 自ホスティング(/files/…)の相対 URL は OGP 用に絶対化する
+  const ogImage = event.thumbnailUrl
+    ? event.thumbnailUrl.startsWith('/')
+      ? `${url.origin}${event.thumbnailUrl}`
+      : event.thumbnailUrl
+    : null;
 
   return (
     <article>
@@ -110,7 +116,7 @@ export default async function EventPage({
       <meta property="og:description" content={ogDescription} />
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:site_name" content="Yorox" />
-      {event.thumbnailUrl && <meta property="og:image" content={event.thumbnailUrl} />}
+      {ogImage && <meta property="og:image" content={ogImage} />}
       <meta
         name="twitter:card"
         content={event.thumbnailUrl ? 'summary_large_image' : 'summary'}

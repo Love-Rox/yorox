@@ -20,4 +20,8 @@ interface Env {
   /** 送信レート上限。既定 10/分・100/時 */
   MAIL_RATE_PER_MINUTE?: string;
   MAIL_RATE_PER_HOUR?: string;
+  /** '1' でファイルアップロード有効(R2 バインディング FILES が必要) */
+  FILE_UPLOADS?: string;
+  /** アップロード容量上限 MB(既定 5) */
+  MAX_UPLOAD_MB?: string;
 }
