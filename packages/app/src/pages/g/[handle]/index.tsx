@@ -26,6 +26,10 @@ export default async function GroupPage({ handle }: { handle: string }) {
   const canCreate = user
     ? await hasGroupPermission(db, actor.id, user.actorId, 'event.create')
     : false;
+  const canSettings = user
+    ? (await hasGroupPermission(db, actor.id, user.actorId, 'group.settings')) ||
+      (await hasGroupPermission(db, actor.id, user.actorId, 'member.manage'))
+    : false;
   const events = await listGroupEvents(db, actor.id, { includeDrafts: canCreate });
   const organizers = await listOrganizers(db, actor.id);
 
@@ -37,11 +41,18 @@ export default async function GroupPage({ handle }: { handle: string }) {
           <h1 className="display t-xl">{actor.displayName}</h1>
           <p className="meta-mono mt-1 text-sm text-neutral">@{actor.handle}</p>
         </div>
-        {canCreate && (
-          <Link to={`/g/${handle}/events/new`} className="btn">
-            イベント作成
-          </Link>
-        )}
+        <span className="flex gap-3">
+          {canSettings && (
+            <Link to={`/g/${handle}/settings`} className="btn-quiet">
+              設定
+            </Link>
+          )}
+          {canCreate && (
+            <Link to={`/g/${handle}/events/new`} className="btn">
+              イベント作成
+            </Link>
+          )}
+        </span>
       </div>
       {group.descriptionMd && (
         <div className="mt-4">

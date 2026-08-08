@@ -17,6 +17,16 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number];
 
+/** UI 表示用の権限ラベル */
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  'event.create': 'イベント作成',
+  'event.edit': 'イベント編集',
+  'attendance.manage': '出欠管理',
+  'lottery.run': '抽選実行',
+  'member.manage': 'メンバー管理',
+  'group.settings': 'グループ設定',
+};
+
 export const ALL_PERMISSIONS: Permission[] = [...PERMISSIONS];
 
 /** プリセットロール定義。グループ作成時に投入する */

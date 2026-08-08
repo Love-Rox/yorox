@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { getCurrentUser } from '../server/current-user';
 import { getDb, listUpcomingEvents } from '../server/data';
 
 const DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -19,15 +20,23 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat('ja-JP', {
 export default async function HomePage() {
   const db = await getDb();
   const upcoming = await listUpcomingEvents(db);
+  const user = await getCurrentUser();
 
   return (
     <div>
       <title>Yorox</title>
 
       {/* Index-First: 導入は一行、以降はリストが主役 */}
-      <p className="meta-mono text-sm text-neutral">
-        今後のイベント · {upcoming.length}件
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="meta-mono text-sm text-neutral">
+          今後のイベント · {upcoming.length}件
+        </p>
+        {user && (
+          <Link to="/groups/new" className="link text-sm">
+            グループを作る
+          </Link>
+        )}
+      </div>
 
       {upcoming.length === 0 ? (
         <p className="mt-6 text-neutral">

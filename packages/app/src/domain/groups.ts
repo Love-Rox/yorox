@@ -30,8 +30,8 @@ export function validateHandle(handle: string): boolean {
 export interface CreateGroupInput {
   handle: string;
   displayName: string;
-  descriptionMd?: string;
-  isPersonal?: boolean;
+  descriptionMd?: string | undefined;
+  isPersonal?: boolean | undefined;
   /** 作成者(オーナーになるローカルユーザーのアクター ID) */
   ownerActorId: string;
   /** AP URI 組み立て用のオリジン(例: https://yorox.example) */
@@ -101,6 +101,140 @@ export async function createGroup(db: Db, input: CreateGroupInput) {
   });
 
   return { actorId, uri };
+}
+
+export class AlreadyMemberError extends Error {
+  constructor() {
+    super('既にメンバーです');
+    this.name = 'AlreadyMemberError';
+  }
+}
+
+export class RoleInUseError extends Error {
+  constructor() {
+    super('このロールは使用中のため削除できません');
+    this.name = 'RoleInUseError';
+  }
+}
+
+/** ローカルユーザーを handle で探してメンバー追加する */
+export async function addMemberByHandle(
+  db: Db,
+  groupActorId: string,
+  handle: string,
+  roleId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  const actor = await db.query.actors.findFirst({
+    where: and(
+      eq(schema.actors.handle, handle),
+      isNull(schema.actors.domain),
+      eq(schema.actors.kind, 'user'),
+    ),
+  });
+  if (!actor) throw new Error(`ユーザー @${handle} が見つかりません`);
+
+  const existing = await db.query.groupMembers.findFirst({
+    where: and(
+      eq(schema.groupMembers.groupActorId, groupActorId),
+      eq(schema.groupMembers.memberActorId, actor.id),
+    ),
+  });
+  if (existing) throw new AlreadyMemberError();
+
+  const role = await db.query.groupRoles.findFirst({
+    where: and(eq(schema.groupRoles.id, roleId), eq(schema.groupRoles.groupActorId, groupActorId)),
+  });
+  if (!role) throw new Error('ロールが見つかりません');
+
+  await db.insert(schema.groupMembers).values({
+    groupActorId,
+    memberActorId: actor.id,
+    roleId,
+    createdAt: now,
+  });
+}
+
+/** ロール変更(全権限を失う場合は最終オーナー保護) */
+export async function changeMemberRole(
+  db: Db,
+  groupActorId: string,
+  memberActorId: string,
+  newRoleId: string,
+): Promise<void> {
+  const newRole = await db.query.groupRoles.findFirst({
+    where: and(
+      eq(schema.groupRoles.id, newRoleId),
+      eq(schema.groupRoles.groupActorId, groupActorId),
+    ),
+  });
+  if (!newRole) throw new Error('ロールが見つかりません');
+
+  if (!hasAllPermissions(newRole.permissions)) {
+    await assertNotLastOwner(db, groupActorId, memberActorId);
+  }
+  await db
+    .update(schema.groupMembers)
+    .set({ roleId: newRoleId })
+    .where(
+      and(
+        eq(schema.groupMembers.groupActorId, groupActorId),
+        eq(schema.groupMembers.memberActorId, memberActorId),
+      ),
+    );
+}
+
+/** メンバー削除(最終オーナー保護) */
+export async function removeMember(
+  db: Db,
+  groupActorId: string,
+  memberActorId: string,
+): Promise<void> {
+  await assertNotLastOwner(db, groupActorId, memberActorId);
+  await db
+    .delete(schema.groupMembers)
+    .where(
+      and(
+        eq(schema.groupMembers.groupActorId, groupActorId),
+        eq(schema.groupMembers.memberActorId, memberActorId),
+      ),
+    );
+}
+
+/** カスタムロール作成 */
+export async function createRole(
+  db: Db,
+  groupActorId: string,
+  name: string,
+  permissions: string[],
+  now: Date = new Date(),
+): Promise<void> {
+  if (!name.trim()) throw new Error('ロール名は必須です');
+  const { ulid } = await import('../lib/ulid');
+  await db.insert(schema.groupRoles).values({
+    id: ulid(),
+    groupActorId,
+    name: name.trim(),
+    permissions,
+    isPreset: false,
+    createdAt: now,
+  });
+}
+
+/** カスタムロール削除(プリセット不可・使用中不可) */
+export async function deleteRole(db: Db, groupActorId: string, roleId: string): Promise<void> {
+  const role = await db.query.groupRoles.findFirst({
+    where: and(eq(schema.groupRoles.id, roleId), eq(schema.groupRoles.groupActorId, groupActorId)),
+  });
+  if (!role) return;
+  if (role.isPreset) throw new Error('プリセットロールは削除できません');
+
+  const inUse = await db.query.groupMembers.findFirst({
+    where: eq(schema.groupMembers.roleId, roleId),
+  });
+  if (inUse) throw new RoleInUseError();
+
+  await db.delete(schema.groupRoles).where(eq(schema.groupRoles.id, roleId));
 }
 
 /**
