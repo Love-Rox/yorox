@@ -6,10 +6,19 @@ import eventRoutes from './server/event-routes';
 import fileRoutes from './server/file-routes';
 import groupRoutes from './server/group-routes';
 import manageRoutes from './server/manage-routes';
+import profileRoutes from './server/profile-routes';
 import { runScheduledJobs } from './server/scheduled';
 
 export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
-  middlewareFns: [apRoutes, authRoutes, eventRoutes, manageRoutes, fileRoutes, groupRoutes],
+  middlewareFns: [
+    apRoutes,
+    authRoutes,
+    eventRoutes,
+    manageRoutes,
+    fileRoutes,
+    groupRoutes,
+    profileRoutes,
+  ],
   middlewareModules: import.meta.glob('./middleware/*.ts'),
   handlers: {
     // Cron Trigger: 抽選締切の実行と通知 outbox のディスパッチ

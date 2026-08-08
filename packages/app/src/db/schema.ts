@@ -46,6 +46,8 @@ export const actors = sqliteTable(
     displayName: text('display_name').notNull(),
     summary: text('summary'),
     avatarUrl: text('avatar_url'),
+    /** プロフィールのリンク(SNS・サイト等の URL 配列) */
+    profileLinks: text('profile_links', { mode: 'json' }).$type<string[]>(),
     /** アカウント統合(Move)で吸収された側が向き先を持つ */
     movedToActorId: text('moved_to_actor_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),

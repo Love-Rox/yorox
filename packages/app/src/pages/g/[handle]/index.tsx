@@ -1,5 +1,6 @@
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
+import { Avatar } from '../../../components/avatar';
 import { Markdown } from '../../../lib/markdown';
 import { getCurrentUser } from '../../../server/current-user';
 import {
@@ -65,9 +66,10 @@ export default async function GroupPage({ handle }: { handle: string }) {
           <h2 className="meta-mono text-sm text-neutral">運営メンバー</h2>
           <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
             {organizers.map((o) => (
-              <li key={o.actorId}>
-                {o.handle && o.handle !== actor.handle ? (
-                  <Link to={`/g/${o.handle}`} className="link font-bold">
+              <li key={o.actorId} className="flex items-center gap-2">
+                <Avatar avatarUrl={o.avatarUrl} displayName={o.displayName} size="sm" />
+                {o.handle ? (
+                  <Link to={`/u/${o.handle}`} className="link font-bold">
                     {o.displayName}
                   </Link>
                 ) : (

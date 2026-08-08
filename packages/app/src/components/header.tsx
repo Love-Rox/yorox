@@ -44,7 +44,7 @@ export const Header = async () => {
                   </Link>
                 )}
                 {user.handle && (
-                  <Link to={`/g/${user.handle}`} className="link">
+                  <Link to={`/u/${user.handle}`} className="link">
                     {user.displayName}
                   </Link>
                 )}

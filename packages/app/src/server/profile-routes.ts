@@ -1,0 +1,125 @@
+/**
+ * プロフィール編集(本人)とプロフィール URL のエンドポイント。
+ */
+import { and, eq, isNull } from 'drizzle-orm';
+import type { Context, MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
+import { createDb, schema } from '../db/client';
+import { ulid } from '../lib/ulid';
+import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
+import { getSessionActorId } from './route-auth';
+
+async function getEnv(): Promise<Env> {
+  const { env } = await import('cloudflare:workers');
+  return env;
+}
+
+function assertSameOrigin(c: Context): boolean {
+  const origin = c.req.header('origin');
+  if (!origin) return true;
+  return origin === new URL(c.req.url).origin;
+}
+
+function str(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+const profile = new Hono();
+
+/** /@handle → /u/handle(URL-DESIGN の人間向け表記) */
+profile.get('/:atHandle{@[a-z0-9-]+}', (c) => {
+  return c.redirect(`/u/${c.req.param('atHandle').slice(1)}`, 302);
+});
+
+/** プロフィール更新(表示名・自己紹介・リンク) */
+profile.post('/profile/update', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const form = await c.req.parseBody();
+  const displayName = str(form.display_name);
+  if (!displayName) {
+    return c.redirect('/settings/profile?error=invalid_input', 302);
+  }
+
+  const links = [str(form.link1), str(form.link2), str(form.link3)]
+    .filter((u) => /^https?:\/\//.test(u))
+    .slice(0, 3);
+
+  await db
+    .update(schema.actors)
+    .set({
+      displayName,
+      summary: str(form.summary) || null,
+      profileLinks: links.length > 0 ? links : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.actors.id, actorId));
+
+  // 個人グループの表示名も追従させる(handle 共有ペア)
+  const me = await db.query.actors.findFirst({ where: eq(schema.actors.id, actorId) });
+  if (me?.handle) {
+    await db
+      .update(schema.actors)
+      .set({ displayName, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.actors.handle, me.handle),
+          isNull(schema.actors.domain),
+          eq(schema.actors.kind, 'group'),
+        ),
+      );
+  }
+
+  return c.redirect('/settings/profile', 302);
+});
+
+/** アバター画像のアップロード */
+profile.post('/profile/avatar', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const { enabled, maxBytes } = getUploadConfig(env);
+  const storage = getStorage(env);
+  if (!enabled || !storage) {
+    return c.redirect('/settings/profile?error=uploads_disabled', 302);
+  }
+
+  const form = await c.req.parseBody();
+  const file = form.file;
+  if (!(file instanceof File) || file.size === 0) {
+    return c.redirect('/settings/profile?error=no_file', 302);
+  }
+  if (file.size > maxBytes) {
+    return c.redirect('/settings/profile?error=too_large', 302);
+  }
+  const ext = IMAGE_TYPES[file.type];
+  if (!ext) {
+    return c.redirect('/settings/profile?error=bad_type', 302);
+  }
+
+  const key = `avatars/${actorId}/${ulid()}.${ext}`;
+  await storage.put(key, await file.arrayBuffer(), file.type);
+
+  const me = await db.query.actors.findFirst({ where: eq(schema.actors.id, actorId) });
+  if (me?.avatarUrl?.startsWith('/files/')) {
+    await storage.delete(me.avatarUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  }
+
+  await db
+    .update(schema.actors)
+    .set({ avatarUrl: `/files/${key}`, updatedAt: new Date() })
+    .where(eq(schema.actors.id, actorId));
+
+  return c.redirect('/settings/profile', 302);
+});
+
+export default function profileRoutes(opts: { app: Hono }): MiddlewareHandler {
+  opts.app.route('/', profile);
+  return (_c, next) => next();
+}

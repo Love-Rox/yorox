@@ -3,6 +3,7 @@ import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
 } from 'waku/router/server';
+import { Avatar } from '../../../../../components/avatar';
 import { ServiceIcon } from '../../../../../components/service-icon';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
@@ -681,9 +682,10 @@ export default async function EventPage({
                     </Link>
                   </li>
                   {organizers.map((o) => (
-                    <li key={o.actorId} className="text-sm">
+                    <li key={o.actorId} className="flex items-center gap-2 text-sm">
+                      <Avatar avatarUrl={o.avatarUrl} displayName={o.displayName} size="sm" />
                       {o.handle ? (
-                        <Link to={`/g/${o.handle}`} className="link">
+                        <Link to={`/u/${o.handle}`} className="link">
                           {o.displayName}
                         </Link>
                       ) : (
@@ -739,11 +741,12 @@ export default async function EventPage({
           {event.participantListPublic && participants.length > 0 && (
             <section id="participants" className="mt-10 scroll-mt-4">
               <h2 className="display border-b-2 border-ink pb-2 t-md">参加者</h2>
-              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-3 text-sm">
                 {participants.map((p) => (
-                  <li key={`${p.slotId}-${p.actorId}`}>
+                  <li key={`${p.slotId}-${p.actorId}`} className="flex items-center gap-2">
+                    <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} size="sm" />
                     {p.handle ? (
-                      <Link to={`/g/${p.handle}`} className="link">
+                      <Link to={`/u/${p.handle}`} className="link">
                         {p.displayName}
                       </Link>
                     ) : (

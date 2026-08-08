@@ -191,6 +191,7 @@ export async function listOrganizers(db: Db, groupActorId: string) {
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
+      avatarUrl: schema.actors.avatarUrl,
       permissions: schema.groupRoles.permissions,
       roleName: schema.groupRoles.name,
     })
@@ -223,6 +224,7 @@ export async function listVisibleParticipants(db: Db, eventId: string) {
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
+      avatarUrl: schema.actors.avatarUrl,
       slotId: schema.participations.slotId,
     })
     .from(schema.participations)
