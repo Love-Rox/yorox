@@ -1,5 +1,8 @@
+import { and, eq, sql } from 'drizzle-orm';
 import { Link } from 'waku';
+import { schema } from '../db/client';
 import { getCurrentUser } from '../server/current-user';
+import { getDb } from '../server/data';
 
 /**
  * N6 Newspaper masthead — 中央の大きなワードマーク + 下に issue 行、
@@ -7,6 +10,20 @@ import { getCurrentUser } from '../server/current-user';
  */
 export const Header = async () => {
   const user = await getCurrentUser();
+  let pendingRequests = 0;
+  if (user) {
+    const db = await getDb();
+    const [row] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.actionRequests)
+      .where(
+        and(
+          eq(schema.actionRequests.actorId, user.actorId),
+          eq(schema.actionRequests.status, 'pending'),
+        ),
+      );
+    pendingRequests = row?.count ?? 0;
+  }
 
   return (
     <header className="w-full">
@@ -18,6 +35,14 @@ export const Header = async () => {
           <nav className="flex min-h-11 items-center gap-4 text-sm">
             {user ? (
               <>
+                {pendingRequests > 0 && (
+                  <Link
+                    to="/requests"
+                    className="border-2 border-accent px-2 py-1 font-bold text-accent"
+                  >
+                    要確認 {pendingRequests}
+                  </Link>
+                )}
                 {user.handle && (
                   <Link to={`/g/${user.handle}`} className="link">
                     {user.displayName}

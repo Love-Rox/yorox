@@ -46,6 +46,16 @@ Gmail の送信上限(個人 ~500通/日)に合わせて `MAIL_RATE_PER_HOUR` �
 (例: 20)しておくとよい。将来 Gmail API(OAuth)トランスポートを追加する場合も
 `MailTransport` IF に実装を足すだけでよい。
 
+## まとめ送り(バッチ)
+
+トランスポートが `sendBatch` を実装している場合、キュー処理は予算内の pending を
+**1回の API 呼び出し**で送る。
+
+- Resend: Batch API(`POST /emails/batch`、1リクエスト最大100通)を実装済み。
+  Resend 側のリクエストレート制限(2 req/sec)にほぼ触れずに済む
+- SMTP: 逐次送信(将来は1コネクションで複数通に最適化余地あり)
+- バッチは「全成功 or 全失敗」のセマンティクス。失敗時は全件がバックオフ再試行に回る
+
 ## レート制御の仕様
 
 - Cron(5分毎)が `mail_queue` の `pending` を **scheduledAt の古い順**に処理する

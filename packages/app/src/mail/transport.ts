@@ -16,6 +16,11 @@ export interface MailMessage {
 export interface MailTransport {
   readonly name: string;
   send(message: MailMessage): Promise<void>;
+  /**
+   * まとめ送り(対応トランスポートのみ)。全件成功か例外かの単純なセマンティクス。
+   * 失敗時は呼び出し側が全件を再試行対象にする。
+   */
+  sendBatch?(messages: MailMessage[]): Promise<void>;
 }
 
 export class ResendTransport implements MailTransport {
@@ -42,6 +47,31 @@ export class ResendTransport implements MailTransport {
     });
     if (!res.ok) {
       throw new Error(`Resend API error: ${res.status} ${await res.text()}`);
+    }
+  }
+
+  /** Resend Batch API(1リクエスト最大100通)でまとめ送りする */
+  async sendBatch(messages: MailMessage[]): Promise<void> {
+    for (let i = 0; i < messages.length; i += 100) {
+      const chunk = messages.slice(i, i + 100);
+      const res = await fetch('https://api.resend.com/emails/batch', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(
+          chunk.map((m) => ({
+            from: this.from,
+            to: [m.to],
+            subject: m.subject,
+            text: m.bodyText,
+          })),
+        ),
+      });
+      if (!res.ok) {
+        throw new Error(`Resend batch API error: ${res.status} ${await res.text()}`);
+      }
     }
   }
 }

@@ -331,6 +331,71 @@ export async function respondToPromotion(
 }
 
 /**
+ * 主催による個別判定(手動選定の抽選枠、または例外運用)。
+ * applied / waitlisted の参加を当選・補欠・落選へ動かす。
+ */
+export async function decideParticipation(
+  db: Db,
+  participationId: string,
+  decision: 'accepted' | 'waitlisted' | 'rejected',
+  now: Date = new Date(),
+): Promise<void> {
+  const participation = await db.query.participations.findFirst({
+    where: eq(schema.participations.id, participationId),
+  });
+  if (!participation) throw new Error(`participation not found: ${participationId}`);
+  if (participation.status === 'cancelled') return;
+  if (participation.status === decision) return;
+
+  await db
+    .update(schema.participations)
+    .set({ status: decision, decidedAt: now })
+    .where(eq(schema.participations.id, participationId));
+
+  const eventType =
+    decision === 'accepted'
+      ? 'participation.accepted'
+      : decision === 'waitlisted'
+        ? 'participation.waitlisted'
+        : 'participation.rejected';
+  await emitDomainEvent(db, eventType, {
+    participationId,
+    slotId: participation.slotId,
+    actorId: participation.actorId,
+  }, now);
+}
+
+/**
+ * 出欠の記録(attended / no_show)。既存の記録は上書きする。
+ */
+export async function recordAttendance(
+  db: Db,
+  input: {
+    participationId: string;
+    status: 'attended' | 'no_show';
+    recordedByActorId: string;
+  },
+  now: Date = new Date(),
+): Promise<void> {
+  const existing = await db.query.attendances.findFirst({
+    where: eq(schema.attendances.participationId, input.participationId),
+  });
+  if (existing) {
+    await db
+      .update(schema.attendances)
+      .set({ status: input.status, recordedByActorId: input.recordedByActorId, recordedAt: now })
+      .where(eq(schema.attendances.participationId, input.participationId));
+  } else {
+    await db.insert(schema.attendances).values({
+      participationId: input.participationId,
+      status: input.status,
+      recordedByActorId: input.recordedByActorId,
+      recordedAt: now,
+    });
+  }
+}
+
+/**
  * 抽選の実行(Cron Trigger または主催の手動実行から呼ぶ)。
  * - random / weighted: 当選者を accepted、落選者を補欠モデルに従って処理
  * - manual は対象外(主催が UI から個別に確定する)

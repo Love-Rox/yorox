@@ -3,15 +3,15 @@ import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
 } from 'waku/router/server';
-import { Markdown } from '../../../../lib/markdown';
-import { getCurrentUser } from '../../../../server/current-user';
+import { Markdown } from '../../../../../lib/markdown';
+import { getCurrentUser } from '../../../../../server/current-user';
 import {
   getDb,
   getEventDetail,
   getOwnParticipations,
   listVisibleParticipants,
-} from '../../../../server/data';
-import { hasGroupPermission } from '../../../../server/route-auth';
+} from '../../../../../server/data';
+import { hasGroupPermission } from '../../../../../server/route-auth';
 
 function formatDate(d: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('ja-JP', {
@@ -61,7 +61,10 @@ export default async function EventPage({
   const { event, groupActor, slots, slotStats, sessions, materials } = detail;
   const ownParticipations = user
     ? await getOwnParticipations(db, eventId, user.actorId)
-    : new Map<string, { id: string; slotId: string; status: string }>();
+    : new Map<
+        string,
+        { id: string; slotId: string; status: string; hiddenFromList: boolean }
+      >();
   const participants = event.participantListPublic
     ? await listVisibleParticipants(db, eventId)
     : [];
@@ -103,6 +106,14 @@ export default async function EventPage({
           {error === 'condition' && errorReason
             ? errorReason
             : (ERROR_MESSAGES[error] ?? 'エラーが発生しました。')}
+        </p>
+      )}
+
+      {canEdit && (
+        <p className="mt-4">
+          <Link to={`/g/${handle}/events/${eventId}/manage`} className="btn-quiet inline-block">
+            管理コンソール
+          </Link>
         </p>
       )}
 
@@ -166,10 +177,23 @@ export default async function EventPage({
                     </div>
                     {event.visibility === 'public' &&
                       (own ? (
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <span className="border-2 border-accent-2 px-3 py-1.5 text-sm font-bold text-accent-2">
                             {STATUS_LABEL[own.status] ?? own.status}
                           </span>
+                          <form method="post" action={`/participations/${own.id}/visibility`}>
+                            <input
+                              type="hidden"
+                              name="hidden"
+                              value={own.hiddenFromList ? '0' : '1'}
+                            />
+                            <button
+                              type="submit"
+                              className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                            >
+                              {own.hiddenFromList ? '一覧に表示する' : '一覧に表示しない'}
+                            </button>
+                          </form>
                           <form method="post" action={`/participations/${own.id}/cancel`}>
                             <button
                               type="submit"

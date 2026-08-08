@@ -2,7 +2,7 @@
  * RSC から使う読み取りクエリ集。
  * cloudflare:workers の env は workerd ランタイム内でのみ解決される。
  */
-import { and, asc, desc, eq, gte, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, ne, sql } from 'drizzle-orm';
 import { createDb, schema, type Db } from '../db/client';
 
 export async function getDb(): Promise<Db> {
@@ -106,6 +106,58 @@ export async function getEventDetail(db: Db, eventId: string) {
   return { event, groupActor, slots, slotStats, sessions, materials };
 }
 
+/**
+ * 管理コンソール用: 枠ごとの参加者(キャンセル除く)+ 出欠記録 + 過去実績。
+ * 実績は自インスタンス分のみ(評判の連合はしない)。母数も返す(コールドスタート保護)。
+ */
+export async function listManageParticipations(db: Db, eventId: string) {
+  const rows = await db
+    .select({
+      id: schema.participations.id,
+      slotId: schema.participations.slotId,
+      status: schema.participations.status,
+      appliedAt: schema.participations.appliedAt,
+      actorId: schema.actors.id,
+      displayName: schema.actors.displayName,
+      handle: schema.actors.handle,
+      attendanceStatus: schema.attendances.status,
+    })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .innerJoin(schema.actors, eq(schema.participations.actorId, schema.actors.id))
+    .leftJoin(
+      schema.attendances,
+      eq(schema.attendances.participationId, schema.participations.id),
+    )
+    .where(and(eq(schema.slots.eventId, eventId), ne(schema.participations.status, 'cancelled')))
+    .orderBy(asc(schema.participations.appliedAt));
+
+  // 過去実績(このイベントを除く全履歴)をアクター毎に集計
+  const history = new Map<string, { attended: number; noShow: number }>();
+  for (const row of rows) {
+    if (history.has(row.actorId)) continue;
+    const [stat] = await db
+      .select({
+        attended: sql<number>`sum(case when ${schema.attendances.status} = 'attended' then 1 else 0 end)`,
+        noShow: sql<number>`sum(case when ${schema.attendances.status} = 'no_show' then 1 else 0 end)`,
+      })
+      .from(schema.attendances)
+      .innerJoin(
+        schema.participations,
+        eq(schema.attendances.participationId, schema.participations.id),
+      )
+      .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+      .where(
+        and(eq(schema.participations.actorId, row.actorId), ne(schema.slots.eventId, eventId)),
+      );
+    history.set(row.actorId, {
+      attended: stat?.attended ?? 0,
+      noShow: stat?.noShow ?? 0,
+    });
+  }
+  return { rows, history };
+}
+
 /** 自分の参加状態(イベント内の全枠分) */
 export async function getOwnParticipations(db: Db, eventId: string, actorId: string) {
   const rows = await db
@@ -113,6 +165,7 @@ export async function getOwnParticipations(db: Db, eventId: string, actorId: str
       id: schema.participations.id,
       slotId: schema.participations.slotId,
       status: schema.participations.status,
+      hiddenFromList: schema.participations.hiddenFromList,
     })
     .from(schema.participations)
     .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))

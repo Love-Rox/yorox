@@ -85,6 +85,47 @@ export async function processMailQueue(
     limit: budget,
   });
 
+  const markSent = async (ids: { id: string; attempts: number }[]) => {
+    for (const m of ids) {
+      await db
+        .update(schema.mailQueue)
+        .set({ status: 'sent', sentAt: new Date(), attempts: m.attempts + 1 })
+        .where(eq(schema.mailQueue.id, m.id));
+    }
+  };
+  const markRetry = async (mail: { id: string; attempts: number }, err: unknown) => {
+    const attempts = mail.attempts + 1;
+    const failedPermanently = attempts >= MAX_ATTEMPTS;
+    await db
+      .update(schema.mailQueue)
+      .set({
+        status: failedPermanently ? 'failed' : 'pending',
+        attempts,
+        lastError: String(err).slice(0, 500),
+        scheduledAt: new Date(now.getTime() + retryBackoffMs(attempts)),
+      })
+      .where(eq(schema.mailQueue.id, mail.id));
+    console.error(
+      `[mail] send failed (id=${mail.id}, attempts=${attempts}${failedPermanently ? ', giving up' : ''}):`,
+      err,
+    );
+  };
+
+  // まとめ送り対応トランスポート(Resend Batch API 等)は1回の呼び出しで送る
+  if (transport.sendBatch && pending.length > 1) {
+    try {
+      await transport.sendBatch(
+        pending.map((m) => ({ to: m.toEmail, subject: m.subject, bodyText: m.bodyText })),
+      );
+      await markSent(pending);
+      return pending.length;
+    } catch (err) {
+      // 全件を再試行対象に(バッチは全成功 or 全失敗のセマンティクス)
+      for (const mail of pending) await markRetry(mail, err);
+      return 0;
+    }
+  }
+
   let sent = 0;
   for (const mail of pending) {
     try {
@@ -93,27 +134,10 @@ export async function processMailQueue(
         subject: mail.subject,
         bodyText: mail.bodyText,
       });
-      await db
-        .update(schema.mailQueue)
-        .set({ status: 'sent', sentAt: new Date(), attempts: mail.attempts + 1 })
-        .where(eq(schema.mailQueue.id, mail.id));
+      await markSent([mail]);
       sent++;
     } catch (err) {
-      const attempts = mail.attempts + 1;
-      const failedPermanently = attempts >= MAX_ATTEMPTS;
-      await db
-        .update(schema.mailQueue)
-        .set({
-          status: failedPermanently ? 'failed' : 'pending',
-          attempts,
-          lastError: String(err).slice(0, 500),
-          scheduledAt: new Date(now.getTime() + retryBackoffMs(attempts)),
-        })
-        .where(eq(schema.mailQueue.id, mail.id));
-      console.error(
-        `[mail] send failed (id=${mail.id}, attempts=${attempts}${failedPermanently ? ', giving up' : ''}):`,
-        err,
-      );
+      await markRetry(mail, err);
     }
   }
   return sent;
