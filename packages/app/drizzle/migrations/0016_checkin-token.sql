@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `checkin_token` text;

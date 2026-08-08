@@ -149,6 +149,10 @@ export const users = sqliteTable('users', {
     .references(() => actors.id),
   email: text('email').notNull().unique(),
   emailVerifiedAt: integer('email_verified_at', { mode: 'timestamp_ms' }),
+  /** 参加状況などのお知らせをメールで受け取るか(ログイン用メールは対象外) */
+  emailNotifications: integer('email_notifications', { mode: 'boolean' })
+    .notNull()
+    .default(true),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
@@ -299,6 +303,8 @@ export const events = sqliteTable(
       .$type<('reply' | 'join')[]>()
       .notNull()
       .default(['reply', 'join']),
+    /** セルフチェックイン用トークン(QR に載せる)。null = 無効 */
+    checkinToken: text('checkin_token'),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
     createdByActorId: text('created_by_actor_id')
       .notNull()

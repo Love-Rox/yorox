@@ -37,7 +37,7 @@ describe('evaluateConditions', () => {
       now,
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toContain('claim');
+    if (!result.ok) expect(result.reason).toContain('連携');
   });
 
   it('requireClaimed: claim済みリモートは通す', () => {

@@ -7,7 +7,7 @@ import { Link } from 'waku';
 export const Footer = () => {
   return (
     <footer className="mt-16 border-t border-rule">
-      <div className="mx-auto w-full max-w-3xl px-[clamp(1rem,4vw,1.5rem)] py-8">
+      <div className="mx-auto w-full max-w-5xl px-[clamp(1rem,4vw,1.5rem)] py-8">
         <nav aria-label="サイト" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <Link to="/docs" className="link">
             使い方

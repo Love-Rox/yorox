@@ -79,6 +79,21 @@ profile.post('/profile/update', async (c) => {
 
 /** アバター画像のアップロード */
 
+
+/** お知らせ受け取り設定 */
+profile.post('/profile/notifications', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const form = await c.req.parseBody();
+  await db
+    .update(schema.users)
+    .set({ emailNotifications: form.email_notifications !== undefined })
+    .where(eq(schema.users.actorId, actorId));
+  return c.redirect('/settings/profile?notify_saved=1#notifications', 302);
+});
+
 /** claim: ワンタイムコード発行 */
 profile.post('/profile/claim-code', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);

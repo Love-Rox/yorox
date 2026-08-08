@@ -95,7 +95,10 @@ export async function dispatchPendingEvents(
           bodyText: template.body,
           eventType: event.type,
         };
-        if (user?.email !== undefined) notification.email = user.email;
+        // メール通知をオフにしているユーザーには email を渡さない(AP 通知等は届く)
+        if (user?.email !== undefined && user.emailNotifications) {
+          notification.email = user.email;
+        }
         if (payload.slotId !== undefined) notification.slotId = payload.slotId;
         for (const driver of drivers) {
           try {

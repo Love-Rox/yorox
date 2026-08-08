@@ -28,7 +28,7 @@ export const Header = async () => {
 
   return (
     <header className="w-full">
-      <div className="mx-auto w-full max-w-3xl px-[clamp(1rem,4vw,1.5rem)] pt-8 pb-4">
+      <div className="mx-auto w-full max-w-5xl px-[clamp(1rem,4vw,1.5rem)] pt-8 pb-4">
         <div className="flex items-end justify-between gap-4">
           <h1 className="leading-none">
             <Link to="/" className="flex items-center gap-3">

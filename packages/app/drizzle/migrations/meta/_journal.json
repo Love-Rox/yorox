@@ -113,6 +113,20 @@
       "when": 1786197469955,
       "tag": "0015_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1786231041360,
+      "tag": "0016_checkin-token",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1786232212065,
+      "tag": "0017_email-notifications",
+      "breakpoints": true
     }
   ]
 }

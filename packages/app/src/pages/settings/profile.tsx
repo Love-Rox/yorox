@@ -2,6 +2,7 @@ import { Link } from 'waku';
 import { unstable_getRequest as getRequest } from 'waku/router/server';
 import { eq } from 'drizzle-orm';
 import { Avatar } from '../../components/avatar';
+import { HelpTip } from '../../components/help-tip';
 import { LoginRequired } from '../../components/login-required';
 import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
@@ -37,7 +38,11 @@ export default async function ProfileSettingsPage() {
   const claimCode = url.searchParams.get('claim_code');
   const claimOk = url.searchParams.get('claim_ok');
   const claimError = url.searchParams.get('claim_error');
+  const notifySaved = url.searchParams.get('notify_saved');
   const aliases = await listClaimedAliases(db, user.actorId);
+  const account = await db.query.users.findFirst({
+    where: eq(schema.users.actorId, user.actorId),
+  });
   const host = url.host;
 
   return (
@@ -136,12 +141,38 @@ export default async function ProfileSettingsPage() {
         </button>
       </form>
 
+      {/* ---- お知らせ設定 ---- */}
+      <section id="notifications" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+        <h2 className="display t-md">
+          お知らせの受け取り
+          <HelpTip text="参加確定・補欠繰上・抽選結果などのお知らせの届け方です。オフにしてもログイン用メール(マジックリンク)は届きます。Fediverse 連携アカウントで参加した分は、そのアカウント宛のメンションで届きます。" />
+        </h2>
+        {notifySaved && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            保存しました。
+          </p>
+        )}
+        <form method="post" action="/profile/notifications" className="mt-3">
+          <label className="flex min-h-11 items-center gap-2">
+            <input
+              type="checkbox"
+              name="email_notifications"
+              defaultChecked={account?.emailNotifications ?? true}
+            />
+            <span>参加状況のお知らせをメール({account?.email})で受け取る</span>
+          </label>
+          <button type="submit" className="btn-quiet mt-2 cursor-pointer">
+            保存
+          </button>
+        </form>
+      </section>
+
       {/* ---- Fediverse アカウント連携(claim) ---- */}
       <section id="fediverse" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
         <h2 className="display t-md">Fediverse アカウント連携</h2>
         <p className="mt-2 text-sm text-neutral">
           Misskey / Mastodon などのアカウントを紐付けると、そのアカウントからの
-          イベント参加があなたの参加履歴として扱われ、「claim 済み」限定の枠にも
+          イベント参加があなたの参加履歴として扱われ、「アカウント連携済みの人」限定の枠にも
           参加できるようになります。
         </p>
 

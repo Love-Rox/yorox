@@ -4,6 +4,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { Avatar } from '../../../../../components/avatar';
+import { HelpTip } from '../../../../../components/help-tip';
 import { ServiceIcon } from '../../../../../components/service-icon';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
@@ -421,7 +422,7 @@ export default async function EventPage({
                     />
                   </label>
                   <fieldset>
-                    <legend className="text-sm font-bold">方式</legend>
+                    <legend className="text-sm font-bold">方式<HelpTip text="先着: 申込順に確定し、満席後は補欠。抽選: 申込を集めて抽選日時に当選者を決定します。" /></legend>
                     <div className="mt-1 flex gap-6">
                       <label className="flex min-h-11 items-center gap-2">
                         <input type="radio" name="method" value="fcfs" defaultChecked /> 先着
@@ -432,7 +433,7 @@ export default async function EventPage({
                     </div>
                   </fieldset>
                   <label className="block">
-                    <span className="text-sm font-bold">抽選ロジック(抽選時)</span>
+                    <span className="text-sm font-bold">抽選ロジック(抽選時)<HelpTip text="完全ランダム: 全員同確率。出欠率重み付け: 過去の出席実績が高い人が当たりやすくなります。手動選定: 管理画面で主催者が一人ずつ当選・補欠・落選を決めます。" /></span>
                     <select name="lottery_logic" className="input mt-1">
                       <option value="random">完全ランダム</option>
                       <option value="weighted">出欠率による重み付け</option>
@@ -448,7 +449,7 @@ export default async function EventPage({
                     />
                   </label>
                   <label className="block">
-                    <span className="text-sm font-bold">補欠モデル</span>
+                    <span className="text-sm font-bold">補欠モデル<HelpTip text="Connpass 流: 落選や定員溢れは全員自動的に補欠になります。指定する: 補欠の人数にも上限を設けます。" /></span>
                     <select name="waitlist_model" className="input mt-1">
                       <option value="connpass">落選・溢れは補欠(Connpass 流)</option>
                       <option value="separate">補欠数を指定する</option>
@@ -464,7 +465,7 @@ export default async function EventPage({
                     />
                   </label>
                   <label className="block">
-                    <span className="text-sm font-bold">繰上ポリシー</span>
+                    <span className="text-sm font-bold">繰上ポリシー<HelpTip text="キャンセルで空きが出たときの補欠の扱い。即時自動: すぐ繰上げ。締切付き自動: 開催 X 時間前以降は繰上げない。承諾制: 本人が承諾したら確定します。" /></span>
                     <select name="promotion_policy" className="input mt-1">
                       <option value="auto">即時自動</option>
                       <option value="auto_deadline">締切付き自動</option>
@@ -517,10 +518,11 @@ export default async function EventPage({
                     </label>
                   </fieldset>
                   <fieldset>
-                    <legend className="text-sm font-bold">参加条件(AND)</legend>
+                    <legend className="text-sm font-bold">参加条件(AND)<HelpTip text="すべての条件を満たす人だけが申込できます。満たさない申込は理由付きで断られます。" /></legend>
                     <label className="mt-1 flex min-h-11 items-center gap-2">
                       <input type="checkbox" name="require_claimed" />
-                      claim 済みアカウントのみ
+                      アカウント連携済み(本人確認済み)の人のみ
+                      <HelpTip text="Fediverse からの申込者のうち、プロフィール設定で Yorox アカウントと連携済みの人に限定します。Yorox アカウントで直接申し込む人は常に対象です。" />
                     </label>
                     <label className="block">
                       <span className="text-sm">アカウント作成からの最低日数</span>
@@ -542,7 +544,7 @@ export default async function EventPage({
                     </label>
                   </fieldset>
                   <fieldset>
-                    <legend className="text-sm font-bold">連合(Fediverse)</legend>
+                    <legend className="text-sm font-bold">連合(Fediverse)<HelpTip text="オンにすると、Misskey / Mastodon などのアカウントのまま(Yorox 未登録でも)この枠に参加申込できます。告知へのリプライ「参加」で申し込め、結果はリプライで届きます。" /></legend>
                     <label className="mt-1 flex min-h-11 items-center gap-2">
                       <input type="checkbox" name="allow_remote" />
                       リモート参加を受け入れる(Misskey / Mastodon 等からの申込)
@@ -761,28 +763,41 @@ export default async function EventPage({
 
           {event.participantListPublic && participants.length > 0 && (
             <section id="participants" className="mt-10 scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">参加者</h2>
-              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-3 text-sm">
-                {participants.map((p) => (
-                  <li key={`${p.slotId}-${p.actorId}`} className="flex items-center gap-2">
-                    <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} size="sm" />
-                    {p.domain ? (
-                      // リモート参加者は本人の Fediverse プロフィールへ
-                      <a href={p.uri} className="link" rel="noreferrer" target="_blank">
-                        {p.displayName}
-                        <span className="meta-mono ml-1 text-neutral">
-                          @{p.handle}@{p.domain}
-                        </span>
-                      </a>
-                    ) : p.handle ? (
-                      <Link to={`/u/${p.handle}`} className="link">
-                        {p.displayName}
-                      </Link>
-                    ) : (
-                      p.displayName
-                    )}
-                  </li>
-                ))}
+              <h2 className="display flex items-baseline justify-between border-b-2 border-ink pb-2 t-md">
+                参加者
+                <Link
+                  to={`/g/${handle}/events/${eventId}/participants`}
+                  className="link text-sm font-normal"
+                >
+                  一覧を見る
+                </Link>
+              </h2>
+              {/* アイコンのみのグリッド(名前はホバー/長押しの title で) */}
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {participants.map((p) => {
+                  const label = p.domain
+                    ? `${p.displayName} (@${p.handle}@${p.domain})`
+                    : p.displayName;
+                  const avatar = (
+                    <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
+                  );
+                  return (
+                    <li key={`${p.slotId}-${p.actorId}`} title={label}>
+                      {p.domain ? (
+                        // リモート参加者は本人の Fediverse プロフィールへ
+                        <a href={p.uri} rel="noreferrer" target="_blank" aria-label={label}>
+                          {avatar}
+                        </a>
+                      ) : p.handle ? (
+                        <Link to={`/u/${p.handle}`} aria-label={label}>
+                          {avatar}
+                        </Link>
+                      ) : (
+                        avatar
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

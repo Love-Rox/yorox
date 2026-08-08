@@ -8,7 +8,7 @@
  * Note / Create の URI は決定論的(/events/{id}/note, /events/{id}/activity)で、
  * outbox の動的生成と同じ ID になる。
  */
-import { activities, buildEventNote, type ApActivity } from '@yorox/ap';
+import { activities, buildEventNote, type ApActivity, type ApObject } from '@yorox/ap';
 import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
@@ -83,9 +83,27 @@ export function buildEventAnnouncement(
   });
 }
 
+/** フォロワーの inbox 一覧(sharedInbox 優先で重複排除) */
+async function collectFollowerInboxes(db: Db, groupActorId: string): Promise<Set<string>> {
+  const followers = await db
+    .select({
+      inboxUrl: schema.actors.inboxUrl,
+      sharedInboxUrl: schema.actors.sharedInboxUrl,
+    })
+    .from(schema.follows)
+    .innerJoin(schema.actors, eq(schema.follows.followerActorId, schema.actors.id))
+    .where(eq(schema.follows.followedActorId, groupActorId));
+  const inboxes = new Set<string>();
+  for (const f of followers) {
+    const inbox = f.sharedInboxUrl ?? f.inboxUrl;
+    if (inbox) inboxes.add(inbox);
+  }
+  return inboxes;
+}
+
 /**
  * 公開イベントの告知をフォロワー全員分キューに積む。
- * inbox は sharedInbox 優先で重複排除する。フォロワー 0 なら何もしない。
+ * フォロワー 0 なら何もしない。
  */
 export async function enqueueEventAnnouncement(db: Db, eventId: string): Promise<number> {
   const event = await db.query.events.findFirst({
@@ -97,20 +115,7 @@ export async function enqueueEventAnnouncement(db: Db, eventId: string): Promise
   });
   if (!group) return 0;
 
-  const followers = await db
-    .select({
-      inboxUrl: schema.actors.inboxUrl,
-      sharedInboxUrl: schema.actors.sharedInboxUrl,
-    })
-    .from(schema.follows)
-    .innerJoin(schema.actors, eq(schema.follows.followerActorId, schema.actors.id))
-    .where(eq(schema.follows.followedActorId, group.id));
-
-  const inboxes = new Set<string>();
-  for (const f of followers) {
-    const inbox = f.sharedInboxUrl ?? f.inboxUrl;
-    if (inbox) inboxes.add(inbox);
-  }
+  const inboxes = await collectFollowerInboxes(db, group.id);
   if (inboxes.size === 0) return 0;
 
   const activity = buildEventAnnouncement(group, event);
@@ -171,6 +176,54 @@ export async function deliverWithRetry(
       .onConflictDoNothing();
   }
   return ok;
+}
+
+/**
+ * 公開イベントの編集をフォロワーへ Update(Note) で配信する。
+ * Note の URI は不変(/events/{id}/note)なので、受信側は同じ投稿を更新する。
+ * リクエストの waitUntil から呼ぶ想定。
+ */
+export async function announceEventUpdateNow(db: Db, eventId: string): Promise<void> {
+  try {
+    const event = await db.query.events.findFirst({
+      where: eq(schema.events.id, eventId),
+    });
+    if (!event || event.visibility !== 'public') return;
+    const group = await db.query.actors.findFirst({
+      where: eq(schema.actors.id, event.groupActorId),
+    });
+    if (!group) return;
+    const inboxes = await collectFollowerInboxes(db, group.id);
+    if (inboxes.size === 0) return;
+
+    const create = buildEventAnnouncement(group, event);
+    const origin = new URL(group.uri).origin;
+    const update = activities.update(group.uri, create.object as ApObject, {
+      id: `${origin}/events/${event.id}/activity/update/${ulid()}`,
+      to: 'https://www.w3.org/ns/activitystreams#Public',
+      cc: `${group.uri}/followers`,
+      published: new Date().toISOString(),
+    });
+    const now = new Date();
+    await db
+      .insert(schema.apDeliveries)
+      .values(
+        [...inboxes].map((inboxUrl) => ({
+          id: ulid(),
+          signerActorId: group.id,
+          inboxUrl,
+          activityUri: update.id as string,
+          activityJson: update as unknown as Record<string, unknown>,
+          nextAttemptAt: now,
+          createdAt: now,
+        })),
+      )
+      .onConflictDoNothing();
+    const sent = await processApDeliveries(db, new Date(), Math.max(inboxes.size, 10));
+    console.log(`[ap] update announce: inboxes=${inboxes.size} sent=${sent} event=${eventId}`);
+  } catch (err) {
+    console.error(`[ap] update announce failed (event=${eventId}):`, err);
+  }
 }
 
 /**

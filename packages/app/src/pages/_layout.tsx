@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         precedence="font"
       />
       <Header />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-[clamp(1rem,4vw,1.5rem)] py-10">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-[clamp(1rem,4vw,1.5rem)] py-10">
         {children}
       </main>
       <Footer />

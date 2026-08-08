@@ -31,7 +31,7 @@ export function evaluateConditions(
       return {
         ok: false,
         reason:
-          '参加にはアカウントの claim(本人確認)が必要です。ログインしてアカウントを紐付けてください。',
+          '参加には Yorox アカウントとの連携(本人確認)が必要です。Yorox にログインし、プロフィール設定の「Fediverse アカウント連携」からこのアカウントを紐付けてください。',
       };
     }
   }

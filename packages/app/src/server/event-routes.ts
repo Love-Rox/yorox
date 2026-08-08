@@ -16,7 +16,8 @@ import {
 } from '../domain/participation';
 import type { SlotConditions } from '../db/schema';
 import { geocodeAddress } from '../lib/geocode';
-import { announceEventNow } from './ap-delivery';
+import { generateToken } from '../lib/token';
+import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
 import { getSlotCoordinator } from './coordinator';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -174,10 +175,39 @@ events.post('/events/:id/update', async (c) => {
       sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
       remoteJoinMethods: parseRemoteJoinMethods(form),
     });
+    // 公開済みイベントの変更はフォロワーへ Update(Note) で通知
+    if (ctx.event.visibility === 'public') {
+      c.executionCtx.waitUntil(announceEventUpdateNow(db, ctx.event.id));
+    }
     return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
   } catch {
     return c.redirect(`${editUrl}?error=invalid_input`, 302);
   }
+});
+
+
+/** セルフチェックイン用トークンの発行/再発行(出欠管理権限) */
+events.post('/events/:id/checkin/enable', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  const allowed = await hasGroupPermission(db, event.groupActorId, actorId, 'attendance.manage');
+  if (!allowed || !group?.handle) return c.text('権限がありません', 403);
+
+  await db
+    .update(schema.events)
+    .set({ checkinToken: generateToken(), updatedAt: new Date() })
+    .where(eq(schema.events.id, event.id));
+  return c.redirect(`/g/${group.handle}/events/${event.id}/manage`, 302);
 });
 
 /** 公開 */

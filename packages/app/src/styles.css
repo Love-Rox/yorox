@@ -192,6 +192,58 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
   background-color: var(--yorox-rule);
 }
 
+/* ---- ヘルプアイコン(?)ツールチップ ---- */
+.helptip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.375rem;
+}
+.helptip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid var(--yorox-neutral);
+  border-radius: 50%;
+  font-family: var(--yorox-font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--yorox-neutral);
+  cursor: help;
+}
+.helptip__icon:hover,
+.helptip__icon:focus-visible {
+  border-color: var(--yorox-accent-2);
+  color: var(--yorox-accent-2);
+}
+.helptip__body {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  translate: -50% 0;
+  padding: 0.5rem 0.75rem;
+  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  background: var(--yorox-paper);
+  box-shadow: 3px 3px 0 var(--yorox-accent);
+  font-size: var(--yorox-text-sm, 0.875rem);
+  font-weight: normal;
+  line-height: 1.5;
+  color: var(--yorox-ink);
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--yorox-dur-base) var(--yorox-ease-out);
+}
+.helptip:hover .helptip__body,
+.helptip:focus-within .helptip__body {
+  opacity: 1;
+}
+
 /* ---- リンク ---- */
 .link {
   color: var(--yorox-accent-2);

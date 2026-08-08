@@ -4,6 +4,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { LoginRequired } from '../../../../../components/login-required';
+import { HelpTip } from '../../../../../components/help-tip';
 import { getCurrentUser } from '../../../../../server/current-user';
 import { getDb, getEventDetail } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
@@ -208,7 +209,7 @@ export default async function EditEventPage({
           </span>
         </label>
         <fieldset className="block">
-          <legend className="text-sm font-bold">Fediverse からの参加申込</legend>
+          <legend className="text-sm font-bold">Fediverse からの参加申込<HelpTip text="フォロワーのタイムラインに流れる告知へのリプライ、または Mobilizon 等からの Join でイベントに申込できるようにします。実際に受け付けるには枠側の「リモート参加を受け入れる」も必要です。" /></legend>
           <label className="mt-1 flex items-center gap-2">
             <input
               type="checkbox"

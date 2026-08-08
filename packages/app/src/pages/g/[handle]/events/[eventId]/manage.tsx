@@ -4,6 +4,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { LoginRequired } from '../../../../../components/login-required';
+import { ManageParticipants } from '../../../../../components/manage-participants';
 import { getCurrentUser } from '../../../../../server/current-user';
 import {
   getDb,
@@ -11,33 +12,7 @@ import {
   listManageParticipations,
 } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
-
-const STATUS_LABEL: Record<string, string> = {
-  applied: '抽選待ち',
-  accepted: '参加確定',
-  payment_pending: '支払い待ち',
-  waitlisted: '補欠',
-  consent_pending: '繰上承諾待ち',
-  rejected: '落選',
-  cancelled: 'キャンセル済み',
-};
-
-const PAYMENT_LABEL: Record<string, string> = {
-  pending: '未払い',
-  paid: '支払済み',
-  refund_required: '要返金',
-  refunded: '返金済み',
-  waived: '免除',
-};
-
-const YEN = new Intl.NumberFormat('ja-JP');
-
-const SLOT_METHOD_LABEL = { fcfs: '先着', lottery: '抽選' } as const;
-const LOTTERY_LABEL: Record<string, string> = {
-  random: '完全ランダム',
-  weighted: '出欠率重み付け',
-  manual: '手動選定',
-};
+import { renderSVG } from 'uqr';
 
 export default async function ManagePage({
   handle,
@@ -98,148 +73,80 @@ export default async function ManagePage({
         </p>
       )}
 
-      {/* ---- 枠ごとの参加者管理 ---- */}
-      {slots.map((slot) => {
-        const slotRows = rows.filter((r) => r.slotId === slot.id);
-        const appliedCount = slotRows.filter((r) => r.status === 'applied').length;
-        return (
-          <section key={slot.id} className="mt-10">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-2">
-              <h2 className="display t-md">{slot.name}</h2>
-              <div className="meta-mono text-sm text-neutral">
-                {SLOT_METHOD_LABEL[slot.method]}
-                {slot.lotteryLogic && ` · ${LOTTERY_LABEL[slot.lotteryLogic]}`} · 定員{' '}
-                {slot.capacity}
-              </div>
+      {/* ---- QR チェックイン ---- */}
+      {canAttendance && (
+        <section className="mt-8 border-2 border-ink p-4">
+          <h2 className="display t-md">QR チェックイン</h2>
+          {event.checkinToken ? (
+            (() => {
+              const checkinUrl = `${url.origin}/checkin/${event.checkinToken}`;
+              return (
+                <div className="mt-3">
+                  <p className="text-sm text-neutral">
+                    この QR を受付に掲示すると、参加者が自分のスマホで読み取って
+                    セルフチェックイン(出席記録)できます。ログイン済みで参加確定の
+                    本人のみ記録されます。
+                  </p>
+                  <div
+                    className="mt-3 w-full max-w-60 border border-rule bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
+                    // uqr が生成する QR SVG のみを埋め込む
+                    dangerouslySetInnerHTML={{ __html: renderSVG(checkinUrl) }}
+                  />
+                  <p className="meta-mono mt-2 text-sm break-all text-neutral">{checkinUrl}</p>
+                  <form
+                    method="post"
+                    action={`/events/${event.id}/checkin/enable`}
+                    className="mt-3"
+                  >
+                    <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                      QR を再発行(旧 QR は無効化)
+                    </button>
+                  </form>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="mt-3">
+              <p className="text-sm text-neutral">
+                受付に掲示する QR を発行すると、参加者がスキャンだけで出席記録できます。
+              </p>
+              <form method="post" action={`/events/${event.id}/checkin/enable`} className="mt-3">
+                <button type="submit" className="btn cursor-pointer">
+                  チェックイン QR を発行
+                </button>
+              </form>
             </div>
+          )}
+        </section>
+      )}
 
-            {canLottery &&
-              slot.method === 'lottery' &&
-              slot.lotteryLogic !== 'manual' &&
-              appliedCount > 0 && (
-                <form method="post" action={`/slots/${slot.id}/lottery/run`} className="mt-4">
-                  <button type="submit" className="btn cursor-pointer">
-                    抽選を実行({appliedCount}名 → 当選{' '}
-                    {Math.min(appliedCount, slot.capacity)}名)
-                  </button>
-                </form>
-              )}
-
-            {slotRows.length === 0 ? (
-              <p className="mt-3 text-sm text-neutral">申込はまだありません。</p>
-            ) : (
-              <ul className="mt-2">
-                {slotRows.map((p) => {
-                  const h = history.get(p.actorId) ?? { attended: 0, noShow: 0 };
-                  const total = h.attended + h.noShow;
-                  return (
-                    <li
-                      key={p.id}
-                      className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3"
-                    >
-                      <div className="min-w-0">
-                        <span className="font-bold">{p.displayName}</span>
-                        {p.handle && (
-                          <span className="meta-mono ml-2 text-sm text-neutral">
-                            @{p.handle}
-                            {p.domain && `@${p.domain}`}
-                          </span>
-                        )}
-                        <div className="meta-mono mt-0.5 text-sm text-neutral">
-                          {STATUS_LABEL[p.status] ?? p.status}
-                          {' · 過去実績 '}
-                          {total === 0 ? '記録なし' : `出席 ${h.attended} / ${total} 回`}
-                          {p.attendanceStatus && (
-                            <span className="ml-2 font-bold text-ink">
-                              [{p.attendanceStatus === 'attended' ? '出席' : '無断欠席'}]
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* 手動選定 / 判定操作 */}
-                        {canLottery &&
-                          (p.status === 'applied' || p.status === 'waitlisted') && (
-                            <form method="post" action={`/participations/${p.id}/decide`}>
-                              <input type="hidden" name="decision" value="accepted" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                当選
-                              </button>
-                            </form>
-                          )}
-                        {canLottery && p.status === 'applied' && (
-                          <>
-                            <form method="post" action={`/participations/${p.id}/decide`}>
-                              <input type="hidden" name="decision" value="waitlisted" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                補欠
-                              </button>
-                            </form>
-                            <form method="post" action={`/participations/${p.id}/decide`}>
-                              <input type="hidden" name="decision" value="rejected" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                落選
-                              </button>
-                            </form>
-                          </>
-                        )}
-                        {/* 支払い管理 */}
-                        {p.paymentId && p.paymentStatus && (
-                          <span
-                            className={`border px-2 py-1 text-sm font-bold ${
-                              p.paymentStatus === 'paid' || p.paymentStatus === 'waived'
-                                ? 'border-accent-2 text-accent-2'
-                                : 'border-accent text-accent'
-                            }`}
-                          >
-                            {PAYMENT_LABEL[p.paymentStatus]}
-                            {p.paymentAmount != null && ` ¥${YEN.format(p.paymentAmount)}`}
-                          </span>
-                        )}
-                        {canAttendance && p.paymentId && p.paymentStatus === 'pending' && (
-                          <form method="post" action={`/payments/${p.paymentId}/mark`}>
-                            <input type="hidden" name="status" value="paid" />
-                            <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                              支払済みにする
-                            </button>
-                          </form>
-                        )}
-                        {canAttendance &&
-                          p.paymentId &&
-                          p.paymentStatus === 'refund_required' && (
-                            <form method="post" action={`/payments/${p.paymentId}/mark`}>
-                              <input type="hidden" name="status" value="refunded" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                返金済みにする
-                              </button>
-                            </form>
-                          )}
-                        {/* 出欠記録(確定者のみ) */}
-                        {canAttendance && p.status === 'accepted' && (
-                          <>
-                            <form method="post" action={`/participations/${p.id}/attendance`}>
-                              <input type="hidden" name="status" value="attended" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                出席
-                              </button>
-                            </form>
-                            <form method="post" action={`/participations/${p.id}/attendance`}>
-                              <input type="hidden" name="status" value="no_show" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                無断欠席
-                              </button>
-                            </form>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+      {/* ---- 枠ごとの参加者管理(検索付き・クライアント絞り込み) ---- */}
+      <ManageParticipants
+        slots={slots.map((s) => ({
+          id: s.id,
+          name: s.name,
+          method: s.method,
+          lotteryLogic: s.lotteryLogic,
+          capacity: s.capacity,
+        }))}
+        rows={rows.map((r) => ({
+          id: r.id,
+          slotId: r.slotId,
+          status: r.status,
+          actorId: r.actorId,
+          displayName: r.displayName,
+          handle: r.handle,
+          domain: r.domain,
+          avatarUrl: r.avatarUrl,
+          attendanceStatus: r.attendanceStatus,
+          paymentId: r.paymentId,
+          paymentStatus: r.paymentStatus,
+          paymentAmount: r.paymentAmount,
+        }))}
+        history={Object.fromEntries(history)}
+        canLottery={canLottery}
+        canAttendance={canAttendance}
+      />
 
       {/* ---- セッション管理 ---- */}
       {canEdit && (
