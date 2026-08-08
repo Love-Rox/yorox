@@ -53,6 +53,8 @@ export const actors = sqliteTable(
     privateKeyPem: text('private_key_pem'),
     /** アカウント統合(Move)で吸収された側が向き先を持つ */
     movedToActorId: text('moved_to_actor_id'),
+    /** claim 済みリモートエイリアスが紐付くローカルユーザーの actorId */
+    claimedByActorId: text('claimed_by_actor_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
@@ -118,6 +120,26 @@ export const apDeliveries = sqliteTable(
     index('ap_deliveries_pending_idx').on(t.sentAt, t.nextAttemptAt),
     uniqueIndex('ap_deliveries_activity_inbox_unique').on(t.activityUri, t.inboxUrl),
   ],
+);
+
+/**
+ * claim 用ワンタイムコード。設定画面で発行し、リモートアカウントから
+ * コードをメンション投稿する(署名検証で本人性を担保)ことで紐付ける。
+ */
+export const claimCodes = sqliteTable(
+  'claim_codes',
+  {
+    id: text('id').primaryKey(), // ULID
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    /** コードの SHA-256(hex)。平文は保存しない */
+    codeHash: text('code_hash').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [uniqueIndex('claim_codes_hash_unique').on(t.codeHash)],
 );
 
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */

@@ -5,6 +5,7 @@ import { Avatar } from '../../components/avatar';
 import { LoginRequired } from '../../components/login-required';
 import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
+import { listClaimedAliases } from '../../server/claim';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
 
@@ -32,6 +33,12 @@ export default async function ProfileSettingsPage() {
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
   const links = me.profileLinks ?? [];
+
+  const claimCode = url.searchParams.get('claim_code');
+  const claimOk = url.searchParams.get('claim_ok');
+  const claimError = url.searchParams.get('claim_error');
+  const aliases = await listClaimedAliases(db, user.actorId);
+  const host = url.host;
 
   return (
     <div className="max-w-xl">
@@ -128,6 +135,94 @@ export default async function ProfileSettingsPage() {
           保存する
         </button>
       </form>
+
+      {/* ---- Fediverse アカウント連携(claim) ---- */}
+      <section id="fediverse" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+        <h2 className="display t-md">Fediverse アカウント連携</h2>
+        <p className="mt-2 text-sm text-neutral">
+          Misskey / Mastodon などのアカウントを紐付けると、そのアカウントからの
+          イベント参加があなたの参加履歴として扱われ、「claim 済み」限定の枠にも
+          参加できるようになります。
+        </p>
+
+        {claimOk && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            連携が完了しました。
+          </p>
+        )}
+        {claimError && (
+          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+            {claimError}
+          </p>
+        )}
+
+        {aliases.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {aliases.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2">
+                <a href={a.uri} className="link meta-mono text-sm" rel="noreferrer" target="_blank">
+                  @{a.handle}@{a.domain}
+                </a>
+                <form method="post" action="/profile/claim-unlink">
+                  <input type="hidden" name="remote_actor_id" value={a.id} />
+                  <button
+                    type="submit"
+                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                  >
+                    解除
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-5 space-y-6">
+          <div>
+            <h3 className="text-sm font-bold">方法1: コードを投稿して連携</h3>
+            {claimCode ? (
+              <div className="mt-2 border border-rule p-3">
+                <p className="text-sm">
+                  連携したいアカウントから、次のコードを
+                  <span className="meta-mono font-bold"> @{me.handle}@{host} </span>
+                  宛のメンション付きで投稿してください(DM でも可、30分有効):
+                </p>
+                <p className="meta-mono mt-2 t-lg font-bold">{claimCode}</p>
+              </div>
+            ) : (
+              <form method="post" action="/profile/claim-code" className="mt-2">
+                <button type="submit" className="btn-quiet cursor-pointer">
+                  連携コードを発行
+                </button>
+              </form>
+            )}
+          </div>
+          <div>
+            <h3 className="text-sm font-bold">方法2: プロフィールのリンクで連携(rel=me)</h3>
+            <p className="mt-1 text-sm text-neutral">
+              リモート側プロフィールのリンク欄(メタデータ)に
+              <span className="meta-mono"> https://{host}/u/{me.handle} </span>
+              を追加してから、アカウントを入力してください。
+            </p>
+            <form
+              method="post"
+              action="/profile/claim-relme"
+              className="mt-2 flex flex-wrap gap-2"
+            >
+              <input
+                type="text"
+                name="remote_account"
+                required
+                className="input meta-mono max-w-xs"
+                placeholder="@you@misskey.example"
+              />
+              <button type="submit" className="btn-quiet cursor-pointer">
+                確認して連携
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

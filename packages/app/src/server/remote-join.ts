@@ -183,15 +183,19 @@ export async function sendReplyNote(
     group: GroupRow;
     remoteActor: RemoteActorRow;
     inReplyToUri: string;
-    eventId: string;
+    /** 省略時は /notes/ 配下の URI になる(claim 完了通知など) */
+    eventId?: string | undefined;
     text: string;
   },
 ): Promise<void> {
   const origin = new URL(input.group.uri).origin;
   const handle = fullHandle(input.remoteActor);
+  const idBase = input.eventId
+    ? `${origin}/events/${input.eventId}/replies`
+    : `${origin}/notes`;
   const note: ApObject = {
     '@context': AS_CONTEXT,
-    id: `${origin}/events/${input.eventId}/replies/${ulid()}`,
+    id: `${idBase}/${ulid()}`,
     type: 'Note',
     attributedTo: input.group.uri,
     inReplyTo: input.inReplyToUri,

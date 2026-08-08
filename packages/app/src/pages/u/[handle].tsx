@@ -89,7 +89,7 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                   <a
                     href={link}
                     className="link inline-flex items-center gap-1"
-                    rel="noreferrer"
+                    rel="me noreferrer"
                     target="_blank"
                   >
                     <ServiceIcon url={link} />

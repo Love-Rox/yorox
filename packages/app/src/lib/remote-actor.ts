@@ -75,6 +75,7 @@ export async function upsertRemoteActor(db: Db, doc: ApActor) {
     profileLinks: null,
     privateKeyPem: null,
     movedToActorId: null,
+    claimedByActorId: null,
     createdAt: now,
     ...values,
   };

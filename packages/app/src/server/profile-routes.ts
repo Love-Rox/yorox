@@ -7,6 +7,7 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { ulid } from '../lib/ulid';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
+import { claimByRelMe, generateClaimCode, unlinkRemoteAlias } from './claim';
 import { getSessionActorId } from './route-auth';
 
 async function getEnv(): Promise<Env> {
@@ -77,6 +78,54 @@ profile.post('/profile/update', async (c) => {
 });
 
 /** アバター画像のアップロード */
+
+/** claim: ワンタイムコード発行 */
+profile.post('/profile/claim-code', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const code = await generateClaimCode(db, actorId);
+  return c.redirect(`/settings/profile?claim_code=${encodeURIComponent(code)}#fediverse`, 302);
+});
+
+/** claim: rel=me 確認 */
+profile.post('/profile/claim-relme', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const me = await db.query.actors.findFirst({ where: eq(schema.actors.id, actorId) });
+  if (!me?.handle) return c.redirect('/settings/profile', 302);
+
+  const form = await c.req.parseBody();
+  const remoteRef = str(form.remote_account);
+  const origin = new URL(c.req.url).origin;
+  const result = await claimByRelMe(db, actorId, remoteRef, [
+    `${origin}/u/${me.handle}`,
+    `${origin}/@${me.handle}`,
+  ]);
+  if (result.ok) {
+    return c.redirect('/settings/profile?claim_ok=1#fediverse', 302);
+  }
+  return c.redirect(
+    `/settings/profile?claim_error=${encodeURIComponent(result.reason)}#fediverse`,
+    302,
+  );
+});
+
+/** claim: 紐付け解除 */
+profile.post('/profile/claim-unlink', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const form = await c.req.parseBody();
+  const remoteActorId = str(form.remote_actor_id);
+  if (remoteActorId) await unlinkRemoteAlias(db, remoteActorId, actorId);
+  return c.redirect('/settings/profile#fediverse', 302);
+});
+
 profile.post('/profile/avatar', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
   const env = await getEnv();

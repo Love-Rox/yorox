@@ -10,7 +10,7 @@
  * D1 は単一書き込みなので MVP 規模ではこれで十分(docs/OPEN-QUESTIONS.md #3)。
  */
 import type { AcceptJoinInput, AcceptJoinResult } from '@yorox/slot-coordinator';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
@@ -55,6 +55,17 @@ async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo>
   });
   if (!actor) throw new Error(`actor not found: ${actorId}`);
 
+  // claim 済みは本体アカウント・他エイリアスの実績も合算する(参加履歴の統合)
+  const identityIds = new Set([actorId]);
+  const rootId = actor.claimedByActorId ?? (actor.state === 'local' ? actor.id : null);
+  if (rootId) {
+    identityIds.add(rootId);
+    const aliases = await db.query.actors.findMany({
+      where: eq(schema.actors.claimedByActorId, rootId),
+    });
+    for (const alias of aliases) identityIds.add(alias.id);
+  }
+
   const [row] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.attendances)
@@ -64,7 +75,7 @@ async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo>
     )
     .where(
       and(
-        eq(schema.participations.actorId, actorId),
+        inArray(schema.participations.actorId, [...identityIds]),
         eq(schema.attendances.status, 'attended'),
       ),
     );

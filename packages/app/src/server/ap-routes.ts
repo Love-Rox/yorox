@@ -30,6 +30,7 @@ import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { resolveRemoteActorByKeyId } from '../lib/remote-actor';
 import { ulid } from '../lib/ulid';
+import { claimByCode } from './claim';
 import {
   eventIdFromUri,
   parseReplyCommand,
@@ -295,13 +296,32 @@ async function handleGroupActivity(
     return c.body(null, 202);
   }
 
-  // 告知 Note へのリプライ(「参加」「キャンセル」)
+  // 告知 Note へのリプライ(「参加」「キャンセル」)/ claim コードのメンション投稿
   if (activity.type === 'Create') {
     const note = embeddedObject(activity);
-    const inReplyTo = typeof note?.inReplyTo === 'string' ? note.inReplyTo : undefined;
-    const event = await findTargetEvent(db, group, inReplyTo);
-    if (!event || note?.type !== 'Note') return c.body(null, 202);
+    if (note?.type !== 'Note') return c.body(null, 202);
     const content = typeof note.content === 'string' ? note.content : '';
+    const noteId = typeof note.id === 'string' ? note.id : undefined;
+
+    // claim コード(yorox-xxxxxxxx)を含む投稿はアカウント紐付けとして処理
+    const claimResult = await claimByCode(db, signer, content);
+    if (claimResult !== null) {
+      const text =
+        claimResult === 'invalid'
+          ? '連携コードが無効か期限切れです。Yorox の設定画面で新しいコードを発行してください。'
+          : 'アカウントの連携が完了しました!このアカウントでの参加履歴が Yorox アカウントに紐付きます。';
+      console.log(`[ap] claim code from ${signer.uri}: ${claimResult === 'invalid' ? 'invalid' : 'linked'}`);
+      if (noteId) {
+        c.executionCtx.waitUntil(
+          sendReplyNote(db, { group, remoteActor: signer, inReplyToUri: noteId, text }),
+        );
+      }
+      return c.body(null, 202);
+    }
+
+    const inReplyTo = typeof note.inReplyTo === 'string' ? note.inReplyTo : undefined;
+    const event = await findTargetEvent(db, group, inReplyTo);
+    if (!event) return c.body(null, 202);
     const command = parseReplyCommand(content);
     if (!command) return c.body(null, 202); // ただの感想リプライ等は無視
     const result =
