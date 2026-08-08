@@ -14,11 +14,17 @@
     {
       "binding": "DB",
       "database_name": "yorox-db",
-      // TODO: 本番デプロイ前に `wrangler d1 create yorox-db` で発行された ID に置き換える
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "6c3a1b3e-cad7-401c-9177-40609aed601a",
       "migrations_dir": "./drizzle/migrations"
     }
   ],
+  "vars": {
+    // ファイルアップロード有効(R2)。メールはシークレット設定後に有効化される
+    "FILE_UPLOADS": "1",
+    "MAX_UPLOAD_MB": "5",
+    "MAIL_RATE_PER_MINUTE": "10",
+    "MAIL_RATE_PER_HOUR": "100"
+  },
   "r2_buckets": [
     {
       // 資料・サムネイル等のファイルホスティング(インスタンス設定で有効化)

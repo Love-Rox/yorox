@@ -24,7 +24,7 @@
       // packages/app と同じ D1 データベースを参照する。
       // TODO: 本番デプロイ前に `wrangler d1 create yorox-db` で発行された ID に置き換える
       // (packages/app/wrangler.jsonc と同じ値にすること)
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "6c3a1b3e-cad7-401c-9177-40609aed601a"
     }
   ]
 }

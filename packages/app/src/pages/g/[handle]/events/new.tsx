@@ -1,4 +1,5 @@
 import { unstable_getRequest as getRequest, unstable_notFound as notFound, unstable_redirect as redirect } from 'waku/router/server';
+import { LoginRequired } from '../../../../components/login-required';
 import { getCurrentUser } from '../../../../server/current-user';
 import { getDb, getGroupByHandle } from '../../../../server/data';
 import { hasGroupPermission } from '../../../../server/route-auth';
@@ -6,7 +7,7 @@ import { hasGroupPermission } from '../../../../server/route-auth';
 export default async function NewEventPage({ handle }: { handle: string }) {
   const db = await getDb();
   const user = await getCurrentUser();
-  if (!user) return redirect('/login');
+  if (!user) return <LoginRequired />;
 
   const result = await getGroupByHandle(db, handle);
   if (!result) return notFound();

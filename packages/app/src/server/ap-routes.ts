@@ -20,6 +20,9 @@ async function getEnv(): Promise<Env> {
 
 const ap = new Hono();
 
+/** ULID(26文字 Crockford Base32)かどうか。正規 URI ルートの誤マッチ防止 */
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+
 /**
  * WebFinger: acct:handle@host → ローカルアクターの AP URI を返す。
  * ハンドルはユーザー/グループ単一名前空間。当面 AP 露出はグループのみだが、
@@ -116,7 +119,8 @@ async function findEventHumanUrl(origin: string, eventId: string): Promise<strin
 }
 
 /** 短縮 URL: /e/{ulid} → 正規の人間向け URL */
-ap.get('/e/:id', async (c) => {
+ap.get('/e/:id', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
   const url = await findEventHumanUrl(new URL(c.req.url).origin, c.req.param('id'));
   if (!url) return c.notFound();
   return c.redirect(url, 302);
@@ -126,7 +130,8 @@ ap.get('/e/:id', async (c) => {
  * 正規 AP URI /events/{ulid} への HTML アクセスは人間向け URL へ 302。
  * AP メディアタイプ要求は連合実装まで 406(URL は不変で予約済み)。
  */
-ap.get('/events/:id', async (c) => {
+ap.get('/events/:id', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
   if (acceptsActivityPub(c.req.header('accept'))) {
     return c.text('ActivityPub representation is not available yet', 406);
   }
@@ -136,7 +141,8 @@ ap.get('/events/:id', async (c) => {
 });
 
 /** 正規 AP URI /groups/{ulid} も同様に人間向け URL へ */
-ap.get('/groups/:id', async (c) => {
+ap.get('/groups/:id', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
   if (acceptsActivityPub(c.req.header('accept'))) {
     return c.text('ActivityPub representation is not available yet', 406);
   }

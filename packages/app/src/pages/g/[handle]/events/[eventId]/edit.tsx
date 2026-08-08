@@ -2,8 +2,8 @@ import { Link } from 'waku';
 import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
-  unstable_redirect as redirect,
 } from 'waku/router/server';
+import { LoginRequired } from '../../../../../components/login-required';
 import { getCurrentUser } from '../../../../../server/current-user';
 import { getDb, getEventDetail } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
@@ -33,7 +33,7 @@ export default async function EditEventPage({
 }) {
   const db = await getDb();
   const user = await getCurrentUser();
-  if (!user) return redirect('/login');
+  if (!user) return <LoginRequired />;
 
   const detail = await getEventDetail(db, eventId);
   if (!detail || detail.groupActor?.handle !== handle) return notFound();

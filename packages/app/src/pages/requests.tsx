@@ -1,7 +1,7 @@
 import { Link } from 'waku';
-import { unstable_redirect as redirect } from 'waku/router/server';
 import { and, eq } from 'drizzle-orm';
 import { schema } from '../db/client';
+import { LoginRequired } from '../components/login-required';
 import { getCurrentUser } from '../server/current-user';
 import { getDb } from '../server/data';
 
@@ -14,7 +14,7 @@ const DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
 export default async function RequestsPage() {
   const db = await getDb();
   const user = await getCurrentUser();
-  if (!user) return redirect('/login');
+  if (!user) return <LoginRequired />;
 
   const pending = await db.query.actionRequests.findMany({
     where: and(

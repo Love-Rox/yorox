@@ -1,5 +1,5 @@
+import { Link } from 'waku';
 import { unstable_getRequest as getRequest } from 'waku/router/server';
-import { unstable_redirect as redirect } from 'waku/router/server';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: 'ハンドルは英小文字・数字・ハイフン(1〜40文字)、表示名は必須です。',
@@ -9,7 +9,22 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function OnboardingPage() {
   const url = new URL(getRequest().url);
   const ticket = url.searchParams.get('ticket');
-  if (!ticket) return redirect('/login');
+  if (!ticket) {
+    return (
+      <div className="max-w-sm">
+        <title>アカウント作成 - Yorox</title>
+        <h1 className="display t-xl">リンクが無効です</h1>
+        <p className="mt-3 text-sm text-neutral">
+          メールのリンクからやり直してください。
+        </p>
+        <p className="mt-6">
+          <Link to="/login" className="btn inline-block">
+            ログインへ
+          </Link>
+        </p>
+      </div>
+    );
+  }
   const error = url.searchParams.get('error');
 
   return (

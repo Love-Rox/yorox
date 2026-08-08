@@ -1,12 +1,10 @@
-import {
-  unstable_getRequest as getRequest,
-  unstable_redirect as redirect,
-} from 'waku/router/server';
+import { unstable_getRequest as getRequest } from 'waku/router/server';
+import { LoginRequired } from '../../components/login-required';
 import { getCurrentUser } from '../../server/current-user';
 
 export default async function NewGroupPage() {
   const user = await getCurrentUser();
-  if (!user) return redirect('/login');
+  if (!user) return <LoginRequired />;
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
