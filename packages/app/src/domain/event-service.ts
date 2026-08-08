@@ -18,6 +18,8 @@ export interface CreateEventInput {
   timezone?: string | undefined;
   venueName?: string | undefined;
   venueAddress?: string | undefined;
+  venueLat?: number | undefined;
+  venueLng?: number | undefined;
   onlineUrl?: string | undefined;
   createdByActorId: string;
 }
@@ -41,6 +43,8 @@ export async function createEvent(
     timezone: input.timezone ?? 'Asia/Tokyo',
     venueName: input.venueName ?? null,
     venueAddress: input.venueAddress ?? null,
+    venueLat: input.venueLat ?? null,
+    venueLng: input.venueLng ?? null,
     onlineUrl: input.onlineUrl ?? null,
     visibility: 'draft',
     createdByActorId: input.createdByActorId,
@@ -58,7 +62,10 @@ export interface UpdateEventInput {
   endsAt?: Date | undefined;
   venueName?: string | undefined;
   venueAddress?: string | undefined;
+  venueLat?: number | undefined;
+  venueLng?: number | undefined;
   onlineUrl?: string | undefined;
+  sessionsLabel?: 'sessions' | 'timetable' | undefined;
 }
 
 /** イベントの基本情報を更新する */
@@ -79,7 +86,10 @@ export async function updateEvent(
       endsAt: input.endsAt ?? null,
       venueName: input.venueName ?? null,
       venueAddress: input.venueAddress ?? null,
+      venueLat: input.venueLat ?? null,
+      venueLng: input.venueLng ?? null,
       onlineUrl: input.onlineUrl ?? null,
+      sessionsLabel: input.sessionsLabel ?? 'sessions',
       updatedAt: now,
     })
     .where(eq(schema.events.id, eventId));

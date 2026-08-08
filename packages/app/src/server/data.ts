@@ -96,7 +96,12 @@ export async function getEventDetail(db: Db, eventId: string) {
 
   const sessions = await db.query.eventSessions.findMany({
     where: eq(schema.eventSessions.eventId, eventId),
-    orderBy: [asc(schema.eventSessions.sortOrder)],
+    // 時刻付きを時刻順で先に、未設定は登録順で後ろに(タイムテーブル表示)
+    orderBy: [
+      sql`${schema.eventSessions.startsAt} IS NULL`,
+      asc(schema.eventSessions.startsAt),
+      asc(schema.eventSessions.sortOrder),
+    ],
   });
 
   const materials = await db.query.materials.findMany({

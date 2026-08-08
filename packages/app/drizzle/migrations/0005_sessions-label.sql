@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `sessions_label` text DEFAULT 'sessions' NOT NULL;

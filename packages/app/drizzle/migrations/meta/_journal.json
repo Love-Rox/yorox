@@ -29,6 +29,20 @@
       "when": 1786149920782,
       "tag": "0003_participant-info",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786150312118,
+      "tag": "0004_venue-coords",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786150394138,
+      "tag": "0005_sessions-label",
+      "breakpoints": true
     }
   ]
 }

@@ -209,6 +209,21 @@ export default async function ManagePage({
                   className="flex items-center justify-between gap-3 border-b border-rule py-3"
                 >
                   <div className="min-w-0">
+                    {s.startsAt && (
+                      <span className="meta-mono mr-2 text-sm text-neutral">
+                        {new Intl.DateTimeFormat('ja-JP', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'Asia/Tokyo',
+                        }).format(s.startsAt)}
+                        {s.endsAt &&
+                          `–${new Intl.DateTimeFormat('ja-JP', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Asia/Tokyo',
+                          }).format(s.endsAt)}`}
+                      </span>
+                    )}
                     <span className="font-bold">{s.title}</span>
                     {s.speakerName && (
                       <span className="ml-2 text-sm text-neutral">{s.speakerName}</span>
@@ -245,6 +260,16 @@ export default async function ManagePage({
                 <span className="text-sm font-bold">概要</span>
                 <textarea name="description_md" rows={3} className="input mt-1" />
               </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-bold">開始時刻</span>
+                  <input type="datetime-local" name="starts_at" className="input meta-mono mt-1" />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold">終了時刻</span>
+                  <input type="datetime-local" name="ends_at" className="input meta-mono mt-1" />
+                </label>
+              </div>
               <button type="submit" className="btn cursor-pointer">
                 追加
               </button>

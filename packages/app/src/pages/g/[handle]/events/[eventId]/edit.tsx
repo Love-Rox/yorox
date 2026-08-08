@@ -126,6 +126,17 @@ export default async function EditEventPage({
           />
         </label>
         <label className="block">
+          <span className="text-sm font-bold">セッション欄の表示ラベル</span>
+          <select
+            name="sessions_label"
+            defaultValue={event.sessionsLabel}
+            className="input mt-1"
+          >
+            <option value="sessions">セッション</option>
+            <option value="timetable">タイムテーブル</option>
+          </select>
+        </label>
+        <label className="block">
           <span className="text-sm font-bold">参加者への案内(Markdown)</span>
           <textarea
             name="participant_info_md"

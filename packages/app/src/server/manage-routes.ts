@@ -30,6 +30,14 @@ function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
+/** datetime-local の値を JST として解釈する(MVP は Asia/Tokyo 固定) */
+function parseLocalDateTime(v: unknown): Date | undefined {
+  const s = str(v);
+  if (!s) return undefined;
+  const t = Date.parse(`${s}:00+09:00`);
+  return Number.isNaN(t) ? undefined : new Date(t);
+}
+
 type Db = ReturnType<typeof createDb>;
 
 /** participation → 所属イベント・グループを解決して権限チェック */
@@ -216,6 +224,8 @@ manage.post('/events/:id/sessions', async (c) => {
     title,
     descriptionMd: str(form.description_md) || null,
     speakerName: str(form.speaker_name) || null,
+    startsAt: parseLocalDateTime(form.starts_at) ?? null,
+    endsAt: parseLocalDateTime(form.ends_at) ?? null,
     sortOrder: existing.length,
   });
   return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);

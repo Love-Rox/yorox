@@ -15,6 +15,7 @@ import {
   SlotFullError,
 } from '../domain/participation';
 import type { SlotConditions } from '../db/schema';
+import { geocodeAddress } from '../lib/geocode';
 import { getSlotCoordinator } from './coordinator';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -81,6 +82,9 @@ events.post('/g/:handle/events', async (c) => {
   }
 
   try {
+    // 住所があれば保存時に一度だけジオコーディングする(地図表示用)
+    const venueAddress = str(form.venue_address);
+    const geo = venueAddress ? await geocodeAddress(venueAddress) : null;
     const { eventId } = await createEvent(db, {
       groupActorId: groupActor.id,
       title: str(form.title),
@@ -89,7 +93,9 @@ events.post('/g/:handle/events', async (c) => {
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
       venueName: str(form.venue_name) || undefined,
-      venueAddress: str(form.venue_address) || undefined,
+      venueAddress: venueAddress || undefined,
+      venueLat: geo?.lat,
+      venueLng: geo?.lng,
       onlineUrl: str(form.online_url) || undefined,
       createdByActorId: actorId,
     });
@@ -133,6 +139,14 @@ events.post('/events/:id/update', async (c) => {
   }
 
   try {
+    // 住所が変わったときだけ再ジオコーディング(同一なら既存座標を維持)
+    const venueAddress = str(form.venue_address);
+    const geo =
+      venueAddress && venueAddress !== (ctx.event.venueAddress ?? '')
+        ? await geocodeAddress(venueAddress)
+        : venueAddress
+          ? { lat: ctx.event.venueLat ?? undefined, lng: ctx.event.venueLng ?? undefined }
+          : null;
     await updateEvent(db, ctx.event.id, {
       title: str(form.title),
       descriptionMd: str(form.description_md) || undefined,
@@ -140,8 +154,11 @@ events.post('/events/:id/update', async (c) => {
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
       venueName: str(form.venue_name) || undefined,
-      venueAddress: str(form.venue_address) || undefined,
+      venueAddress: venueAddress || undefined,
+      venueLat: geo?.lat ?? undefined,
+      venueLng: geo?.lng ?? undefined,
       onlineUrl: str(form.online_url) || undefined,
+      sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
     });
     return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
   } catch {

@@ -11,6 +11,7 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -189,7 +190,14 @@ export const events = sqliteTable(
     timezone: text('timezone').notNull().default('Asia/Tokyo'),
     venueName: text('venue_name'),
     venueAddress: text('venue_address'),
+    /** 住所から保存時にジオコーディングした座標(地図表示用。失敗時は null) */
+    venueLat: real('venue_lat'),
+    venueLng: real('venue_lng'),
     onlineUrl: text('online_url'),
+    /** セッション欄の表示ラベル(「セッション」/「タイムテーブル」) */
+    sessionsLabel: text('sessions_label', { enum: ['sessions', 'timetable'] })
+      .notNull()
+      .default('sessions'),
     /** draft は下書き。public のみ一覧・連合に流通する */
     visibility: text('visibility', { enum: ['draft', 'public'] })
       .notNull()

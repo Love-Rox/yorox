@@ -23,6 +23,12 @@ function formatDate(d: Date, timeZone: string): string {
 
 const SLOT_METHOD_LABEL = { fcfs: '先着', lottery: '抽選' } as const;
 
+const TIME_FMT = new Intl.DateTimeFormat('ja-JP', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Asia/Tokyo',
+});
+
 const STATUS_LABEL: Record<string, string> = {
   applied: '抽選待ち',
   accepted: '参加確定',
@@ -100,10 +106,42 @@ export default async function EventPage({
         {(event.venueName || event.venueAddress) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-rule p-3 last:border-b-0">
             <dt className="meta-mono w-14 shrink-0 text-sm text-neutral">会場</dt>
-            <dd>
+            <dd className="min-w-0 flex-1">
               <span className="font-bold">{event.venueName}</span>
               {event.venueAddress && (
                 <span className="block text-sm text-neutral">{event.venueAddress}</span>
+              )}
+              {event.venueLat != null && event.venueLng != null && (
+                <iframe
+                  title="会場の地図"
+                  className="mt-3 h-64 w-full border border-rule"
+                  loading="lazy"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${event.venueLng - 0.004}%2C${event.venueLat - 0.0025}%2C${event.venueLng + 0.004}%2C${event.venueLat + 0.0025}&layer=mapnik&marker=${event.venueLat}%2C${event.venueLng}`}
+                />
+              )}
+              {(event.venueAddress || event.venueName) && (
+                <span className="mt-2 flex flex-wrap gap-4 text-sm">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      event.venueAddress ?? event.venueName ?? '',
+                    )}`}
+                    className="link"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Google マップで開く
+                  </a>
+                  {event.venueLat != null && event.venueLng != null && (
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${event.venueLat}&mlon=${event.venueLng}#map=17/${event.venueLat}/${event.venueLng}`}
+                      className="link"
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      OpenStreetMap で開く
+                    </a>
+                  )}
+                </span>
               )}
             </dd>
           </div>
@@ -119,6 +157,34 @@ export default async function EventPage({
           </div>
         )}
       </dl>
+
+      {/* ---- 目次(存在するセクションのみ) ---- */}
+      <nav aria-label="目次" className="mt-4 overflow-x-auto">
+        <ul className="flex w-max gap-2 text-sm">
+          {[
+            event.descriptionMd && { href: '#overview', label: 'イベント概要' },
+            slots.length > 0 && { href: '#slots', label: '参加枠' },
+            sessions.length > 0 && {
+              href: '#sessions',
+              label: event.sessionsLabel === 'timetable' ? 'タイムテーブル' : 'セッション',
+            },
+            materials.length > 0 && { href: '#materials', label: '資料' },
+            event.participantListPublic &&
+              participants.length > 0 && { href: '#participants', label: '参加者' },
+          ]
+            .filter((item): item is { href: string; label: string } => Boolean(item))
+            .map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  className="block whitespace-nowrap border border-ink px-3 py-1.5 font-bold hover:bg-paper-2"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+        </ul>
+      </nav>
 
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
@@ -156,7 +222,7 @@ export default async function EventPage({
       )}
 
       {event.descriptionMd && (
-        <section className="mt-8">
+        <section id="overview" className="mt-8 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">イベント概要</h2>
           <div className="mt-3">
             <Markdown source={event.descriptionMd} />
@@ -179,7 +245,7 @@ export default async function EventPage({
           </section>
         )}
 
-      <section className="mt-10">
+      <section id="slots" className="mt-10 scroll-mt-4">
         <h2 className="display border-b-2 border-ink pb-2 t-md">参加枠</h2>
         {slots.length === 0 ? (
           <p className="mt-3 text-neutral">参加枠は未設定です。</p>
@@ -393,20 +459,39 @@ export default async function EventPage({
       </section>
 
       {sessions.length > 0 && (
-        <section className="mt-10">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">セッション</h2>
+        <section id="sessions" className="mt-10 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            {event.sessionsLabel === 'timetable' ? 'タイムテーブル' : 'セッション'}
+          </h2>
           <ul>
             {sessions.map((session) => (
-              <li key={session.id} className="border-b border-rule py-4">
-                <div className="font-bold">{session.title}</div>
-                {session.speakerName && (
-                  <div className="mt-0.5 text-sm text-neutral">{session.speakerName}</div>
-                )}
-                {session.descriptionMd && (
-                  <p className="mt-2 max-w-[65ch] whitespace-pre-wrap text-sm">
-                    {session.descriptionMd}
-                  </p>
-                )}
+              <li
+                key={session.id}
+                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 border-b border-rule py-4"
+              >
+                <div className="meta-mono pt-0.5 text-sm text-neutral">
+                  {session.startsAt ? (
+                    <>
+                      {TIME_FMT.format(session.startsAt)}
+                      {session.endsAt && (
+                        <span className="block">| {TIME_FMT.format(session.endsAt)}</span>
+                      )}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold">{session.title}</div>
+                  {session.speakerName && (
+                    <div className="mt-0.5 text-sm text-neutral">{session.speakerName}</div>
+                  )}
+                  {session.descriptionMd && (
+                    <p className="mt-2 max-w-[65ch] whitespace-pre-wrap text-sm">
+                      {session.descriptionMd}
+                    </p>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -414,7 +499,7 @@ export default async function EventPage({
       )}
 
       {materials.length > 0 && (
-        <section className="mt-10">
+        <section id="materials" className="mt-10 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">資料</h2>
           <ul className="mt-3 space-y-2">
             {materials.map((material) => (
@@ -429,7 +514,7 @@ export default async function EventPage({
       )}
 
       {event.participantListPublic && participants.length > 0 && (
-        <section className="mt-10">
+        <section id="participants" className="mt-10 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">参加者</h2>
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
             {participants.map((p) => (
