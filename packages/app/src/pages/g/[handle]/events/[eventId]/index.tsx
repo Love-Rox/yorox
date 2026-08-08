@@ -138,8 +138,11 @@ export default async function EventPage({
       />
       <meta name="description" content={ogDescription} />
 
-      <p className="text-sm">
-        <Link to={`/g/${handle}`} className="link">
+      <p className="flex items-center gap-2">
+        <span className="meta-mono border border-ink px-2 py-0.5 text-sm text-neutral">
+          主催
+        </span>
+        <Link to={`/g/${handle}`} className="link font-bold">
           {groupActor?.displayName}
         </Link>
       </p>
@@ -521,7 +524,7 @@ export default async function EventPage({
         </aside>
 
         {/* ---- メインコンテンツ ---- */}
-        <div className="order-2 min-w-0 lg:order-1">
+        <div className="order-2 min-w-0 lg:order-1 [&>section:first-child]:mt-0">
           {event.descriptionMd && (
             <section id="overview" className="mt-8 scroll-mt-4">
               <h2 className="display border-b-2 border-ink pb-2 t-md">イベント概要</h2>

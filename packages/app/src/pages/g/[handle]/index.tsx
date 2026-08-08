@@ -2,7 +2,12 @@ import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import { Markdown } from '../../../lib/markdown';
 import { getCurrentUser } from '../../../server/current-user';
-import { getDb, getGroupByHandle, listGroupEvents } from '../../../server/data';
+import {
+  getDb,
+  getGroupByHandle,
+  listGroupEvents,
+  listOrganizers,
+} from '../../../server/data';
 import { hasGroupPermission } from '../../../server/route-auth';
 
 const DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -22,6 +27,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
     ? await hasGroupPermission(db, actor.id, user.actorId, 'event.create')
     : false;
   const events = await listGroupEvents(db, actor.id, { includeDrafts: canCreate });
+  const organizers = await listOrganizers(db, actor.id);
 
   return (
     <div>
@@ -41,6 +47,26 @@ export default async function GroupPage({ handle }: { handle: string }) {
         <div className="mt-4">
           <Markdown source={group.descriptionMd} />
         </div>
+      )}
+
+      {organizers.length > 0 && (
+        <section className="mt-6">
+          <h2 className="meta-mono text-sm text-neutral">運営メンバー</h2>
+          <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {organizers.map((o) => (
+              <li key={o.actorId}>
+                {o.handle && o.handle !== actor.handle ? (
+                  <Link to={`/g/${o.handle}`} className="link font-bold">
+                    {o.displayName}
+                  </Link>
+                ) : (
+                  <span className="font-bold">{o.displayName}</span>
+                )}
+                <span className="meta-mono ml-1 text-sm text-neutral">({o.roleName})</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <p className="meta-mono mt-10 border-b-2 border-ink pb-2 text-sm text-neutral">
