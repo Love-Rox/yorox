@@ -167,6 +167,31 @@ body {
   border-color: var(--yorox-accent);
 }
 
+/*
+ * 日付・時刻入力のピッカーボタン。
+ * ネイティブのアイコンは小さく目立たないので、押せる「ボタン」に見えるよう
+ * 背景・余白・ホバーを付ける。グリフの色はブラウザが color-scheme に従って
+ * 描くため、ダークモードでも視認できる(index.css 側で color-scheme を宣言)。
+ * Firefox はインジケータのスタイリング不可(ネイティブ表示のまま)。
+ */
+input[type='date'].input::-webkit-calendar-picker-indicator,
+input[type='time'].input::-webkit-calendar-picker-indicator,
+input[type='datetime-local'].input::-webkit-calendar-picker-indicator {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0.375rem;
+  margin-left: 0.25rem;
+  border-radius: calc(var(--yorox-radius) / 2);
+  background-color: var(--yorox-paper-2);
+  cursor: pointer;
+  transition: background-color var(--yorox-dur-base) var(--yorox-ease-out);
+}
+input[type='date'].input::-webkit-calendar-picker-indicator:hover,
+input[type='time'].input::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
+  background-color: var(--yorox-rule);
+}
+
 /* ---- リンク ---- */
 .link {
   color: var(--yorox-accent-2);

@@ -12,6 +12,9 @@
  * 詳細は docs/THEMING.md。
  */
 :root {
+  /* フォーム部品(日付ピッカーのグリフ・ポップアップ等)を OS テーマに追従させる */
+  color-scheme: light;
+
   /* ---- 紙とインク(リソグラフ: クリーム紙 × 藍インク) ---- */
   --yorox-paper: oklch(96.5% 0.02 95);
   --yorox-paper-2: oklch(92.5% 0.028 95);
@@ -57,6 +60,7 @@
  * 色相は変えず、明度・彩度のみ動かす(リソの2色刷りアイデンティティを維持) */
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --yorox-paper: oklch(19% 0.03 265);
     --yorox-paper-2: oklch(24% 0.032 265);
     --yorox-rule: oklch(36% 0.028 265);
