@@ -115,17 +115,39 @@ export async function enqueueEventAnnouncement(db: Db, eventId: string): Promise
 
   const activity = buildEventAnnouncement(group, event);
   const now = new Date();
-  await db.insert(schema.apDeliveries).values(
-    [...inboxes].map((inboxUrl) => ({
-      id: ulid(),
-      signerActorId: group.id,
-      inboxUrl,
-      activityJson: activity as unknown as Record<string, unknown>,
-      nextAttemptAt: now,
-      createdAt: now,
-    })),
-  );
+  // (activityUri, inboxUrl) 一意制約で冪等: 即時配信と cron が重なっても二重に積まれない
+  await db
+    .insert(schema.apDeliveries)
+    .values(
+      [...inboxes].map((inboxUrl) => ({
+        id: ulid(),
+        signerActorId: group.id,
+        inboxUrl,
+        activityUri: activity.id as string,
+        activityJson: activity as unknown as Record<string, unknown>,
+        nextAttemptAt: now,
+        createdAt: now,
+      })),
+    )
+    .onConflictDoNothing();
   return inboxes.size;
+}
+
+/**
+ * 公開直後の即時配信。fan-out してすぐキューを処理する。
+ * リクエストの waitUntil から呼ぶ想定。失敗分は cron が拾い直す。
+ */
+export async function announceEventNow(db: Db, eventId: string): Promise<void> {
+  try {
+    const queued = await enqueueEventAnnouncement(db, eventId);
+    if (queued > 0) {
+      const sent = await processApDeliveries(db, new Date(), Math.max(queued, 10));
+      console.log(`[ap] immediate announce: queued=${queued} sent=${sent} event=${eventId}`);
+    }
+  } catch (err) {
+    // 即時配信の失敗は cron のリトライに任せる
+    console.error(`[ap] immediate announce failed (event=${eventId}):`, err);
+  }
 }
 
 /**

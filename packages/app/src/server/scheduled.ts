@@ -74,8 +74,9 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
     console.log(`[scheduled] dispatched ${processed} domain event(s)`);
   }
 
-  // AP 配信キューの処理(署名付き server-to-server 配信)
-  const delivered = await processApDeliveries(db, now);
+  // AP 配信キューの処理(署名付き server-to-server 配信)。
+  // 直前の dispatch で積まれた分も同一パスで拾えるよう現在時刻で判定する
+  const delivered = await processApDeliveries(db, new Date());
   if (delivered > 0) {
     console.log(`[scheduled] delivered ${delivered} AP activity(ies)`);
   }

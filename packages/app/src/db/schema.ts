@@ -103,6 +103,8 @@ export const apDeliveries = sqliteTable(
       .notNull()
       .references(() => actors.id),
     inboxUrl: text('inbox_url').notNull(),
+    /** アクティビティ id。(activityUri, inboxUrl) で冪等化(即時配信と cron の二重積み防止) */
+    activityUri: text('activity_uri'),
     activityJson: text('activity_json', { mode: 'json' })
       .$type<Record<string, unknown>>()
       .notNull(),
@@ -112,7 +114,10 @@ export const apDeliveries = sqliteTable(
     sentAt: integer('sent_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (t) => [index('ap_deliveries_pending_idx').on(t.sentAt, t.nextAttemptAt)],
+  (t) => [
+    index('ap_deliveries_pending_idx').on(t.sentAt, t.nextAttemptAt),
+    uniqueIndex('ap_deliveries_activity_inbox_unique').on(t.activityUri, t.inboxUrl),
+  ],
 );
 
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */

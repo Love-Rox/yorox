@@ -16,6 +16,7 @@ import {
 } from '../domain/participation';
 import type { SlotConditions } from '../db/schema';
 import { geocodeAddress } from '../lib/geocode';
+import { announceEventNow } from './ap-delivery';
 import { getSlotCoordinator } from './coordinator';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -179,6 +180,8 @@ events.post('/events/:id/publish', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   await publishEvent(db, ctx.event.id);
+  // フォロワーへの AP 告知は応答をブロックせず即時配信(失敗分は cron が再試行)
+  c.executionCtx.waitUntil(announceEventNow(db, ctx.event.id));
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 
