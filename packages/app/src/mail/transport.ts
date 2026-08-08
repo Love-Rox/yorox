@@ -1,6 +1,7 @@
 /**
  * メールトランスポートの抽象化(docs/MAIL.md)。
  *
+ * - cloudflare: Cloudflare Email Service(send_email バインディング、API キー不要)
  * - resend: Resend の HTTP API
  * - smtp: worker-mailer(cloudflare:sockets)。Gmail は smtp.gmail.com:587 +
  *   アプリパスワードでこのトランスポートをそのまま使える
@@ -76,6 +77,40 @@ export class ResendTransport implements MailTransport {
   }
 }
 
+/** "Yorox <noreply@example.com>" 形式を分解する */
+export function parseFrom(from: string): { email: string; name?: string } {
+  const m = /^(.*)<([^>]+)>\s*$/.exec(from);
+  if (m) {
+    const name = m[1]!.trim().replace(/^"|"$/g, '');
+    return name ? { email: m[2]!.trim(), name } : { email: m[2]!.trim() };
+  }
+  return { email: from.trim() };
+}
+
+/**
+ * Cloudflare Email Service(send_email バインディング)。
+ * ドメインを `wrangler email sending enable <domain>` で有効化しておくこと。
+ */
+export class CloudflareEmailTransport implements MailTransport {
+  readonly name = 'cloudflare';
+
+  constructor(
+    private readonly binding: SendEmail,
+    private readonly from: string,
+  ) {}
+
+  async send(message: MailMessage): Promise<void> {
+    const from = parseFrom(this.from);
+    const builder: EmailMessageBuilder = {
+      to: message.to,
+      from: from.name ? { email: from.email, name: from.name } : from.email,
+      subject: message.subject,
+      text: message.bodyText,
+    };
+    await this.binding.send(builder);
+  }
+}
+
 export interface SmtpConfig {
   host: string;
   port: number;
@@ -133,6 +168,10 @@ export class SmtpTransport implements MailTransport {
 export function createTransportFromEnv(env: Env): MailTransport | null {
   const from = env.MAIL_FROM;
   if (!from) return null;
+
+  if (env.MAIL_TRANSPORT === 'cloudflare' && env.EMAIL) {
+    return new CloudflareEmailTransport(env.EMAIL, from);
+  }
 
   if (env.MAIL_TRANSPORT === 'smtp' && env.SMTP_HOST) {
     const port = Number.parseInt(env.SMTP_PORT ?? '587', 10);

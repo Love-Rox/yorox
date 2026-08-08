@@ -4,7 +4,7 @@ declare module '*.css';
 // 注: SLOT_COORDINATOR は wrangler types が Fetcher として生成する。
 //     RPC の型付けは src/server/coordinator.ts の境界ヘルパーで行う
 interface Env {
-  /** 'resend' | 'smtp'。未指定時は RESEND_API_KEY があれば resend */
+  /** 'cloudflare' | 'resend' | 'smtp'。未指定時は RESEND_API_KEY があれば resend */
   MAIL_TRANSPORT?: string;
   /** 送信元(例: Yorox <noreply@yorox.example>)。未設定ならメール送信無効 */
   MAIL_FROM?: string;

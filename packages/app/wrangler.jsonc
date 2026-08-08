@@ -2,6 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "yorox",
   "main": "./src/waku.server",
+  "routes": [
+    {
+      "pattern": "yorox.love-rox.cc",
+      "custom_domain": true
+    }
+  ],
   // nodejs_als is required for Waku server-side request context
   "compatibility_flags": ["nodejs_als"],
   "compatibility_date": "2025-11-17",
@@ -18,8 +24,17 @@
       "migrations_dir": "./drizzle/migrations"
     }
   ],
+  "send_email": [
+    {
+      // Cloudflare Email Service(yorox.love-rox.cc は sending 有効化済み)
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["noreply@yorox.love-rox.cc"]
+    }
+  ],
   "vars": {
-    // ファイルアップロード有効(R2)。メールはシークレット設定後に有効化される
+    "MAIL_TRANSPORT": "cloudflare",
+    "MAIL_FROM": "Yorox <noreply@yorox.love-rox.cc>",
+    // ファイルアップロード有効(R2)
     "FILE_UPLOADS": "1",
     "MAX_UPLOAD_MB": "5",
     "MAIL_RATE_PER_MINUTE": "10",
