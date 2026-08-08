@@ -24,6 +24,7 @@ const MD_FMT = new Intl.DateTimeFormat('ja-JP', {
   day: '2-digit',
   timeZone: TZ,
 });
+const YEAR_FMT = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', timeZone: TZ });
 const WD_FMT = new Intl.DateTimeFormat('ja-JP', { weekday: 'short', timeZone: TZ });
 const FULL_FMT = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
@@ -132,7 +133,8 @@ export default async function EventPage({
       {/* ---- ヘッダー: 日付を主役に ---- */}
       <header className="mt-3 flex flex-wrap items-start gap-x-8 gap-y-4">
         <div className="shrink-0 border-b-4 border-accent pb-2">
-          <div className="display t-display leading-none">
+          <div className="meta-mono text-sm text-neutral">{YEAR_FMT.format(event.startsAt)}</div>
+          <div className="display t-display mt-1 leading-none">
             {MD_FMT.format(event.startsAt)}
             <span className="ml-2 text-[0.4em] text-neutral">
               ({WD_FMT.format(event.startsAt)})
@@ -202,6 +204,35 @@ export default async function EventPage({
           )}
         </div>
       )}
+
+      {/* ---- 目次(ページ内リンク) ---- */}
+      <nav aria-label="目次" className="mt-6 overflow-x-auto border-b border-rule pb-3">
+        <ul className="flex w-max gap-2 text-sm">
+          {[
+            event.descriptionMd && { href: '#overview', label: 'イベント概要' },
+            { href: '#slots', label: '参加枠' },
+            sessions.length > 0 && { href: '#sessions', label: sessionsLabel },
+            materials.length > 0 && { href: '#materials', label: '資料' },
+            event.participantListPublic &&
+              participants.length > 0 && { href: '#participants', label: '参加者' },
+            (event.venueName || event.onlineUrl) && {
+              href: '#venue',
+              label: '会場・配信',
+            },
+          ]
+            .filter((item): item is { href: string; label: string } => Boolean(item))
+            .map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  className="block whitespace-nowrap border border-ink px-3 py-1.5 font-bold hover:bg-paper-2"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+        </ul>
+      </nav>
 
       {/* ---- 2カラム(SP: 申込パネル → コンテンツ の順) ---- */}
       <div className="mt-8 flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
@@ -476,35 +507,6 @@ export default async function EventPage({
 
         {/* ---- メインコンテンツ ---- */}
         <div className="order-2 min-w-0 lg:order-1">
-          {/* 目次 */}
-          <nav aria-label="目次" className="overflow-x-auto">
-            <ul className="flex w-max gap-2 text-sm">
-              {[
-                event.descriptionMd && { href: '#overview', label: 'イベント概要' },
-                { href: '#slots', label: '参加枠' },
-                sessions.length > 0 && { href: '#sessions', label: sessionsLabel },
-                materials.length > 0 && { href: '#materials', label: '資料' },
-                event.participantListPublic &&
-                  participants.length > 0 && { href: '#participants', label: '参加者' },
-                (event.venueName || event.onlineUrl) && {
-                  href: '#venue',
-                  label: '会場・配信',
-                },
-              ]
-                .filter((item): item is { href: string; label: string } => Boolean(item))
-                .map((item) => (
-                  <li key={item.href}>
-                    <a
-                      href={item.href}
-                      className="block whitespace-nowrap border border-ink px-3 py-1.5 font-bold hover:bg-paper-2"
-                    >
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-            </ul>
-          </nav>
-
           {event.descriptionMd && (
             <section id="overview" className="mt-8 scroll-mt-4">
               <h2 className="display border-b-2 border-ink pb-2 t-md">イベント概要</h2>
