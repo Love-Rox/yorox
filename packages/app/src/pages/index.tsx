@@ -31,11 +31,16 @@ export default async function HomePage() {
         <p className="meta-mono text-sm text-neutral">
           今後のイベント · {upcoming.length}件
         </p>
-        {user && (
-          <Link to="/groups/new" className="link text-sm">
-            グループを作る
+        <span className="flex gap-4 text-sm">
+          <Link to="/docs" className="link">
+            使い方
           </Link>
-        )}
+          {user && (
+            <Link to="/groups/new" className="link">
+              グループを作る
+            </Link>
+          )}
+        </span>
       </div>
 
       {upcoming.length === 0 ? (
@@ -54,23 +59,38 @@ export default async function HomePage() {
                   {WEEKDAY_FMT.format(event.startsAt)} {TIME_FMT.format(event.startsAt)}
                 </span>
               </div>
-              <div className="min-w-0">
-                <Link
-                  to={`/g/${event.groupHandle}/events/${event.id}`}
-                  className="event-row__title"
-                >
-                  {event.title}
-                </Link>
-                <div className="mt-1 text-sm text-neutral">
-                  <Link to={`/g/${event.groupHandle}`} className="link">
-                    {event.groupName}
+              <div className="flex min-w-0 flex-1 items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <Link
+                    to={`/g/${event.groupHandle}/events/${event.id}`}
+                    className="event-row__title"
+                  >
+                    {event.title}
                   </Link>
-                  {event.venueName
-                    ? ` · ${event.venueName}`
-                    : event.onlineUrl
-                      ? ' · オンライン'
-                      : ''}
+                  <div className="mt-1 text-sm text-neutral">
+                    <Link to={`/g/${event.groupHandle}`} className="link">
+                      {event.groupName}
+                    </Link>
+                    {event.venueName
+                      ? ` · ${event.venueName}`
+                      : event.onlineUrl
+                        ? ' · オンライン'
+                        : ''}
+                  </div>
                 </div>
+                {event.thumbnailUrl && (
+                  <Link
+                    to={`/g/${event.groupHandle}/events/${event.id}`}
+                    className="hidden shrink-0 sm:block"
+                  >
+                    <img
+                      src={event.thumbnailUrl}
+                      alt=""
+                      loading="lazy"
+                      className="h-20 w-36 border border-rule object-cover"
+                    />
+                  </Link>
+                )}
               </div>
             </li>
           ))}

@@ -19,6 +19,7 @@ export async function listUpcomingEvents(db: Db, limit = 20) {
       startsAt: schema.events.startsAt,
       venueName: schema.events.venueName,
       onlineUrl: schema.events.onlineUrl,
+      thumbnailUrl: schema.events.thumbnailUrl,
       groupHandle: schema.actors.handle,
       groupName: schema.actors.displayName,
     })
