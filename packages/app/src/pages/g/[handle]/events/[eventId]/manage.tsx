@@ -252,10 +252,21 @@ export default async function ManagePage({
                 <span className="text-sm font-bold">タイトル *</span>
                 <input type="text" name="title" required maxLength={200} className="input mt-1" />
               </label>
-              <label className="block">
-                <span className="text-sm font-bold">登壇者名</span>
-                <input type="text" name="speaker_name" maxLength={100} className="input mt-1" />
-              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-bold">登壇者名</span>
+                  <input type="text" name="speaker_name" maxLength={100} className="input mt-1" />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold">登壇者リンク(SNS・サイト)</span>
+                  <input
+                    type="url"
+                    name="speaker_url"
+                    className="input meta-mono mt-1"
+                    placeholder="https://x.com/…"
+                  />
+                </label>
+              </div>
               <label className="block">
                 <span className="text-sm font-bold">概要</span>
                 <textarea name="description_md" rows={3} className="input mt-1" />

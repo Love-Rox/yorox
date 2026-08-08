@@ -224,6 +224,7 @@ manage.post('/events/:id/sessions', async (c) => {
     title,
     descriptionMd: str(form.description_md) || null,
     speakerName: str(form.speaker_name) || null,
+    speakerUrl: /^https?:\/\//.test(str(form.speaker_url)) ? str(form.speaker_url) : null,
     startsAt: parseLocalDateTime(form.starts_at) ?? null,
     endsAt: parseLocalDateTime(form.ends_at) ?? null,
     sortOrder: existing.length,

@@ -3,12 +3,14 @@ import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
 } from 'waku/router/server';
+import { ServiceIcon } from '../../../../../components/service-icon';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
 import {
   getDb,
   getEventDetail,
   getOwnParticipations,
+  listOrganizers,
   listVisibleParticipants,
 } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
@@ -89,6 +91,18 @@ export default async function EventPage({
   const participants = event.participantListPublic
     ? await listVisibleParticipants(db, eventId)
     : [];
+  const organizers = await listOrganizers(db, event.groupActorId);
+  // 登壇者(セッションから重複を除いて収集)
+  const speakers = [
+    ...new Map(
+      sessions
+        .filter((s) => s.speakerName)
+        .map((s) => [
+          `${s.speakerName}|${s.speakerUrl ?? ''}`,
+          { name: s.speakerName!, url: s.speakerUrl },
+        ]),
+    ).values(),
+  ];
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
@@ -213,6 +227,7 @@ export default async function EventPage({
             { href: '#slots', label: '参加枠' },
             sessions.length > 0 && { href: '#sessions', label: sessionsLabel },
             materials.length > 0 && { href: '#materials', label: '資料' },
+            { href: '#people', label: '主催・登壇' },
             event.participantListPublic &&
               participants.length > 0 && { href: '#participants', label: '参加者' },
             (event.venueName || event.onlineUrl) && {
@@ -555,7 +570,19 @@ export default async function EventPage({
                       <div className="font-bold">{session.title}</div>
                       {session.speakerName && (
                         <div className="mt-0.5 text-sm text-neutral">
-                          {session.speakerName}
+                          {session.speakerUrl ? (
+                            <a
+                              href={session.speakerUrl}
+                              className="link inline-flex items-center gap-1"
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <ServiceIcon url={session.speakerUrl} />
+                              {session.speakerName}
+                            </a>
+                          ) : (
+                            session.speakerName
+                          )}
                         </div>
                       )}
                       {session.descriptionMd && (
@@ -569,6 +596,59 @@ export default async function EventPage({
               </ul>
             </section>
           )}
+
+          {/* ---- 主催・登壇 ---- */}
+          <section id="people" className="mt-10 scroll-mt-4">
+            <h2 className="display border-b-2 border-ink pb-2 t-md">主催・登壇</h2>
+            <div className="mt-3 space-y-4">
+              <div>
+                <h3 className="meta-mono text-sm text-neutral">主催</h3>
+                <ul className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <li className="font-bold">
+                    <Link to={`/g/${handle}`} className="link">
+                      {groupActor?.displayName}
+                    </Link>
+                  </li>
+                  {organizers.map((o) => (
+                    <li key={o.actorId} className="text-sm">
+                      {o.handle ? (
+                        <Link to={`/g/${o.handle}`} className="link">
+                          {o.displayName}
+                        </Link>
+                      ) : (
+                        o.displayName
+                      )}
+                      <span className="meta-mono ml-1 text-neutral">({o.roleName})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {speakers.length > 0 && (
+                <div>
+                  <h3 className="meta-mono text-sm text-neutral">登壇</h3>
+                  <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    {speakers.map((sp) => (
+                      <li key={`${sp.name}-${sp.url ?? ''}`}>
+                        {sp.url ? (
+                          <a
+                            href={sp.url}
+                            className="link inline-flex items-center gap-1"
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            <ServiceIcon url={sp.url} />
+                            {sp.name}
+                          </a>
+                        ) : (
+                          sp.name
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
 
           {materials.length > 0 && (
             <section id="materials" className="mt-10 scroll-mt-4">

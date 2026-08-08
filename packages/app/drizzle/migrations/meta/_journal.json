@@ -50,6 +50,13 @@
       "when": 1786163812498,
       "tag": "0006_thumbnail",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1786164492837,
+      "tag": "0007_speaker-url",
+      "breakpoints": true
     }
   ]
 }

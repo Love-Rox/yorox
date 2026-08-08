@@ -1,0 +1,1 @@
+ALTER TABLE `event_sessions` ADD `speaker_url` text;

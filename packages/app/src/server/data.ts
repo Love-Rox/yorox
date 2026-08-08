@@ -163,6 +163,23 @@ export async function listManageParticipations(db: Db, eventId: string) {
   return { rows, history };
 }
 
+/** 主催メンバー(event.edit 権限を持つロールのメンバー) */
+export async function listOrganizers(db: Db, groupActorId: string) {
+  const rows = await db
+    .select({
+      actorId: schema.actors.id,
+      displayName: schema.actors.displayName,
+      handle: schema.actors.handle,
+      permissions: schema.groupRoles.permissions,
+      roleName: schema.groupRoles.name,
+    })
+    .from(schema.groupMembers)
+    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
+    .innerJoin(schema.actors, eq(schema.groupMembers.memberActorId, schema.actors.id))
+    .where(eq(schema.groupMembers.groupActorId, groupActorId));
+  return rows.filter((r) => r.permissions.includes('event.edit'));
+}
+
 /** 自分の参加状態(イベント内の全枠分) */
 export async function getOwnParticipations(db: Db, eventId: string, actorId: string) {
   const rows = await db

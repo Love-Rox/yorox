@@ -235,6 +235,8 @@ export const eventSessions = sqliteTable(
     speakerActorId: text('speaker_actor_id').references(() => actors.id),
     /** アクターに紐付かない登壇者名(外部ゲスト等) */
     speakerName: text('speaker_name'),
+    /** 登壇者のリンク(SNS・サイト等)。ホスト名からサービスアイコンを判定して表示 */
+    speakerUrl: text('speaker_url'),
     startsAt: integer('starts_at', { mode: 'timestamp_ms' }),
     endsAt: integer('ends_at', { mode: 'timestamp_ms' }),
     sortOrder: integer('sort_order').notNull().default(0),
