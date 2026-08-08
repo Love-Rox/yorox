@@ -202,6 +202,15 @@ export async function listOrganizers(db: Db, groupActorId: string) {
   return rows.filter((r) => r.permissions.includes('event.edit'));
 }
 
+/** AP フォロワー数 */
+export async function countFollowers(db: Db, actorId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.follows)
+    .where(eq(schema.follows.followedActorId, actorId));
+  return row?.n ?? 0;
+}
+
 /** 自分の参加状態(イベント内の全枠分) */
 export async function getOwnParticipations(db: Db, eventId: string, actorId: string) {
   const rows = await db

@@ -65,6 +65,31 @@ export const actors = sqliteTable(
   ],
 );
 
+/**
+ * AP フォロー関係。followerActorId(リモート/ローカル問わず actors 行)が
+ * followedActorId(当面はローカルグループ)をフォローする。
+ * 受理即 accepted(承認制は将来拡張)。Undo(Follow) で行削除。
+ */
+export const follows = sqliteTable(
+  'follows',
+  {
+    id: text('id').primaryKey(), // ULID
+    followerActorId: text('follower_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    followedActorId: text('followed_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    /** 受信した Follow アクティビティの id(Undo 照合・Accept の object 用) */
+    activityUri: text('activity_uri'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('follows_pair_unique').on(t.followerActorId, t.followedActorId),
+    index('follows_followed_idx').on(t.followedActorId),
+  ],
+);
+
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
 export const users = sqliteTable('users', {
   actorId: text('actor_id')

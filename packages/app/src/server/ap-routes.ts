@@ -8,19 +8,27 @@
  */
 import {
   acceptsActivityPub,
+  activities,
   AP_MEDIA_TYPE,
   buildEmptyOutbox,
   buildEventObject,
   buildGroupActor,
+  buildOrderedCollection,
   JRD_MEDIA_TYPE,
   parseAcct,
+  parseSignatureHeader,
+  verifyRequest,
+  type ApActivity,
 } from '@yorox/ap';
-import { eq, and, isNull } from 'drizzle-orm';
+import { count, eq, and, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
+import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
+import { resolveRemoteActorByKeyId } from '../lib/remote-actor';
+import { ulid } from '../lib/ulid';
 
 async function getEnv(): Promise<Env> {
   // cloudflare:workers はビルド時に workerd ランタイムでのみ解決される
@@ -103,16 +111,153 @@ ap.get('/nodeinfo/2.1', (c) => {
 });
 
 /**
- * 共有 inbox / アクター inbox。
- * MVP では連合を受け付けない: URL 予約のみ行い 501 を返す。
+ * 未実装の inbox。URL 予約のみ行い 501 を返す。
  */
 const notFederatedYet = (c: Context) =>
   c.text('Federation is not enabled on this instance yet', 501);
 
 ap.post('/inbox', notFederatedYet);
 ap.post('/users/:id/inbox', notFederatedYet);
-ap.post('/groups/:id/inbox', notFederatedYet);
 ap.post('/events/:id/inbox', notFederatedYet);
+
+/** Date ヘッダの許容時刻ずれ(リプレイ攻撃の緩和) */
+const MAX_CLOCK_SKEW_MS = 60 * 60 * 1000;
+
+/**
+ * 受信リクエストの HTTP Signature を検証し、署名者のアクター行を返す。
+ * 鍵ローテーション追従のため、検証失敗時は一度だけ再フェッチして再試行する。
+ */
+async function verifyInboxRequest(c: Context, body: string) {
+  const signatureHeader = c.req.header('signature');
+  if (!signatureHeader) return null;
+  const parsed = parseSignatureHeader(signatureHeader);
+  if (!parsed) return null;
+
+  const dateHeader = c.req.header('date');
+  if (dateHeader) {
+    const skew = Math.abs(Date.now() - new Date(dateHeader).getTime());
+    if (!Number.isFinite(skew) || skew > MAX_CLOCK_SKEW_MS) return null;
+  }
+
+  // 署名対象ヘッダを実リクエストから集める
+  const headers: Record<string, string> = {};
+  for (const name of parsed.headers) {
+    if (name === '(request-target)') continue;
+    const value = c.req.header(name);
+    if (value === undefined) return null;
+    headers[name] = value;
+  }
+  const path = new URL(c.req.url).pathname;
+
+  const db = createDb((await getEnv()).DB);
+  for (const forceRefresh of [false, true]) {
+    const signer = await resolveRemoteActorByKeyId(db, parsed.keyId, { forceRefresh });
+    if (!signer?.publicKeyPem) {
+      console.warn('inbox: signer resolution failed', parsed.keyId);
+      return null;
+    }
+    const ok = await verifyRequest({
+      method: c.req.method,
+      path,
+      headers,
+      body,
+      parsed,
+      publicKeyPem: signer.publicKeyPem,
+    });
+    if (ok) return signer;
+  }
+  console.warn('inbox: signature verification failed', parsed.keyId);
+  return null;
+}
+
+/**
+ * グループの inbox。Follow / Undo(Follow) を処理する。
+ * それ以外のアクティビティは受領のみ(202)。
+ */
+ap.post('/groups/:id/inbox', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, c.req.param('id')),
+  });
+  if (!group || group.kind !== 'group' || group.state !== 'local') return c.notFound();
+
+  const body = await c.req.text();
+  let activity: ApActivity;
+  try {
+    activity = JSON.parse(body) as ApActivity;
+  } catch {
+    return c.text('invalid json', 400);
+  }
+  if (!activity?.type || typeof activity.actor !== 'string') {
+    return c.text('invalid activity', 400);
+  }
+
+  const signer = await verifyInboxRequest(c, body);
+  if (!signer) return c.text('signature verification failed', 401);
+  // なりすまし防止: アクティビティの actor と署名者が一致すること
+  if (activity.actor !== signer.uri) return c.text('actor mismatch', 401);
+
+  if (activity.type === 'Follow') {
+    const objectUri = typeof activity.object === 'string' ? activity.object : undefined;
+    if (objectUri !== group.uri) return c.text('object mismatch', 400);
+
+    await db
+      .insert(schema.follows)
+      .values({
+        id: ulid(),
+        followerActorId: signer.id,
+        followedActorId: group.id,
+        activityUri: typeof activity.id === 'string' ? activity.id : null,
+        createdAt: new Date(),
+      })
+      .onConflictDoNothing();
+
+    // Accept(Follow) を署名付きで返送(応答をブロックしない)
+    const inboxUrl = signer.sharedInboxUrl ?? signer.inboxUrl;
+    if (inboxUrl) {
+      const keys = await ensureActorKeys(db, group.id);
+      const accept = activities.accept(group.uri, activity, {
+        id: `${group.uri}#accepts/follows/${ulid()}`,
+        to: signer.uri,
+      });
+      c.executionCtx.waitUntil(
+        deliverActivity({
+          activity: accept,
+          inboxUrl,
+          actorUri: group.uri,
+          privateKeyPem: keys.privateKeyPem,
+        }).then((ok) => {
+          if (!ok) console.warn('inbox: Accept delivery failed', inboxUrl);
+        }),
+      );
+    }
+    return c.body(null, 202);
+  }
+
+  if (activity.type === 'Undo') {
+    const object = activity.object;
+    const isUndoFollow =
+      typeof object === 'object' &&
+      object !== null &&
+      !Array.isArray(object) &&
+      object.type === 'Follow';
+    if (isUndoFollow) {
+      await db
+        .delete(schema.follows)
+        .where(
+          and(
+            eq(schema.follows.followerActorId, signer.id),
+            eq(schema.follows.followedActorId, group.id),
+          ),
+        );
+    }
+    return c.body(null, 202);
+  }
+
+  // 未対応のアクティビティは受領のみ
+  return c.body(null, 202);
+});
 
 /** イベントの人間向け URL を引く(短縮 URL・正規 URI からのリダイレクト用) */
 async function findEventHumanUrl(origin: string, eventId: string): Promise<string | null> {
@@ -193,7 +338,7 @@ ap.get('/groups/:id', async (c, next) => {
   if (!actor?.handle || actor.kind !== 'group') return c.notFound();
   const origin = new URL(c.req.url).origin;
   if (acceptsActivityPub(c.req.header('accept'))) {
-    const publicKeyPem = await ensureActorKeys(db, actor.id);
+    const { publicKeyPem } = await ensureActorKeys(db, actor.id);
     const doc = buildGroupActor({
       uri: actor.uri,
       handle: actor.handle,
@@ -211,6 +356,25 @@ ap.get('/groups/:id', async (c, next) => {
     return c.body(JSON.stringify(doc), 200, { 'content-type': AP_MEDIA_TYPE });
   }
   return c.redirect(`${origin}/g/${actor.handle}`, 302);
+});
+
+/** グループのフォロワーコレクション(件数のみ公開) */
+ap.get('/groups/:id/followers', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const actor = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, c.req.param('id')),
+  });
+  if (!actor || actor.kind !== 'group') return c.notFound();
+  const [row] = await db
+    .select({ n: count() })
+    .from(schema.follows)
+    .where(eq(schema.follows.followedActorId, actor.id));
+  return c.body(
+    JSON.stringify(buildOrderedCollection(`${actor.uri}/followers`, row?.n ?? 0)),
+    200,
+    { 'content-type': AP_MEDIA_TYPE },
+  );
 });
 
 /** グループの outbox(配信実装までは空コレクション) */

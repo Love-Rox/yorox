@@ -4,6 +4,7 @@ import { Avatar } from '../../../components/avatar';
 import { Markdown } from '../../../lib/markdown';
 import { getCurrentUser } from '../../../server/current-user';
 import {
+  countFollowers,
   getDb,
   getGroupByHandle,
   listGroupEvents,
@@ -33,6 +34,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
     : false;
   const events = await listGroupEvents(db, actor.id, { includeDrafts: canCreate });
   const organizers = await listOrganizers(db, actor.id);
+  const followerCount = await countFollowers(db, actor.id);
 
   return (
     <div>
@@ -40,7 +42,12 @@ export default async function GroupPage({ handle }: { handle: string }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="display t-xl">{actor.displayName}</h1>
-          <p className="meta-mono mt-1 text-sm text-neutral">@{actor.handle}</p>
+          <p className="meta-mono mt-1 text-sm text-neutral">
+            @{actor.handle}
+            {followerCount > 0 && (
+              <span className="ml-3">フォロワー {followerCount}</span>
+            )}
+          </p>
         </div>
         <span className="flex gap-3">
           {canSettings && (

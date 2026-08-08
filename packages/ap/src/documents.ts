@@ -28,6 +28,7 @@ export function buildGroupActor(input: GroupActorInput): ApActor {
     name: input.name,
     inbox: `${input.uri}/inbox`,
     outbox: `${input.uri}/outbox`,
+    followers: `${input.uri}/followers`,
   };
   if (input.summary) actor.summary = input.summary;
   if (input.url) actor.url = input.url;
@@ -110,4 +111,23 @@ export function buildEmptyOutbox(uri: string): ApCollection {
     totalItems: 0,
     orderedItems: [],
   };
+}
+
+/**
+ * OrderedCollection(followers など)。
+ * items 省略時は件数のみ公開する(フォロワー一覧の列挙を避ける Mastodon 互換挙動)。
+ */
+export function buildOrderedCollection(
+  uri: string,
+  totalItems: number,
+  orderedItems?: string[],
+): ApCollection {
+  const collection: ApCollection = {
+    '@context': AS_CONTEXT,
+    id: uri,
+    type: 'OrderedCollection',
+    totalItems,
+  };
+  if (orderedItems) collection.orderedItems = orderedItems;
+  return collection;
 }

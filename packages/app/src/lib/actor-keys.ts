@@ -12,13 +12,20 @@ function toPem(buffer: ArrayBuffer, label: string): string {
   return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
 }
 
-/** アクターの公開鍵 PEM を返す(未生成なら RSA 2048 を生成して保存) */
-export async function ensureActorKeys(db: Db, actorId: string): Promise<string> {
+export interface ActorKeys {
+  publicKeyPem: string;
+  privateKeyPem: string;
+}
+
+/** アクターの鍵ペア PEM を返す(未生成なら RSA 2048 を生成して保存) */
+export async function ensureActorKeys(db: Db, actorId: string): Promise<ActorKeys> {
   const actor = await db.query.actors.findFirst({
     where: eq(schema.actors.id, actorId),
   });
   if (!actor) throw new Error(`actor not found: ${actorId}`);
-  if (actor.publicKeyPem) return actor.publicKeyPem;
+  if (actor.publicKeyPem && actor.privateKeyPem) {
+    return { publicKeyPem: actor.publicKeyPem, privateKeyPem: actor.privateKeyPem };
+  }
 
   const pair = await crypto.subtle.generateKey(
     {
@@ -43,5 +50,5 @@ export async function ensureActorKeys(db: Db, actorId: string): Promise<string> 
     .update(schema.actors)
     .set({ publicKeyPem, privateKeyPem })
     .where(eq(schema.actors.id, actorId));
-  return publicKeyPem;
+  return { publicKeyPem, privateKeyPem };
 }
