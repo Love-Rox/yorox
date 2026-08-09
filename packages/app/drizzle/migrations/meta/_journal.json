@@ -134,6 +134,13 @@
       "when": 1786234169241,
       "tag": "0018_speaker-slot",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1786236645004,
+      "tag": "0019_actor-emojis",
+      "breakpoints": true
     }
   ]
 }

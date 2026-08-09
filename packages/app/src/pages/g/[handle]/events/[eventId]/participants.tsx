@@ -1,5 +1,6 @@
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
+import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
 import { getCurrentUser } from '../../../../../server/current-user';
 import {
@@ -64,7 +65,7 @@ export default async function ParticipantsPage({
                   <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                   {p.domain ? (
                     <a href={p.uri} className="link font-bold" rel="noreferrer" target="_blank">
-                      {p.displayName}
+                      <ActorName name={p.displayName} emojis={p.emojis} />
                       <span className="meta-mono ml-2 text-sm font-normal text-neutral">
                         @{p.handle}@{p.domain}
                       </span>

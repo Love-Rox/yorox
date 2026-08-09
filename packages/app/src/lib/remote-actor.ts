@@ -33,6 +33,21 @@ export async function fetchRemoteActor(uri: string): Promise<ApActor | null> {
   }
 }
 
+
+/** アクター文書の Emoji タグ(カスタム絵文字)を shortcode → URL の辞書にする */
+function extractEmojis(doc: ApActor): Record<string, string> | null {
+  const tags = doc.tag;
+  if (!Array.isArray(tags)) return null;
+  const emojis: Record<string, string> = {};
+  for (const tag of tags as Record<string, unknown>[]) {
+    if (tag.type !== 'Emoji' || typeof tag.name !== 'string') continue;
+    const icon = tag.icon as { url?: unknown } | undefined;
+    if (typeof icon?.url !== 'string') continue;
+    emojis[tag.name.replace(/^:|:$/g, '')] = icon.url;
+  }
+  return Object.keys(emojis).length > 0 ? emojis : null;
+}
+
 /**
  * リモートアクター文書を actors に upsert し、行を返す。
  * 既存行があればプロフィール・鍵を更新する(鍵ローテーション追従)。
@@ -53,6 +68,7 @@ export async function upsertRemoteActor(db: Db, doc: ApActor) {
     displayName,
     summary: typeof doc.summary === 'string' ? doc.summary : null,
     avatarUrl: doc.icon?.url ?? null,
+    emojis: extractEmojis(doc),
     publicKeyPem: doc.publicKey?.publicKeyPem ?? null,
     updatedAt: now,
   };

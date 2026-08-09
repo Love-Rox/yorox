@@ -28,7 +28,11 @@ import { ensureActorKeys } from '../lib/actor-keys';
 import { buildEventAnnouncement } from './ap-delivery';
 import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
-import { resolveRemoteActorByKeyId } from '../lib/remote-actor';
+import {
+  fetchRemoteActor,
+  resolveRemoteActorByKeyId,
+  upsertRemoteActor,
+} from '../lib/remote-actor';
 import { ulid } from '../lib/ulid';
 import { claimByCode } from './claim';
 import {
@@ -173,7 +177,18 @@ async function verifyInboxRequest(c: Context, body: string) {
       parsed,
       publicKeyPem: signer.publicKeyPem,
     });
-    if (ok) return signer;
+    if (ok) {
+      // プロフィール(名前・アバター・カスタム絵文字)が古ければ裏で再取得
+      const STALE_MS = 24 * 60 * 60 * 1000;
+      if (signer.state !== 'local' && Date.now() - signer.updatedAt.getTime() > STALE_MS) {
+        c.executionCtx.waitUntil(
+          fetchRemoteActor(signer.uri)
+            .then((doc) => (doc ? upsertRemoteActor(db, doc).then(() => undefined) : undefined))
+            .catch(() => undefined),
+        );
+      }
+      return signer;
+    }
   }
   console.warn('inbox: signature verification failed', parsed.keyId);
   return null;

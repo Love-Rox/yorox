@@ -48,6 +48,8 @@ export const actors = sqliteTable(
     avatarUrl: text('avatar_url'),
     /** プロフィールのリンク(SNS・サイト等の URL 配列) */
     profileLinks: text('profile_links', { mode: 'json' }).$type<string[]>(),
+    /** リモートアクターのカスタム絵文字(shortcode → 画像 URL)。表示名の :code: 置換用 */
+    emojis: text('emojis', { mode: 'json' }).$type<Record<string, string>>(),
     /** AP 用 RSA 鍵ペア(PEM)。アクター文書の初回参照時に遅延生成 */
     publicKeyPem: text('public_key_pem'),
     privateKeyPem: text('private_key_pem'),

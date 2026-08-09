@@ -4,6 +4,7 @@
  * 受付でのリアルタイム検索(名前・ハンドルの部分一致)のためクライアント側で絞り込む。
  */
 import { useState } from 'react';
+import { ActorName } from './actor-name';
 import { Avatar } from './avatar';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,6 +50,7 @@ export interface ManageRow {
   handle: string | null;
   domain: string | null;
   avatarUrl: string | null;
+  emojis: Record<string, string> | null;
   attendanceStatus: string | null;
   paymentId: string | null;
   paymentStatus: string | null;
@@ -135,7 +137,9 @@ export function ManageParticipants({
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                         <div className="min-w-0">
-                          <span className="font-bold">{p.displayName}</span>
+                          <span className="font-bold">
+                            <ActorName name={p.displayName} emojis={p.emojis} />
+                          </span>
                           {p.handle && (
                             <span className="meta-mono ml-2 text-sm text-neutral">
                               @{p.handle}

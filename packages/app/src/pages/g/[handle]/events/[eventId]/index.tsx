@@ -3,6 +3,7 @@ import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
 } from 'waku/router/server';
+import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
 import { HelpTip } from '../../../../../components/help-tip';
 import { ServiceIcon } from '../../../../../components/service-icon';
@@ -104,6 +105,7 @@ export default async function EventPage({
     .map((p) => ({
       name: p.displayName,
       url: p.domain ? p.uri : p.handle ? `/u/${p.handle}` : null,
+      emojis: p.emojis,
     }));
   const speakers = [
     ...new Map(
@@ -111,7 +113,7 @@ export default async function EventPage({
         ...slotSpeakers,
         ...sessions
           .filter((s) => s.speakerName)
-          .map((s) => ({ name: s.speakerName!, url: s.speakerUrl })),
+          .map((s) => ({ name: s.speakerName!, url: s.speakerUrl, emojis: null })),
       ].map((sp) => [sp.name, sp]),
     ).values(),
   ];
@@ -243,7 +245,8 @@ export default async function EventPage({
             { href: '#slots', label: '参加枠' },
             sessions.length > 0 && { href: '#sessions', label: sessionsLabel },
             materials.length > 0 && { href: '#materials', label: '資料' },
-            { href: '#people', label: '主催・登壇' },
+            { href: '#organizers', label: '主催' },
+            ...(speakers.length > 0 ? [{ href: '#speakers', label: '登壇' }] : []),
             event.participantListPublic &&
               participants.length > 0 && { href: '#participants', label: '参加者' },
             (event.venueName || event.onlineUrl) && {
@@ -716,59 +719,56 @@ export default async function EventPage({
             </section>
           )}
 
-          {/* ---- 主催・登壇 ---- */}
-          <section id="people" className="mt-10 scroll-mt-4">
-            <h2 className="display border-b-2 border-ink pb-2 t-md">主催・登壇</h2>
-            <div className="mt-3 space-y-4">
-              <div>
-                <h3 className="meta-mono text-sm text-neutral">主催</h3>
-                <ul className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <li className="font-bold">
-                    <Link to={`/g/${handle}`} className="link">
-                      {groupActor?.displayName}
+          {/* ---- 主催 ---- */}
+          <section id="organizers" className="mt-10 scroll-mt-4">
+            <h2 className="display border-b-2 border-ink pb-2 t-md">主催</h2>
+            <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <li className="font-bold">
+                <Link to={`/g/${handle}`} className="link">
+                  {groupActor?.displayName}
+                </Link>
+              </li>
+              {organizers.map((o) => (
+                <li key={o.actorId} className="flex items-center gap-2 text-sm">
+                  <Avatar avatarUrl={o.avatarUrl} displayName={o.displayName} size="sm" />
+                  {o.handle ? (
+                    <Link to={`/u/${o.handle}`} className="link">
+                      {o.displayName}
                     </Link>
-                  </li>
-                  {organizers.map((o) => (
-                    <li key={o.actorId} className="flex items-center gap-2 text-sm">
-                      <Avatar avatarUrl={o.avatarUrl} displayName={o.displayName} size="sm" />
-                      {o.handle ? (
-                        <Link to={`/u/${o.handle}`} className="link">
-                          {o.displayName}
-                        </Link>
-                      ) : (
-                        o.displayName
-                      )}
-                      <span className="meta-mono ml-1 text-neutral">({o.roleName})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              {speakers.length > 0 && (
-                <div>
-                  <h3 className="meta-mono text-sm text-neutral">登壇</h3>
-                  <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    {speakers.map((sp) => (
-                      <li key={`${sp.name}-${sp.url ?? ''}`}>
-                        {sp.url ? (
-                          <a
-                            href={sp.url}
-                            className="link inline-flex items-center gap-1"
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            <ServiceIcon url={sp.url} />
-                            {sp.name}
-                          </a>
-                        ) : (
-                          sp.name
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+                  ) : (
+                    o.displayName
+                  )}
+                  <span className="meta-mono ml-1 text-neutral">({o.roleName})</span>
+                </li>
+              ))}
+            </ul>
           </section>
+
+          {/* ---- 登壇 ---- */}
+          {speakers.length > 0 && (
+            <section id="speakers" className="mt-10 scroll-mt-4">
+              <h2 className="display border-b-2 border-ink pb-2 t-md">登壇</h2>
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                {speakers.map((sp) => (
+                  <li key={`${sp.name}-${sp.url ?? ''}`}>
+                    {sp.url ? (
+                      <a
+                        href={sp.url}
+                        className="link inline-flex items-center gap-1"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <ServiceIcon url={sp.url} />
+                        <ActorName name={sp.name} emojis={sp.emojis} />
+                      </a>
+                    ) : (
+                      <ActorName name={sp.name} emojis={sp.emojis} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {materials.length > 0 && (
             <section id="materials" className="mt-10 scroll-mt-4">
