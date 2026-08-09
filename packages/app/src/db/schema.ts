@@ -407,6 +407,8 @@ export const slots = sqliteTable(
     conditions: text('conditions', { mode: 'json' }).$type<SlotConditions>(),
     /** Fediverse からのリモート参加を受け入れるか(主催者が枠ごとに明示) */
     allowRemote: integer('allow_remote', { mode: 'boolean' }).notNull().default(false),
+    /** 登壇枠(LT 枠など)。参加確定者はイベントページの登壇者欄にも表示される */
+    isSpeakerSlot: integer('is_speaker_slot', { mode: 'boolean' }).notNull().default(false),
     /** 参加費(通貨最小単位。JPY なら円)。null = 無料 */
     price: integer('price'),
     currency: text('currency').notNull().default('JPY'),

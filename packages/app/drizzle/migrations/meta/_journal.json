@@ -127,6 +127,13 @@
       "when": 1786232212065,
       "tag": "0017_email-notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1786234169241,
+      "tag": "0018_speaker-slot",
+      "breakpoints": true
     }
   ]
 }

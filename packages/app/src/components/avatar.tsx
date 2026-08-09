@@ -21,6 +21,8 @@ export function Avatar({
       <img
         src={avatarUrl}
         alt=""
+        // リモート画像サーバーのホットリンク保護(Referer 判定)を避ける
+        referrerPolicy="no-referrer"
         className={`${SIZES[size]} shrink-0 rounded-full border border-rule object-cover`}
       />
     );

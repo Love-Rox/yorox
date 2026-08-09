@@ -72,6 +72,7 @@ export default async function EditEventPage({
           <h2 className="text-sm font-bold">サムネイル画像をアップロード</h2>
           {event.thumbnailUrl && (
             <img
+              referrerPolicy="no-referrer"
               src={event.thumbnailUrl}
               alt="現在のサムネイル"
               className="mt-2 max-h-40 border border-rule object-cover"
@@ -151,6 +152,10 @@ export default async function EditEventPage({
             defaultValue={event.venueName ?? ''}
             className="input mt-1"
           />
+          <span className="mt-1 block text-sm text-neutral">
+            物理会場の名称です。オンライン開催のみの場合は空欄にして、下の「オンライン
+            URL」に配信・通話の URL を入力してください(両方あるハイブリッドも可)
+          </span>
         </label>
         <label className="block">
           <span className="text-sm font-bold">会場住所</span>

@@ -292,6 +292,7 @@ events.post('/events/:id/slots', async (c) => {
       lotteryAt: method === 'lottery' ? parseLocalDateTime(form.lottery_at) : undefined,
       conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
       allowRemote: form.allow_remote !== undefined,
+      isSpeakerSlot: form.is_speaker_slot !== undefined,
       price: price && price > 0 ? price : undefined,
       paymentMethod: price && price > 0 ? (paymentMethod ?? undefined) : undefined,
       paymentUrl: paymentMethod === 'external' ? paymentUrl : undefined,

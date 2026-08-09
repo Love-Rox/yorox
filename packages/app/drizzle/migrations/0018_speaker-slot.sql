@@ -1,0 +1,1 @@
+ALTER TABLE `slots` ADD `is_speaker_slot` integer DEFAULT false NOT NULL;

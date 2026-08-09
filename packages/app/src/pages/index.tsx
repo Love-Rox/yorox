@@ -84,6 +84,7 @@ export default async function HomePage() {
                     className="hidden shrink-0 sm:block"
                   >
                     <img
+                      referrerPolicy="no-referrer"
                       src={event.thumbnailUrl}
                       alt=""
                       loading="lazy"

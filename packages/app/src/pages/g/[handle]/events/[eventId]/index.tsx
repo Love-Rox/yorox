@@ -97,15 +97,22 @@ export default async function EventPage({
     ? await listVisibleParticipants(db, eventId)
     : [];
   const organizers = await listOrganizers(db, event.groupActorId);
-  // 登壇者(セッションから重複を除いて収集)
+  // 登壇者: セッション由来 + 登壇枠の確定参加者(重複はセッション優先)
+  const speakerSlotIds = new Set(slots.filter((s) => s.isSpeakerSlot).map((s) => s.id));
+  const slotSpeakers = participants
+    .filter((p) => speakerSlotIds.has(p.slotId))
+    .map((p) => ({
+      name: p.displayName,
+      url: p.domain ? p.uri : p.handle ? `/u/${p.handle}` : null,
+    }));
   const speakers = [
     ...new Map(
-      sessions
-        .filter((s) => s.speakerName)
-        .map((s) => [
-          `${s.speakerName}|${s.speakerUrl ?? ''}`,
-          { name: s.speakerName!, url: s.speakerUrl },
-        ]),
+      [
+        ...slotSpeakers,
+        ...sessions
+          .filter((s) => s.speakerName)
+          .map((s) => ({ name: s.speakerName!, url: s.speakerUrl })),
+      ].map((sp) => [sp.name, sp]),
     ).values(),
   ];
 
@@ -197,6 +204,7 @@ export default async function EventPage({
 
       {event.thumbnailUrl && (
         <img
+          referrerPolicy="no-referrer"
           src={event.thumbnailUrl}
           alt=""
           className="mt-6 max-h-96 w-full border border-rule object-cover"
@@ -291,10 +299,19 @@ export default async function EventPage({
                               抽選 {FULL_FMT.format(slot.lotteryAt)}
                             </div>
                           )}
-                          {slot.allowRemote && (
-                            <span className="mt-1 inline-block border border-neutral px-1.5 py-0.5 text-sm text-neutral">
-                              Fediverse 参加可
-                            </span>
+                          {(slot.isSpeakerSlot || slot.allowRemote) && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {slot.isSpeakerSlot && (
+                                <span className="inline-block border border-accent-2 px-1.5 py-0.5 text-sm text-accent-2">
+                                  登壇枠
+                                </span>
+                              )}
+                              {slot.allowRemote && (
+                                <span className="inline-block border border-neutral px-1.5 py-0.5 text-sm text-neutral">
+                                  Fediverse 参加可
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="meta-mono shrink-0 text-right">
@@ -541,6 +558,13 @@ export default async function EventPage({
                         min={0}
                         className="input meta-mono mt-1"
                       />
+                    </label>
+                  </fieldset>
+                  <fieldset>
+                    <legend className="text-sm font-bold">登壇枠<HelpTip text="LT 枠・発表枠など。参加確定した人はイベントページの「主催・登壇」欄にも登壇者として表示されます。" /></legend>
+                    <label className="mt-1 flex min-h-11 items-center gap-2">
+                      <input type="checkbox" name="is_speaker_slot" />
+                      登壇枠にする(確定者を登壇者として表示)
                     </label>
                   </fieldset>
                   <fieldset>

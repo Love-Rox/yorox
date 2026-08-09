@@ -59,6 +59,10 @@ export default async function NewEventPage({ handle }: { handle: string }) {
         <label className="block">
           <span className="text-sm font-bold">会場名</span>
           <input type="text" name="venue_name" maxLength={200} className="input mt-1" />
+          <span className="mt-1 block text-sm text-neutral">
+            物理会場の名称です。オンライン開催のみの場合は空欄にして、下の「オンライン
+            URL」に配信・通話の URL を入力してください(両方あるハイブリッドも可)
+          </span>
         </label>
         <label className="block">
           <span className="text-sm font-bold">会場住所</span>

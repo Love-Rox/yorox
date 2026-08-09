@@ -134,6 +134,8 @@ export interface AddSlotInput {
   paymentConfirm?: 'independent' | 'required' | undefined;
   /** Fediverse からのリモート参加を受け入れる枠か */
   allowRemote?: boolean | undefined;
+  /** 登壇枠(参加確定者を登壇者欄にも表示) */
+  isSpeakerSlot?: boolean | undefined;
 }
 
 /** 参加枠を追加する(枠ポリシー5要素はすべて呼び出し側で選択済み) */
@@ -173,6 +175,7 @@ export async function addSlot(
     paymentUrl: input.paymentUrl ?? null,
     paymentConfirm: input.paymentConfirm ?? 'independent',
     allowRemote: input.allowRemote ?? false,
+    isSpeakerSlot: input.isSpeakerSlot ?? false,
     sortOrder: existing.length,
     createdAt: now,
   });
