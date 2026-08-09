@@ -54,6 +54,14 @@ export default async function GroupPage({ handle }: { handle: string }) {
               <span className="ml-3">フォロワー {followerCount}</span>
             )}
           </p>
+          {group.isPersonal && (
+            <p className="mt-1 text-sm text-neutral">
+              これは <b>@{actor.handle} の主催ページ</b>(個人グループ)です。本人のプロフィールは{' '}
+              <Link to={`/u/${actor.handle}`} className="link">
+                @{actor.handle} のプロフィール
+              </Link>
+            </p>
+          )}
         </div>
         <span className="flex gap-3">
           {canSettings && (

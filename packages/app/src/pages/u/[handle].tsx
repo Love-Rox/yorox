@@ -2,7 +2,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import { Avatar } from '../../components/avatar';
-import { ActorKindBadge } from '../../components/actor-kind';
+import { ActorKindBadge, ActorKindMark } from '../../components/actor-kind';
 import { ServiceIcon } from '../../components/service-icon';
 import { Markdown } from '../../lib/markdown';
 import { schema } from '../../db/client';
@@ -47,6 +47,9 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
     .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
     .where(eq(schema.groupMembers.memberActorId, actor.id));
 
+  // 本人の個人グループ(= 主催ページ)。ハンドルを共有する
+  const personalGroup = memberships.find((m) => m.isPersonal);
+
   // 公開イベントへの参加(本人が一覧非表示にしたものは除く)
   const participations = await db
     .select({
@@ -84,6 +87,14 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                 <ActorKindBadge kind="user" />
               </div>
               <p className="meta-mono mt-1 text-sm text-neutral">@{actor.handle}</p>
+              {personalGroup && (
+                <p className="mt-1 text-sm text-neutral">
+                  主催・イベントは{' '}
+                  <Link to={`/g/${personalGroup.handle}`} className="link">
+                    @{personalGroup.handle} の主催ページ
+                  </Link>
+                </p>
+              )}
             </div>
             {isSelf && (
               <Link to="/settings/profile" className="btn-quiet">
@@ -139,12 +150,13 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
           <h2 className="display border-b-2 border-ink pb-2 t-md">グループ</h2>
           <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
             {memberships.map((m) => (
-              <li key={m.handle}>
+              <li key={m.handle} className="flex items-center gap-1.5">
+                <ActorKindMark kind="group" isPersonal={m.isPersonal} size={14} className="shrink-0" />
                 <Link to={`/g/${m.handle}`} className="link font-bold">
                   {m.displayName}
                 </Link>
-                <span className="meta-mono ml-1 text-sm text-neutral">
-                  ({m.isPersonal ? '個人' : m.roleName})
+                <span className="meta-mono text-sm text-neutral">
+                  ({m.isPersonal ? '個人グループ' : m.roleName})
                 </span>
               </li>
             ))}

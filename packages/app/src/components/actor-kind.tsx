@@ -13,6 +13,23 @@ export function isCommunityGroup(kind: 'user' | 'group', isPersonal?: boolean | 
   return kind === 'group' && !isPersonal;
 }
 
+/**
+ * 種別を3値で表す。
+ * - user           … 本人プロフィール(/u/…)   → 中間色タイル・1人・「個人」
+ * - personal group … 個人の主催ページ(/g/…)  → 青タイル・1人・「個人グループ」
+ * - community group… 共用グループ(/g/…)       → 青タイル・2人・「グループ」
+ * タイル色で「グループ実体 or 本人プロフィール」、グリフ人数で「共用 or 個人」を表す。
+ */
+function kindMeta(kind: 'user' | 'group', isPersonal?: boolean | null) {
+  const isGroup = kind === 'group';
+  const community = isGroup && !isPersonal;
+  return {
+    label: community ? 'グループ' : isGroup ? '個人グループ' : '個人',
+    tile: isGroup ? 'var(--yorox-accent-2)' : 'var(--yorox-neutral)',
+    twoPeople: community,
+  };
+}
+
 /** 角丸タイルに種別グリフを描くアイコン(単体) */
 export function ActorKindMark({
   kind,
@@ -25,11 +42,7 @@ export function ActorKindMark({
   size?: number;
   className?: string;
 }) {
-  const group = isCommunityGroup(kind, isPersonal);
-  const label = group ? 'グループ' : '個人';
-  // グループ = リソブルー、個人 = 中間色。どちらも紙色グリフと十分な
-  // コントラストが取れ、ライト/ダーク双方で視認できる
-  const tile = group ? 'var(--yorox-accent-2)' : 'var(--yorox-neutral)';
+  const { label, tile, twoPeople } = kindMeta(kind, isPersonal);
   return (
     <svg
       viewBox="0 0 24 24"
@@ -42,7 +55,7 @@ export function ActorKindMark({
       <title>{label}</title>
       <rect width="24" height="24" rx="6" fill={tile} />
       <g fill="var(--yorox-paper)">
-        {group ? (
+        {twoPeople ? (
           // 2人(前後に重ねた頭+肩)
           <>
             <circle cx="8.5" cy="9" r="2.6" />
@@ -72,7 +85,7 @@ export function ActorKindBadge({
   isPersonal?: boolean | null | undefined;
   className?: string;
 }) {
-  const label = isCommunityGroup(kind, isPersonal) ? 'グループ' : '個人';
+  const { label } = kindMeta(kind, isPersonal);
   return (
     <span
       className={`inline-flex items-center gap-1 border border-rule px-2 py-0.5 text-sm text-neutral ${className ?? ''}`}
