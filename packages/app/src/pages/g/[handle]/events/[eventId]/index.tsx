@@ -149,12 +149,13 @@ export default async function EventPage({
     plainDescription(event.descriptionMd) ||
     `${FULL_FMT.format(event.startsAt)} 開催 · ${groupActor?.displayName ?? ''}`;
   const canonicalUrl = `${url.origin}/g/${handle}/events/${eventId}`;
-  // 自ホスティング(/files/…)の相対 URL は OGP 用に絶対化する
+  // 自ホスティング(/files/…)の相対 URL は OGP 用に絶対化する。
+  // サムネイル未設定なら SVG で動的生成した OGP カードを使う
   const ogImage = event.thumbnailUrl
     ? event.thumbnailUrl.startsWith('/')
       ? `${url.origin}${event.thumbnailUrl}`
       : event.thumbnailUrl
-    : null;
+    : `${url.origin}/events/${eventId}/ogp.svg`;
 
   return (
     <article>
@@ -166,10 +167,14 @@ export default async function EventPage({
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:site_name" content="Yorox" />
       {ogImage && <meta property="og:image" content={ogImage} />}
-      <meta
-        name="twitter:card"
-        content={event.thumbnailUrl ? 'summary_large_image' : 'summary'}
-      />
+      {!event.thumbnailUrl && (
+        <>
+          <meta property="og:image:type" content="image/svg+xml" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+        </>
+      )}
+      <meta name="twitter:card" content="summary_large_image" />
       <meta name="description" content={ogDescription} />
 
       <p className="flex items-center gap-2">

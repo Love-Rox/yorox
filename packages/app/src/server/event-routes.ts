@@ -24,6 +24,7 @@ import { GroupBlockedError } from '../domain/blocks';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
+import { buildEventOgSvg } from '../lib/ogp';
 import { generateToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
@@ -286,6 +287,35 @@ events.get('/events/:id/participants.csv', async (c) => {
   return c.body(body, 200, {
     'content-type': 'text/csv; charset=utf-8',
     'content-disposition': `attachment; filename="participants-${event.id}${strip ? '-plain' : ''}.csv"`,
+  });
+});
+
+/** イベントの OGP 画像(SVG 動的生成)。サムネイル未設定時の og:image に使う */
+events.get('/events/:id/ogp.svg', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event || event.visibility !== 'public') return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+
+  const fmt = new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: event.timezone || 'Asia/Tokyo',
+  });
+  const venue = event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null);
+  const svg = buildEventOgSvg({
+    title: event.title,
+    dateText: fmt.format(event.startsAt),
+    groupName: group?.displayName ?? '',
+    venue,
+  });
+  return c.body(svg, 200, {
+    'content-type': 'image/svg+xml; charset=utf-8',
+    'cache-control': 'public, max-age=600',
   });
 });
 
