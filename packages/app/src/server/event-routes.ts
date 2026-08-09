@@ -6,7 +6,13 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
-import { addSlot, createEvent, publishEvent, updateEvent } from '../domain/event-service';
+import {
+  addSlot,
+  createEvent,
+  duplicateEvent,
+  publishEvent,
+  updateEvent,
+} from '../domain/event-service';
 import {
   AlreadyJoinedError,
   cancelParticipation,
@@ -321,6 +327,25 @@ events.post('/events/:id/schedule-cancel', async (c) => {
     .set({ publishAt: null, updatedAt: new Date() })
     .where(eq(schema.events.id, ctx.event.id));
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
+/** イベントを下書きとして複製する(定例イベント向け) */
+events.post('/events/:id/duplicate', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+
+  try {
+    const { eventId } = await duplicateEvent(db, ctx.event.id, actorId);
+    // 複製直後は下書き。編集画面へ誘導する
+    return c.redirect(`/g/${ctx.handle}/events/${eventId}/edit`, 302);
+  } catch {
+    return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}?error=duplicate_failed`, 302);
+  }
 });
 
 

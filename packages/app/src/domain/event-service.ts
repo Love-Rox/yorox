@@ -116,6 +116,105 @@ export async function publishEvent(
   await emitDomainEvent(db, 'event.published', { eventId }, now);
 }
 
+/**
+ * イベントを下書きとして複製する(定例イベント向け)。
+ * 基本情報・枠・セッション・資料リンクをコピーし、公開状態やトークン、
+ * 抽選/リマインダーの時刻など「その回限り」の状態はリセットする。
+ * 参加者・出欠・支払いはコピーしない。
+ */
+export async function duplicateEvent(
+  db: Db,
+  sourceEventId: string,
+  createdByActorId: string,
+  now: Date = new Date(),
+): Promise<{ eventId: string }> {
+  const src = await db.query.events.findFirst({
+    where: eq(schema.events.id, sourceEventId),
+  });
+  if (!src) throw new Error('複製元のイベントが見つかりません');
+
+  const newEventId = ulid();
+  await db.insert(schema.events).values({
+    id: newEventId,
+    groupActorId: src.groupActorId,
+    title: `${src.title}(コピー)`,
+    descriptionMd: src.descriptionMd,
+    participantInfoMd: src.participantInfoMd,
+    thumbnailUrl: src.thumbnailUrl,
+    startsAt: src.startsAt,
+    endsAt: src.endsAt,
+    timezone: src.timezone,
+    venueName: src.venueName,
+    venueAddress: src.venueAddress,
+    venueLat: src.venueLat,
+    venueLng: src.venueLng,
+    onlineUrl: src.onlineUrl,
+    sessionsLabel: src.sessionsLabel,
+    remoteJoinMethods: src.remoteJoinMethods,
+    // 「その回限り」の状態はリセット
+    visibility: 'draft',
+    participantListPublic: src.participantListPublic,
+    checkinToken: null,
+    publishedAt: null,
+    publishAt: null,
+    reminderSentAt: null,
+    createdByActorId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // 枠をコピー(抽選予定時刻は過去のまま持ち越すと cron が即発火するため null)
+  const slots = await db.query.slots.findMany({
+    where: eq(schema.slots.eventId, sourceEventId),
+  });
+  for (const s of slots) {
+    await db.insert(schema.slots).values({
+      id: ulid(),
+      eventId: newEventId,
+      name: s.name,
+      capacity: s.capacity,
+      method: s.method,
+      waitlistModel: s.waitlistModel,
+      waitlistCapacity: s.waitlistCapacity,
+      promotionPolicy: s.promotionPolicy,
+      promotionDeadlineHours: s.promotionDeadlineHours,
+      lotteryLogic: s.lotteryLogic,
+      lotteryAt: null,
+      conditions: s.conditions,
+      allowRemote: s.allowRemote,
+      isSpeakerSlot: s.isSpeakerSlot,
+      price: s.price,
+      currency: s.currency,
+      paymentMethod: s.paymentMethod,
+      paymentUrl: s.paymentUrl,
+      paymentConfirm: s.paymentConfirm,
+      sortOrder: s.sortOrder,
+      createdAt: now,
+    });
+  }
+
+  // セッション(登壇枠情報)をコピー。個別の開始/終了時刻は持ち越さない
+  const sessions = await db.query.eventSessions.findMany({
+    where: eq(schema.eventSessions.eventId, sourceEventId),
+  });
+  for (const sess of sessions) {
+    await db.insert(schema.eventSessions).values({
+      id: ulid(),
+      eventId: newEventId,
+      title: sess.title,
+      descriptionMd: sess.descriptionMd,
+      speakerActorId: sess.speakerActorId,
+      speakerName: sess.speakerName,
+      speakerUrl: sess.speakerUrl,
+      startsAt: null,
+      endsAt: null,
+      sortOrder: sess.sortOrder,
+    });
+  }
+
+  return { eventId: newEventId };
+}
+
 export interface AddSlotInput {
   eventId: string;
   name: string;

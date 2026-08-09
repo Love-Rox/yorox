@@ -59,6 +59,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   condition: '参加条件を満たしていません。',
   slot_invalid: '枠の入力内容を確認してください。',
   stripe: '決済処理を開始できませんでした。時間をおいて再度お試しください。',
+  duplicate_failed: 'イベントを複製できませんでした。時間をおいて再度お試しください。',
 };
 
 /** OGP description 用に Markdown 記法をざっくり落とす */
@@ -243,6 +244,15 @@ export default async function EventPage({
                 >
                   管理コンソール
                 </Link>
+                <form
+                  method="post"
+                  action={`/events/${eventId}/duplicate`}
+                  className="inline"
+                >
+                  <button type="submit" className="btn-quiet">
+                    複製して新規作成
+                  </button>
+                </form>
               </>
             )}
           </p>
