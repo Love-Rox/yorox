@@ -8,6 +8,7 @@ import {
   getDb,
   getGroupByHandle,
   listGroupEvents,
+  listGroupPosts,
   listOrganizers,
 } from '../../../server/data';
 import { hasGroupPermission } from '../../../server/route-auth';
@@ -35,6 +36,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
   const events = await listGroupEvents(db, actor.id, { includeDrafts: canCreate });
   const organizers = await listOrganizers(db, actor.id);
   const followerCount = await countFollowers(db, actor.id);
+  const posts = await listGroupPosts(db, actor.id);
 
   return (
     <div>
@@ -86,6 +88,57 @@ export default async function GroupPage({ handle }: { handle: string }) {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* ---- タイムライン(お知らせ投稿) ---- */}
+      {(posts.length > 0 || canCreate) && (
+        <section id="timeline" className="mt-8 scroll-mt-4">
+          <h2 className="meta-mono border-b-2 border-ink pb-2 text-sm text-neutral">
+            タイムライン
+          </h2>
+          {canCreate && (
+            <form method="post" action={`/g/${handle}/posts`} className="mt-3">
+              <textarea
+                name="body"
+                rows={3}
+                required
+                maxLength={3000}
+                className="input leading-relaxed"
+                placeholder="グループからのお知らせを投稿(Markdown 可)。フォロワーのタイムラインにも届きます"
+              />
+              <button type="submit" className="btn-quiet mt-2 cursor-pointer">
+                投稿する
+              </button>
+            </form>
+          )}
+          {posts.length > 0 && (
+            <ul className="mt-2">
+              {posts.map((post) => (
+                <li key={post.id} className="border-b border-rule py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="meta-mono text-sm text-neutral">
+                      {DATE_FMT.format(post.createdAt)}
+                      {post.authorName && <span className="ml-2">by {post.authorName}</span>}
+                    </div>
+                    {(user?.actorId === post.authorActorId || canSettings) && (
+                      <form method="post" action={`/g/${handle}/posts/${post.id}/delete`}>
+                        <button
+                          type="submit"
+                          className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                        >
+                          削除
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <Markdown source={post.bodyMd} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

@@ -144,6 +144,27 @@ export const claimCodes = sqliteTable(
   (t) => [uniqueIndex('claim_codes_hash_unique').on(t.codeHash)],
 );
 
+/**
+ * グループのお知らせ投稿(タイムライン)。
+ * フォロワーへは Create(Note) で配信され、Note URI は
+ * {group.uri}/posts/{id} としてデリファレンス可能。
+ */
+export const groupPosts = sqliteTable(
+  'group_posts',
+  {
+    id: text('id').primaryKey(), // ULID
+    groupActorId: text('group_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    authorActorId: text('author_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    bodyMd: text('body_md').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('group_posts_group_idx').on(t.groupActorId, t.createdAt)],
+);
+
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
 export const users = sqliteTable('users', {
   actorId: text('actor_id')

@@ -183,6 +183,124 @@ export async function deliverWithRetry(
   return ok;
 }
 
+
+/** グループ投稿の Note(タイムライン投稿の連合表現) */
+export function buildGroupPostNote(
+  group: { id: string; uri: string },
+  post: { id: string; bodyHtml: string; createdAt: Date },
+): ApObject {
+  return {
+    '@context': 'https://www.w3.org/ns/activitystreams',
+    id: `${group.uri}/posts/${post.id}`,
+    type: 'Note',
+    attributedTo: group.uri,
+    content: post.bodyHtml,
+    mediaType: 'text/html',
+    published: post.createdAt.toISOString(),
+    to: ['https://www.w3.org/ns/activitystreams#Public'],
+    cc: [`${group.uri}/followers`],
+  };
+}
+
+/** グループ投稿をフォロワーへ配信し、Bluesky にもクロスポストする */
+export async function announceGroupPostNow(
+  db: Db,
+  groupActorId: string,
+  post: { id: string; bodyHtml: string; bodyText: string; createdAt: Date },
+): Promise<void> {
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, groupActorId),
+  });
+  if (!group?.handle) return;
+  try {
+    const note = buildGroupPostNote(group, post);
+    const create = activities.create(group.uri, note, {
+      id: `${note.id}/activity`,
+      to: 'https://www.w3.org/ns/activitystreams#Public',
+      cc: `${group.uri}/followers`,
+      published: note.published as string,
+    });
+    const inboxes = await collectFollowerInboxes(db, group.id);
+    if (inboxes.size > 0) {
+      const now = new Date();
+      await db
+        .insert(schema.apDeliveries)
+        .values(
+          [...inboxes].map((inboxUrl) => ({
+            id: ulid(),
+            signerActorId: group.id,
+            inboxUrl,
+            activityUri: create.id as string,
+            activityJson: create as unknown as Record<string, unknown>,
+            nextAttemptAt: now,
+            createdAt: now,
+          })),
+        )
+        .onConflictDoNothing();
+      await processApDeliveries(db, new Date(), Math.max(inboxes.size, 10));
+    }
+  } catch (err) {
+    console.error(`[ap] group post announce failed (post=${post.id}):`, err);
+  }
+  // Bluesky クロスポスト(連携済みグループのみ)
+  try {
+    const settings = await db.query.groups.findFirst({
+      where: eq(schema.groups.actorId, group.id),
+    });
+    if (settings?.bskyIdentifier && settings.bskyAppPassword) {
+      const session = await createBskySession(settings.bskyIdentifier, settings.bskyAppPassword);
+      if (session) {
+        const origin = new URL(group.uri).origin;
+        const groupUrl = `${origin}/g/${group.handle}`;
+        const budget = 300 - [...`\n${groupUrl}`].length;
+        const text =
+          [...post.bodyText].length > budget
+            ? [...post.bodyText].slice(0, Math.max(0, budget - 1)).join('') + '…'
+            : post.bodyText;
+        await postToBluesky(session, `${text}\n${groupUrl}`, groupUrl);
+      }
+    }
+  } catch (err) {
+    console.error(`[bsky] group post crosspost failed (post=${post.id}):`, err);
+  }
+}
+
+/** グループ投稿の削除をフォロワーへ配信する(Tombstone 化) */
+export async function announceGroupPostDeleteNow(
+  db: Db,
+  group: { id: string; uri: string },
+  postId: string,
+): Promise<void> {
+  try {
+    const noteUri = `${group.uri}/posts/${postId}`;
+    const del = activities.deleteActivity(group.uri, noteUri, {
+      id: `${noteUri}/delete/${ulid()}`,
+      to: 'https://www.w3.org/ns/activitystreams#Public',
+      cc: `${group.uri}/followers`,
+    });
+    const inboxes = await collectFollowerInboxes(db, group.id);
+    if (inboxes.size === 0) return;
+    const now = new Date();
+    await db
+      .insert(schema.apDeliveries)
+      .values(
+        [...inboxes].map((inboxUrl) => ({
+          id: ulid(),
+          signerActorId: group.id,
+          inboxUrl,
+          activityUri: del.id as string,
+          activityJson: del as unknown as Record<string, unknown>,
+          nextAttemptAt: now,
+          createdAt: now,
+        })),
+      )
+      .onConflictDoNothing();
+    await processApDeliveries(db, new Date(), Math.max(inboxes.size, 10));
+  } catch (err) {
+    console.error(`[ap] group post delete announce failed (post=${postId}):`, err);
+  }
+}
+
 /**
  * 公開イベントの編集をフォロワーへ Update(Note) で配信する。
  * Note の URI は不変(/events/{id}/note)なので、受信側は同じ投稿を更新する。

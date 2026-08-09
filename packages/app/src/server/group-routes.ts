@@ -6,6 +6,9 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { createBskySession } from '../lib/bluesky';
+import { renderMarkdownToHtml } from '../lib/markdown';
+import { ulid } from '../lib/ulid';
+import { announceGroupPostDeleteNow, announceGroupPostNow } from './ap-delivery';
 import {
   addMemberByHandle,
   AlreadyMemberError,
@@ -173,6 +176,69 @@ groups.post('/g/:handle/settings/bluesky/disconnect', async (c) => {
     .set({ bskyIdentifier: null, bskyAppPassword: null })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
   return c.redirect(`/g/${handle}/settings`, 302);
+});
+
+
+/** グループのお知らせ投稿(タイムライン) */
+groups.post('/g/:handle/posts', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'event.create');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const bodyMd = str(form.body).slice(0, 3000);
+  if (!bodyMd) return c.redirect(`/g/${handle}`, 302);
+
+  const post = {
+    id: ulid(),
+    groupActorId: ctx.groupActorId,
+    authorActorId: actorId,
+    bodyMd,
+    createdAt: new Date(),
+  };
+  await db.insert(schema.groupPosts).values(post);
+  // フォロワーへの配信+Bluesky クロスポスト(応答をブロックしない)
+  c.executionCtx.waitUntil(
+    announceGroupPostNow(db, ctx.groupActorId, {
+      id: post.id,
+      bodyHtml: renderMarkdownToHtml(bodyMd),
+      bodyText: bodyMd,
+      createdAt: post.createdAt,
+    }),
+  );
+  return c.redirect(`/g/${handle}#timeline`, 302);
+});
+
+/** 投稿の削除(投稿者本人またはグループ設定権限) */
+groups.post('/g/:handle/posts/:postId/delete', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const post = await db.query.groupPosts.findFirst({
+    where: eq(schema.groupPosts.id, c.req.param('postId')),
+  });
+  if (!post) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, post.groupActorId),
+  });
+  if (!group || group.handle !== handle) return c.notFound();
+  const allowed =
+    post.authorActorId === actorId ||
+    (await hasGroupPermission(db, post.groupActorId, actorId, 'group.settings'));
+  if (!allowed) return c.text('権限がありません', 403);
+
+  await db.delete(schema.groupPosts).where(eq(schema.groupPosts.id, post.id));
+  // リモートに残った Note を Delete で消す
+  c.executionCtx.waitUntil(announceGroupPostDeleteNow(db, group, post.id));
+  return c.redirect(`/g/${handle}#timeline`, 302);
 });
 
 /** メンバー追加(handle 指定) */

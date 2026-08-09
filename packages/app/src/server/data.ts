@@ -206,6 +206,23 @@ export async function listOrganizers(db: Db, groupActorId: string) {
   return rows.filter((r) => r.permissions.includes('event.edit'));
 }
 
+/** グループのお知らせ投稿(新しい順、投稿者名付き) */
+export async function listGroupPosts(db: Db, groupActorId: string, limit = 20) {
+  return db
+    .select({
+      id: schema.groupPosts.id,
+      bodyMd: schema.groupPosts.bodyMd,
+      createdAt: schema.groupPosts.createdAt,
+      authorActorId: schema.groupPosts.authorActorId,
+      authorName: schema.actors.displayName,
+    })
+    .from(schema.groupPosts)
+    .leftJoin(schema.actors, eq(schema.groupPosts.authorActorId, schema.actors.id))
+    .where(eq(schema.groupPosts.groupActorId, groupActorId))
+    .orderBy(desc(schema.groupPosts.createdAt))
+    .limit(limit);
+}
+
 /** AP フォロワー数 */
 export async function countFollowers(db: Db, actorId: string): Promise<number> {
   const [row] = await db

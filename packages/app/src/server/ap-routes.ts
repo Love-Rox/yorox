@@ -26,7 +26,7 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
 import { buildInstanceActorDoc, getInstanceActorSigner } from '../lib/instance-actor';
-import { buildEventAnnouncement } from './ap-delivery';
+import { buildEventAnnouncement, buildGroupPostNote } from './ap-delivery';
 import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import {
@@ -567,6 +567,29 @@ ap.get('/groups/:id', async (c, next) => {
   return c.redirect(`${origin}/g/${actor.handle}`, 302);
 });
 
+/** グループ投稿 Note のデリファレンス */
+ap.get('/groups/:id/posts/:postId', async (c, next) => {
+  if (!ULID_RE.test(c.req.param('id')) || !ULID_RE.test(c.req.param('postId'))) return next();
+  const db = createDb((await getEnv()).DB);
+  const post = await db.query.groupPosts.findFirst({
+    where: eq(schema.groupPosts.id, c.req.param('postId')),
+  });
+  if (!post || post.groupActorId !== c.req.param('id')) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, post.groupActorId),
+  });
+  if (!group) return c.notFound();
+  if (acceptsActivityPub(c.req.header('accept'))) {
+    const note = buildGroupPostNote(group, {
+      id: post.id,
+      bodyHtml: renderMarkdownToHtml(post.bodyMd),
+      createdAt: post.createdAt,
+    });
+    return c.body(JSON.stringify(note), 200, { 'content-type': AP_MEDIA_TYPE });
+  }
+  return c.redirect(`${new URL(c.req.url).origin}/g/${group.handle}#timeline`, 302);
+});
+
 /** グループのフォロワーコレクション(件数のみ公開) */
 ap.get('/groups/:id/followers', async (c, next) => {
   if (!ULID_RE.test(c.req.param('id'))) return next();
@@ -602,7 +625,37 @@ ap.get('/groups/:id/outbox', async (c, next) => {
     orderBy: [desc(schema.events.createdAt)],
     limit: 20,
   });
-  const items = published.map((event) => buildEventAnnouncement(actor, event));
+  const posts = await db.query.groupPosts.findMany({
+    where: eq(schema.groupPosts.groupActorId, actor.id),
+    orderBy: [desc(schema.groupPosts.createdAt)],
+    limit: 20,
+  });
+  const items = [
+    ...published.map((event) => ({
+      at: event.publishedAt ?? event.createdAt,
+      activity: buildEventAnnouncement(actor, event),
+    })),
+    ...posts.map((post) => ({
+      at: post.createdAt,
+      activity: activities.create(
+        actor.uri,
+        buildGroupPostNote(actor, {
+          id: post.id,
+          bodyHtml: renderMarkdownToHtml(post.bodyMd),
+          createdAt: post.createdAt,
+        }),
+        {
+          id: `${actor.uri}/posts/${post.id}/activity`,
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+          cc: `${actor.uri}/followers`,
+          published: post.createdAt.toISOString(),
+        },
+      ),
+    })),
+  ]
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, 20)
+    .map((i) => i.activity);
   const outbox = buildEmptyOutbox(`${actor.uri}/outbox`);
   outbox.totalItems = items.length;
   outbox.orderedItems = items;
