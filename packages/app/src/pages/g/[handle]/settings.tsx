@@ -11,6 +11,7 @@ import { LoginRequired } from '../../../components/login-required';
 import { getCurrentUser } from '../../../server/current-user';
 import { getDb, getGroupByHandle } from '../../../server/data';
 import { hasGroupPermission } from '../../../server/route-auth';
+import { SectionNavLayout, type SectionNavItem } from '../../../components/section-nav';
 
 export default async function GroupSettingsPage({ handle }: { handle: string }) {
   const db = await getDb();
@@ -58,8 +59,18 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
   const error = url.searchParams.get('error');
   const blockError = url.searchParams.get('block_error');
 
+  const sections: SectionNavItem[] = [
+    ...(canSettings ? [{ id: 'info', label: 'グループ情報' }] : []),
+    ...(canSettings && stripeAvailable ? [{ id: 'stripe', label: '決済(Stripe)' }] : []),
+    ...(canSettings ? [{ id: 'tokushoho', label: '特定商取引法' }] : []),
+    ...(canSettings ? [{ id: 'bluesky', label: 'Bluesky クロスポスト' }] : []),
+    ...(canMembers ? [{ id: 'members', label: 'メンバー' }] : []),
+    ...(canMembers ? [{ id: 'blocks', label: '参加者ブロック' }] : []),
+    ...(canSettings ? [{ id: 'roles', label: 'ロール' }] : []),
+  ];
+
   return (
-    <div className="max-w-2xl">
+    <div>
       <title>{`設定: ${actor.displayName} - Yorox`}</title>
       <p className="text-sm">
         <Link to={`/g/${handle}`} className="link">
@@ -74,9 +85,11 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
         </p>
       )}
 
+      <div className="mt-6">
+        <SectionNavLayout title="グループ設定" items={sections}>
       {/* ---- グループ情報 ---- */}
       {canSettings && (
-        <section className="mt-8">
+        <section id="info" className="mt-8 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">グループ情報</h2>
           <form
             method="post"
@@ -221,7 +234,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
 
       {/* ---- Bluesky クロスポスト ---- */}
       {canSettings && (
-        <section className="mt-10">
+        <section id="bluesky" className="mt-10 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">
             Bluesky クロスポスト
             <HelpTip text="連携すると、イベント公開時にこのグループの Bluesky アカウントへ告知が自動投稿されます。通常のパスワードではなく、Bluesky の設定で発行できる App Password(いつでも失効可能)を使ってください。" />
@@ -288,7 +301,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
 
       {/* ---- メンバー管理 ---- */}
       {canMembers && (
-        <section className="mt-10">
+        <section id="members" className="mt-10 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">メンバー</h2>
           <ul className="mt-2">
             {members.map((m) => (
@@ -474,7 +487,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
 
       {/* ---- ロール管理 ---- */}
       {canSettings && (
-        <section className="mt-10">
+        <section id="roles" className="mt-10 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">ロール</h2>
           <ul className="mt-2">
             {roles.map((r) => (
@@ -549,6 +562,8 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
           </details>
         </section>
       )}
+        </SectionNavLayout>
+      </div>
     </div>
   );
 }

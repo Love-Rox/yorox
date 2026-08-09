@@ -11,6 +11,7 @@ import { PasskeyRegisterButton } from '../../components/passkey-buttons';
 import { listClaimedAliases } from '../../server/claim';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
+import { SectionNavLayout, type SectionNavItem } from '../../components/section-nav';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: '表示名は必須です。',
@@ -61,8 +62,17 @@ export default async function ProfileSettingsPage() {
   });
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
 
+  const sections: SectionNavItem[] = [
+    { id: 'avatar', label: 'アバター' },
+    { id: 'oauth', label: 'ログイン方法' },
+    { id: 'calendar', label: '参加予定カレンダー' },
+    { id: 'notifications', label: 'お知らせ' },
+    { id: 'fediverse', label: 'Fediverse 連携' },
+    { id: 'danger', label: 'データと退会' },
+  ];
+
   return (
-    <div className="max-w-xl">
+    <div>
       <title>プロフィール設定 - Yorox</title>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="display t-xl">プロフィール設定</h1>
@@ -79,8 +89,10 @@ export default async function ProfileSettingsPage() {
         </p>
       )}
 
+      <div className="mt-6">
+        <SectionNavLayout title="設定" items={sections}>
       {/* ---- アバター ---- */}
-      <section className="mt-6 border-2 border-ink p-4">
+      <section id="avatar" className="scroll-mt-4 border-2 border-ink p-4">
         <h2 className="text-sm font-bold">アバター</h2>
         <div className="mt-3 flex items-center gap-4">
           <Avatar avatarUrl={me.avatarUrl} displayName={me.displayName} size="lg" />
@@ -504,6 +516,8 @@ export default async function ProfileSettingsPage() {
           </form>
         </div>
       </section>
+        </SectionNavLayout>
+      </div>
     </div>
   );
 }
