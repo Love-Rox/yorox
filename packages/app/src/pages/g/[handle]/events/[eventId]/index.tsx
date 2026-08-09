@@ -7,6 +7,7 @@ import {
 import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
 import { HelpTip } from '../../../../../components/help-tip';
+import { Menu } from '../../../../../components/menu';
 import { ServiceIcon } from '../../../../../components/service-icon';
 import { googleCalendarUrl } from '../../../../../lib/ics';
 import { Markdown } from '../../../../../lib/markdown';
@@ -212,65 +213,52 @@ export default async function EventPage({
           <h1 className="display t-xl">{event.title}</h1>
           <div className="mt-3 flex flex-wrap gap-3">
             {event.visibility === 'public' && (
-              <details className="relative">
-                <summary className="btn-quiet inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-                  カレンダーに追加
-                  <span aria-hidden="true" className="text-xs">▾</span>
-                </summary>
-                <div className="absolute left-0 z-10 mt-1 min-w-56 border-2 border-ink bg-paper p-1 shadow-[var(--yorox-offset-shadow)]">
-                  <a
-                    href={`/events/${eventId}/calendar.ics`}
-                    className="block px-3 py-2 text-sm hover:bg-paper-2"
-                  >
-                    .ics をダウンロード
-                  </a>
-                  <a
-                    href={googleCalendarUrl({
-                      title: event.title,
-                      start: event.startsAt,
-                      end: event.endsAt,
-                      location:
-                        event.venueName ?? (event.onlineUrl ? 'オンライン' : null),
-                      details: canonicalUrl,
-                    })}
-                    className="block px-3 py-2 text-sm hover:bg-paper-2"
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Google カレンダー
-                  </a>
-                </div>
-              </details>
+              <Menu label="カレンダーに追加">
+                <a
+                  href={`/events/${eventId}/calendar.ics`}
+                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                >
+                  .ics をダウンロード
+                </a>
+                <a
+                  href={googleCalendarUrl({
+                    title: event.title,
+                    start: event.startsAt,
+                    end: event.endsAt,
+                    location: event.venueName ?? (event.onlineUrl ? 'オンライン' : null),
+                    details: canonicalUrl,
+                  })}
+                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Google カレンダー
+                </a>
+              </Menu>
             )}
             {canEdit && (
-              <details className="relative">
-                <summary className="btn-quiet inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-                  主催者メニュー
-                  <span aria-hidden="true" className="text-xs">▾</span>
-                </summary>
-                <div className="absolute left-0 z-10 mt-1 min-w-56 border-2 border-ink bg-paper p-1 shadow-[var(--yorox-offset-shadow)]">
-                  <Link
-                    to={`/g/${handle}/events/${eventId}/edit`}
-                    className="block px-3 py-2 text-sm hover:bg-paper-2"
+              <Menu label="主催者メニュー">
+                <a
+                  href={`/g/${handle}/events/${eventId}/edit`}
+                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                >
+                  編集
+                </a>
+                <a
+                  href={`/g/${handle}/events/${eventId}/manage`}
+                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                >
+                  管理コンソール
+                </a>
+                <form method="post" action={`/events/${eventId}/duplicate`}>
+                  <button
+                    type="submit"
+                    className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-paper-2"
                   >
-                    編集
-                  </Link>
-                  <Link
-                    to={`/g/${handle}/events/${eventId}/manage`}
-                    className="block px-3 py-2 text-sm hover:bg-paper-2"
-                  >
-                    管理コンソール
-                  </Link>
-                  <form method="post" action={`/events/${eventId}/duplicate`}>
-                    <button
-                      type="submit"
-                      className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-paper-2"
-                    >
-                      複製して新規作成
-                    </button>
-                  </form>
-                </div>
-              </details>
+                    複製して新規作成
+                  </button>
+                </form>
+              </Menu>
             )}
           </div>
         </div>
