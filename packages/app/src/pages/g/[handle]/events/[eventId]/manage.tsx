@@ -152,15 +152,19 @@ export default async function ManagePage({
                     Yorox アカウントをお持ちでない方は個別受付します
                   </p>
                   <p className="meta-mono mt-2 text-sm break-all text-neutral">{checkinUrl}</p>
-                  <form
-                    method="post"
-                    action={`/events/${event.id}/checkin/enable`}
-                    className="mt-3"
-                  >
-                    <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                      QR を再発行(旧 QR は無効化)
-                    </button>
-                  </form>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Link
+                      to={`/g/${handle}/events/${eventId}/checkin-poster`}
+                      className="btn-quiet text-sm"
+                    >
+                      掲示用ポスターを印刷 / PDF
+                    </Link>
+                    <form method="post" action={`/events/${event.id}/checkin/enable`}>
+                      <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                        QR を再発行(旧 QR は無効化)
+                      </button>
+                    </form>
+                  </div>
                 </div>
               );
             })()
