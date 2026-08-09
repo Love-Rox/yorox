@@ -294,6 +294,8 @@ export const groups = sqliteTable('groups', {
    */
   bskyIdentifier: text('bsky_identifier'),
   bskyAppPassword: text('bsky_app_password'),
+  /** 接続済み Stripe アカウント ID(Connect)。決済はこの口座で直接受ける */
+  stripeAccountId: text('stripe_account_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
@@ -498,7 +500,7 @@ export const slots = sqliteTable(
     price: integer('price'),
     currency: text('currency').notNull().default('JPY'),
     /** 支払方法: onsite = 現地払い / external = 外部決済リンク。null = 無料枠 */
-    paymentMethod: text('payment_method', { enum: ['onsite', 'external'] }),
+    paymentMethod: text('payment_method', { enum: ['onsite', 'external', 'stripe'] }),
     /** external のときの決済 URL(Stripe Payment Links 等) */
     paymentUrl: text('payment_url'),
     /**
@@ -621,7 +623,7 @@ export const payments = sqliteTable(
       .references(() => participations.id),
     amount: integer('amount').notNull(),
     currency: text('currency').notNull().default('JPY'),
-    method: text('method', { enum: ['onsite', 'external'] }).notNull(),
+    method: text('method', { enum: ['onsite', 'external', 'stripe'] }).notNull(),
     status: text('status', {
       enum: ['pending', 'paid', 'refund_required', 'refunded', 'waived'],
     })

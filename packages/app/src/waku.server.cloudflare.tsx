@@ -1,6 +1,7 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 import apRoutes from './server/ap-routes';
+import stripeRoutes from './server/stripe-routes';
 import authRoutes from './server/auth-routes';
 import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
@@ -13,6 +14,7 @@ import { runScheduledJobs } from './server/scheduled';
 export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
   middlewareFns: [
     apRoutes,
+    stripeRoutes,
     authRoutes,
     passkeyRoutes,
     eventRoutes,

@@ -9,6 +9,7 @@ import type { MiddlewareHandler } from 'hono';
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/node';
 import apRoutes from './server/ap-routes';
+import stripeRoutes from './server/stripe-routes';
 import authRoutes from './server/auth-routes';
 import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
@@ -53,6 +54,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
   middlewareFns: [
     cronMiddleware,
     apRoutes,
+    stripeRoutes,
     authRoutes,
     passkeyRoutes,
     eventRoutes,

@@ -463,12 +463,9 @@ events.post('/events/:id/slots', async (c) => {
 
   // 決済設定の検証
   const price = optionalInt(form.price);
+  const pm = str(form.payment_method);
   const paymentMethod =
-    str(form.payment_method) === 'onsite'
-      ? 'onsite'
-      : str(form.payment_method) === 'external'
-        ? 'external'
-        : null;
+    pm === 'onsite' ? 'onsite' : pm === 'external' ? 'external' : pm === 'stripe' ? 'stripe' : null;
   const paymentUrl = str(form.payment_url);
   if (price && price > 0) {
     if (!paymentMethod) {

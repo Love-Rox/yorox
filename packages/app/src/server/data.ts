@@ -240,9 +240,11 @@ export async function getOwnParticipations(db: Db, eventId: string, actorId: str
       slotId: schema.participations.slotId,
       status: schema.participations.status,
       hiddenFromList: schema.participations.hiddenFromList,
+      paymentId: schema.payments.id,
     })
     .from(schema.participations)
     .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .leftJoin(schema.payments, eq(schema.payments.participationId, schema.participations.id))
     .where(and(eq(schema.slots.eventId, eventId), eq(schema.participations.actorId, actorId)));
   return new Map(rows.filter((r) => r.status !== 'cancelled').map((r) => [r.slotId, r]));
 }

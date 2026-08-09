@@ -41,6 +41,10 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
     .where(eq(schema.groupMembers.groupActorId, actor.id))
     .orderBy(asc(schema.groupMembers.createdAt));
 
+  const { env } = await import('cloudflare:workers');
+  const { stripeConnectConfigured } = await import('../../../lib/stripe');
+  const stripeAvailable = stripeConnectConfigured(env);
+
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
 
@@ -93,6 +97,44 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               保存
             </button>
           </form>
+        </section>
+      )}
+
+      {/* ---- Stripe 決済 ---- */}
+      {canSettings && stripeAvailable && (
+        <section id="stripe" className="mt-10 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            Stripe 決済
+            <HelpTip text="接続すると、有料枠で事前決済を受け付けられます。売上はこのグループの Stripe アカウントに直接入金され、Yorox は決済を仲介しません。決済完了は自動で参加確定になります。" />
+          </h2>
+          {group.stripeAccountId ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm">
+                接続中: <span className="meta-mono">{group.stripeAccountId}</span>
+              </p>
+              <form method="post" action={`/g/${handle}/settings/stripe/disconnect`}>
+                <button
+                  type="submit"
+                  className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                >
+                  接続を解除
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <p className="text-sm text-neutral">
+                Stripe アカウントを接続すると、枠の支払方法で「Stripe(事前決済)」を
+                選べるようになります。
+              </p>
+              <a
+                href={`/g/${handle}/settings/stripe/connect`}
+                className="btn mt-3 inline-block"
+              >
+                Stripe に接続する
+              </a>
+            </div>
+          )}
         </section>
       )}
 

@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { eq } from 'drizzle-orm';
 import {
   unstable_getRequest as getRequest,
   unstable_notFound as notFound,
@@ -16,6 +17,7 @@ import {
   listOrganizers,
   listVisibleParticipants,
 } from '../../../../../server/data';
+import { schema } from '../../../../../db/client';
 import { hasGroupPermission } from '../../../../../server/route-auth';
 
 const TZ = 'Asia/Tokyo';
@@ -55,6 +57,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   already: 'この枠には既に申し込み済みです。',
   condition: '参加条件を満たしていません。',
   slot_invalid: '枠の入力内容を確認してください。',
+  stripe: '決済処理を開始できませんでした。時間をおいて再度お試しください。',
 };
 
 /** OGP description 用に Markdown 記法をざっくり落とす */
@@ -92,12 +95,19 @@ export default async function EventPage({
     ? await getOwnParticipations(db, eventId, user.actorId)
     : new Map<
         string,
-        { id: string; slotId: string; status: string; hiddenFromList: boolean }
+        { id: string; slotId: string; status: string; hiddenFromList: boolean; paymentId: string | null }
       >();
   const participants = event.participantListPublic
     ? await listVisibleParticipants(db, eventId)
     : [];
   const organizers = await listOrganizers(db, event.groupActorId);
+  // Stripe 接続済みグループなら枠フォームに Stripe オプションを出す
+  const groupRow = canEdit
+    ? await db.query.groups.findFirst({
+        where: eq(schema.groups.actorId, event.groupActorId),
+      })
+    : null;
+  const groupStripeConnected = !!groupRow?.stripeAccountId;
   // 登壇者: セッション由来 + 登壇枠の確定参加者(重複はセッション優先)
   const speakerSlotIds = new Set(slots.filter((s) => s.isSpeakerSlot).map((s) => s.id));
   const slotSpeakers = participants
@@ -340,7 +350,7 @@ export default async function EventPage({
                               <span className="ml-1 font-bold text-ink">
                                 · ¥{YEN.format(slot.price)}
                                 <span className="font-normal text-neutral">
-                                  ({slot.paymentMethod === 'onsite' ? '現地払い' : '事前決済'})
+                                  ({slot.paymentMethod === 'onsite' ? '現地払い' : slot.paymentMethod === 'stripe' ? 'カード決済' : '事前決済'})
                                 </span>
                               </span>
                             )}
@@ -389,7 +399,16 @@ export default async function EventPage({
                                 {STATUS_LABEL[own.status] ?? own.status}
                               </span>
                               {own.status === 'payment_pending' &&
-                                (slot.paymentMethod === 'external' && slot.paymentUrl ? (
+                                (slot.paymentMethod === 'stripe' && own.paymentId ? (
+                                  <form
+                                    method="post"
+                                    action={`/payments/${own.paymentId}/checkout`}
+                                  >
+                                    <button type="submit" className="btn cursor-pointer">
+                                      カードで支払う
+                                    </button>
+                                  </form>
+                                ) : slot.paymentMethod === 'external' && slot.paymentUrl ? (
                                   <a
                                     href={slot.paymentUrl}
                                     className="btn cursor-pointer"
@@ -566,6 +585,9 @@ export default async function EventPage({
                       <select name="payment_method" className="input mt-1">
                         <option value="onsite">現地払い</option>
                         <option value="external">外部決済リンク</option>
+                        {groupStripeConnected && (
+                          <option value="stripe">Stripe(カード事前決済)</option>
+                        )}
                       </select>
                     </label>
                     <label className="mt-2 block">

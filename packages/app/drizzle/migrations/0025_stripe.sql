@@ -1,0 +1,1 @@
+ALTER TABLE `groups` ADD `stripe_account_id` text;

@@ -129,7 +129,7 @@ export interface AddSlotInput {
   lotteryAt?: Date | undefined;
   conditions?: SlotConditions | undefined;
   price?: number | undefined;
-  paymentMethod?: 'onsite' | 'external' | undefined;
+  paymentMethod?: 'onsite' | 'external' | 'stripe' | undefined;
   paymentUrl?: string | undefined;
   paymentConfirm?: 'independent' | 'required' | undefined;
   /** Fediverse からのリモート参加を受け入れる枠か */
