@@ -1,6 +1,7 @@
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import { Avatar } from '../../../components/avatar';
+import { ActorKindBadge } from '../../../components/actor-kind';
 import { Markdown } from '../../../lib/markdown';
 import { getCurrentUser } from '../../../server/current-user';
 import {
@@ -43,7 +44,10 @@ export default async function GroupPage({ handle }: { handle: string }) {
       <title>{`${actor.displayName} - Yorox`}</title>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="display t-xl">{actor.displayName}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="display t-xl">{actor.displayName}</h1>
+            <ActorKindBadge kind="group" isPersonal={group.isPersonal} />
+          </div>
           <p className="meta-mono mt-1 text-sm text-neutral">
             @{actor.handle}
             {followerCount > 0 && (

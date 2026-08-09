@@ -6,6 +6,7 @@ import {
 } from 'waku/router/server';
 import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
+import { ActorKindMark } from '../../../../../components/actor-kind';
 import { HelpTip } from '../../../../../components/help-tip';
 import { Menu } from '../../../../../components/menu';
 import { ServiceIcon } from '../../../../../components/service-icon';
@@ -105,13 +106,11 @@ export default async function EventPage({
     ? await listVisibleParticipants(db, eventId)
     : [];
   const organizers = await listOrganizers(db, event.groupActorId);
-  // Stripe 接続済みグループなら枠フォームに Stripe オプションを出す
-  const groupRow = canEdit
-    ? await db.query.groups.findFirst({
-        where: eq(schema.groups.actorId, event.groupActorId),
-      })
-    : null;
-  const groupStripeConnected = !!groupRow?.stripeAccountId;
+  // 主催の種別バッジ・Stripe オプション判定に使うグループ行(常に取得)
+  const groupRow = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, event.groupActorId),
+  });
+  const groupStripeConnected = canEdit && !!groupRow?.stripeAccountId;
   // 登壇者: セッション由来 + 登壇枠の確定参加者(重複はセッション優先)
   const speakerSlotIds = new Set(slots.filter((s) => s.isSpeakerSlot).map((s) => s.id));
   const slotSpeakers = participants
@@ -182,7 +181,8 @@ export default async function EventPage({
         <span className="meta-mono border border-ink px-2 py-0.5 text-sm text-neutral">
           主催
         </span>
-        <Link to={`/g/${handle}`} className="link font-bold">
+        <Link to={`/g/${handle}`} className="link inline-flex items-center gap-1.5 font-bold">
+          <ActorKindMark kind="group" isPersonal={groupRow?.isPersonal} size={15} />
           {groupActor?.displayName}
         </Link>
       </p>

@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { ActorKindMark } from '../components/actor-kind';
 import { getCurrentUser } from '../server/current-user';
 import { getDb, listUpcomingEvents } from '../server/data';
 
@@ -81,13 +82,21 @@ export default async function HomePage() {
                   <div className="mt-1 line-clamp-2 font-bold group-hover:underline">
                     {event.title}
                   </div>
-                  <div className="mt-1 truncate text-sm text-neutral">
-                    {event.groupName}
-                    {event.venueName
-                      ? ` · ${event.venueName}`
-                      : event.onlineUrl
-                        ? ' · オンライン'
-                        : ''}
+                  <div className="mt-1 flex items-center gap-1 text-sm text-neutral">
+                    <ActorKindMark
+                      kind="group"
+                      isPersonal={event.groupIsPersonal}
+                      size={13}
+                      className="shrink-0"
+                    />
+                    <span className="truncate">
+                      {event.groupName}
+                      {event.venueName
+                        ? ` · ${event.venueName}`
+                        : event.onlineUrl
+                          ? ' · オンライン'
+                          : ''}
+                    </span>
                   </div>
                 </div>
               </Link>

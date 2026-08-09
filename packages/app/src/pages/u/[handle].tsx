@@ -2,6 +2,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import { Avatar } from '../../components/avatar';
+import { ActorKindBadge } from '../../components/actor-kind';
 import { ServiceIcon } from '../../components/service-icon';
 import { Markdown } from '../../lib/markdown';
 import { schema } from '../../db/client';
@@ -78,7 +79,10 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="display t-xl">{actor.displayName}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="display t-xl">{actor.displayName}</h1>
+                <ActorKindBadge kind="user" />
+              </div>
               <p className="meta-mono mt-1 text-sm text-neutral">@{actor.handle}</p>
             </div>
             {isSelf && (

@@ -23,9 +23,11 @@ export async function listUpcomingEvents(db: Db, limit = 20) {
       thumbnailUrl: schema.events.thumbnailUrl,
       groupHandle: schema.actors.handle,
       groupName: schema.actors.displayName,
+      groupIsPersonal: schema.groups.isPersonal,
     })
     .from(schema.events)
     .innerJoin(schema.actors, eq(schema.events.groupActorId, schema.actors.id))
+    .innerJoin(schema.groups, eq(schema.events.groupActorId, schema.groups.actorId))
     .where(
       and(eq(schema.events.visibility, 'public'), gte(schema.events.startsAt, new Date())),
     )
