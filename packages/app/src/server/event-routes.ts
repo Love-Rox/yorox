@@ -19,6 +19,7 @@ import { geocodeAddress } from '../lib/geocode';
 import { generateToken } from '../lib/token';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
 import { getSlotCoordinator } from './coordinator';
+import { listManageParticipations } from './data';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
 async function getEnv(): Promise<Env> {
@@ -185,6 +186,92 @@ events.post('/events/:id/update', async (c) => {
   }
 });
 
+
+
+const CSV_STATUS_LABEL: Record<string, string> = {
+  applied: '抽選待ち',
+  accepted: '参加確定',
+  payment_pending: '支払い待ち',
+  waitlisted: '補欠',
+  consent_pending: '繰上承諾待ち',
+  rejected: '落選',
+  cancelled: 'キャンセル済み',
+};
+const CSV_PAYMENT_LABEL: Record<string, string> = {
+  pending: '未払い',
+  paid: '支払済み',
+  refund_required: '要返金',
+  refunded: '返金済み',
+  waived: '免除',
+};
+
+function csvCell(v: string): string {
+  return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
+}
+
+/** 表示名からカスタム絵文字ショートコードを除去する */
+function stripShortcodes(name: string): string {
+  const stripped = name.replace(/:[a-zA-Z0-9_+-]+:/g, '').replace(/\s+/g, ' ').trim();
+  return stripped || name; // 全部絵文字だった場合は元の名前を残す
+}
+
+/**
+ * 参加者 CSV エクスポート(主催向け)。
+ * ?emoji=shortcode(既定: :code: のまま)| strip(ショートコード除去)
+ */
+events.get('/events/:id/participants.csv', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event) return c.notFound();
+  const allowed =
+    (await hasGroupPermission(db, event.groupActorId, actorId, 'attendance.manage')) ||
+    (await hasGroupPermission(db, event.groupActorId, actorId, 'event.edit'));
+  if (!allowed) return c.text('権限がありません', 403);
+
+  const strip = c.req.query('emoji') === 'strip';
+  const slots = await db.query.slots.findMany({
+    where: eq(schema.slots.eventId, event.id),
+  });
+  const slotName = new Map(slots.map((s) => [s.id, s.name]));
+  const { rows } = await listManageParticipations(db, event.id);
+
+  const fmt = new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Tokyo',
+  });
+  const lines = ['枠,状態,表示名,ハンドル,出欠,支払い,申込日時'];
+  for (const r of rows) {
+    const name = strip ? stripShortcodes(r.displayName) : r.displayName;
+    const handle = r.handle ? (r.domain ? `@${r.handle}@${r.domain}` : `@${r.handle}`) : '';
+    const attendance =
+      r.attendanceStatus === 'attended' ? '出席' : r.attendanceStatus === 'no_show' ? '無断欠席' : '';
+    const payment = r.paymentStatus ? (CSV_PAYMENT_LABEL[r.paymentStatus] ?? r.paymentStatus) : '';
+    lines.push(
+      [
+        slotName.get(r.slotId) ?? '',
+        CSV_STATUS_LABEL[r.status] ?? r.status,
+        name,
+        handle,
+        attendance,
+        payment,
+        fmt.format(r.appliedAt),
+      ]
+        .map(csvCell)
+        .join(','),
+    );
+  }
+  // BOM 付き UTF-8(Excel 互換)
+  const body = '\uFEFF' + lines.join('\r\n') + '\r\n';
+  return c.body(body, 200, {
+    'content-type': 'text/csv; charset=utf-8',
+    'content-disposition': `attachment; filename="participants-${event.id}${strip ? '-plain' : ''}.csv"`,
+  });
+});
 
 /** セルフチェックイン用トークンの発行/再発行(出欠管理権限) */
 events.post('/events/:id/checkin/enable', async (c) => {

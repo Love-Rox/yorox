@@ -73,6 +73,22 @@ export default async function ManagePage({
         </p>
       )}
 
+      {/* ---- エクスポート ---- */}
+      <section className="mt-8 flex flex-wrap items-center gap-3 border-2 border-ink p-4">
+        <h2 className="display t-md">参加者のエクスポート</h2>
+        <span className="flex flex-wrap gap-3 text-sm">
+          <Link to={`/g/${handle}/events/${eventId}/print`} className="btn-quiet">
+            印刷用の受付名簿
+          </Link>
+          <a href={`/events/${eventId}/participants.csv`} className="btn-quiet">
+            CSV(絵文字コードあり)
+          </a>
+          <a href={`/events/${eventId}/participants.csv?emoji=strip`} className="btn-quiet">
+            CSV(絵文字コードなし)
+          </a>
+        </span>
+      </section>
+
       {/* ---- QR チェックイン ---- */}
       {canAttendance && (
         <section className="mt-8 border-2 border-ink p-4">

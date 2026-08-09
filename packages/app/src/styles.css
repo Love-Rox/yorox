@@ -192,6 +192,18 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
   background-color: var(--yorox-rule);
 }
 
+/* ---- 印刷 ---- */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    font-size: 12px;
+  }
+}
+
 /* ---- ヘルプアイコン(?)ツールチップ ---- */
 .helptip {
   position: relative;
