@@ -7,8 +7,7 @@ import { eq } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
-import { ulid } from '../lib/ulid';
-import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
+import { getStorage, saveImageUpload } from '../storage/driver';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
 async function getEnv(): Promise<Env> {
@@ -65,37 +64,20 @@ files.post('/events/:id/thumbnail', async (c) => {
   }
 
   const editUrl = `/g/${groupActor.handle}/events/${event.id}/edit`;
-  const { enabled, maxBytes } = getUploadConfig(env);
-  const storage = getStorage(env);
-  if (!enabled || !storage) {
-    return c.redirect(`${editUrl}?error=uploads_disabled`, 302);
-  }
-
   const form = await c.req.parseBody();
-  const file = form.file;
-  if (!(file instanceof File) || file.size === 0) {
-    return c.redirect(`${editUrl}?error=no_file`, 302);
-  }
-  if (file.size > maxBytes) {
-    return c.redirect(`${editUrl}?error=too_large`, 302);
-  }
-  const ext = IMAGE_TYPES[file.type];
-  if (!ext) {
-    return c.redirect(`${editUrl}?error=bad_type`, 302);
-  }
-
-  const key = `thumbnails/${event.id}/${ulid()}.${ext}`;
-  await storage.put(key, await file.arrayBuffer(), file.type);
-
-  // 旧サムネイルが自ホスティングなら削除しておく(ストレージを汚さない)
-  const prev = event.thumbnailUrl;
-  if (prev?.startsWith('/files/')) {
-    await storage.delete(prev.replace(/^\/files\//, '')).catch(() => undefined);
+  const result = await saveImageUpload(
+    env,
+    `thumbnails/${event.id}`,
+    form.file,
+    event.thumbnailUrl,
+  );
+  if (!result.ok) {
+    return c.redirect(`${editUrl}?error=${result.error}`, 302);
   }
 
   await db
     .update(schema.events)
-    .set({ thumbnailUrl: `/files/${key}`, updatedAt: new Date() })
+    .set({ thumbnailUrl: result.url, updatedAt: new Date() })
     .where(eq(schema.events.id, event.id));
 
   return c.redirect(`/g/${groupActor.handle}/events/${event.id}`, 302);

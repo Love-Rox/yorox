@@ -64,3 +64,38 @@ export const IMAGE_TYPES: Record<string, string> = {
   'image/webp': 'webp',
   'image/gif': 'gif',
 };
+
+export type ImageUploadError = 'uploads_disabled' | 'no_file' | 'too_large' | 'bad_type';
+
+export type ImageUploadResult =
+  | { ok: true; url: string }
+  | { ok: false; error: ImageUploadError };
+
+/**
+ * 画像アップロードを検証して保存し、公開 URL(/files/…)を返す共通処理。
+ * prefix はキーの名前空間(例: `thumbnails/<eventId>`、`avatars/<actorId>`)。
+ * prevUrl が自ホスティングなら保存後に削除する。
+ */
+export async function saveImageUpload(
+  env: Env,
+  prefix: string,
+  file: unknown,
+  prevUrl?: string | null,
+): Promise<ImageUploadResult> {
+  const { enabled, maxBytes } = getUploadConfig(env);
+  const storage = getStorage(env);
+  if (!enabled || !storage) return { ok: false, error: 'uploads_disabled' };
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'no_file' };
+  if (file.size > maxBytes) return { ok: false, error: 'too_large' };
+  const ext = IMAGE_TYPES[file.type];
+  if (!ext) return { ok: false, error: 'bad_type' };
+
+  const { ulid } = await import('../lib/ulid');
+  const key = `${prefix}/${ulid()}.${ext}`;
+  await storage.put(key, await file.arrayBuffer(), file.type);
+
+  if (prevUrl?.startsWith('/files/')) {
+    await storage.delete(prevUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  }
+  return { ok: true, url: `/files/${key}` };
+}

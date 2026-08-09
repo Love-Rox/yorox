@@ -4,6 +4,7 @@ import { HelpTip } from '../../../../components/help-tip';
 import { getCurrentUser } from '../../../../server/current-user';
 import { getDb, getGroupByHandle } from '../../../../server/data';
 import { hasGroupPermission } from '../../../../server/route-auth';
+import { getUploadConfig } from '../../../../storage/driver';
 
 export default async function NewEventPage({ handle }: { handle: string }) {
   const db = await getDb();
@@ -15,6 +16,9 @@ export default async function NewEventPage({ handle }: { handle: string }) {
   if (!(await hasGroupPermission(db, result.actor.id, user.actorId, 'event.create'))) {
     return notFound();
   }
+
+  const { env } = await import('cloudflare:workers');
+  const uploads = getUploadConfig(env);
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
@@ -32,7 +36,12 @@ export default async function NewEventPage({ handle }: { handle: string }) {
           入力内容を確認してください(タイトルと開始日時は必須です)。
         </p>
       )}
-      <form method="post" action={`/g/${handle}/events`} className="mt-6 space-y-5">
+      <form
+        method="post"
+        action={`/g/${handle}/events`}
+        encType="multipart/form-data"
+        className="mt-6 space-y-5"
+      >
         <label className="block">
           <span className="text-sm font-bold">タイトル *</span>
           <input type="text" name="title" required maxLength={200} className="input mt-1" />
@@ -77,18 +86,37 @@ export default async function NewEventPage({ handle }: { handle: string }) {
             placeholder="https://meet.example.com/…"
           />
         </label>
-        <label className="block">
-          <span className="text-sm font-bold">サムネイル画像 URL</span>
-          <input
-            type="url"
-            name="thumbnail_url"
-            className="input meta-mono mt-1"
-            placeholder="https://example.com/banner.png"
-          />
+        <div className="block">
+          <span className="text-sm font-bold">サムネイル画像</span>
           <span className="mt-1 block text-sm text-neutral">
-            イベントページとシェア時(OGP)に表示されます。横長(1200×630 目安)推奨
+            イベントページとシェア時(OGP)に表示されます。横長(1200×630 目安)推奨。
+            未設定でも、タイトルと日時から OGP 画像を自動生成します。
           </span>
-        </label>
+          {uploads.enabled && (
+            <label className="mt-2 block">
+              <span className="text-sm text-neutral">画像をアップロード</span>
+              <input
+                type="file"
+                name="thumbnail_file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="mt-1 block text-sm"
+              />
+              <span className="mt-1 block text-sm text-neutral">
+                PNG / JPEG / WebP / GIF、{Math.floor(uploads.maxBytes / 1024 / 1024)}MB まで。
+                指定すると下の URL より優先されます
+              </span>
+            </label>
+          )}
+          <label className="mt-2 block">
+            <span className="text-sm text-neutral">または画像の URL</span>
+            <input
+              type="url"
+              name="thumbnail_url"
+              className="input meta-mono mt-1"
+              placeholder="https://example.com/banner.png"
+            />
+          </label>
+        </div>
         <label className="block">
           <span className="text-sm font-bold">参加者への案内(Markdown)</span>
           <textarea

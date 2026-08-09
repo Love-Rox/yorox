@@ -25,6 +25,7 @@ import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
 import { buildEventOgSvg } from '../lib/ogp';
+import { saveImageUpload } from '../storage/driver';
 import { generateToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
@@ -116,6 +117,16 @@ events.post('/g/:handle/events', async (c) => {
       remoteJoinMethods: parseRemoteJoinMethods(form),
       createdByActorId: actorId,
     });
+
+    // 画像アップロードがあれば URL 欄より優先して保存する
+    const upload = await saveImageUpload(await getEnv(), `thumbnails/${eventId}`, form.thumbnail_file);
+    if (upload.ok) {
+      await db
+        .update(schema.events)
+        .set({ thumbnailUrl: upload.url, updatedAt: new Date() })
+        .where(eq(schema.events.id, eventId));
+    }
+
     return c.redirect(`/g/${handle}/events/${eventId}`, 302);
   } catch {
     return c.redirect(`/g/${handle}/events/new?error=invalid_input`, 302);
