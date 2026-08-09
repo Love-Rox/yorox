@@ -195,11 +195,38 @@ export const loginTokens = sqliteTable(
     /** トークンの SHA-256(hex) */
     tokenHash: text('token_hash').notNull(),
     email: text('email').notNull(),
+    /** OAuth 経由サインアップのとき、登録完了時に自動リンクするプロバイダ情報 */
+    oauthPayload: text('oauth_payload', { mode: 'json' }).$type<{
+      provider: string;
+      providerUserId: string;
+      label: string;
+    }>(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
     usedAt: integer('used_at', { mode: 'timestamp_ms' }),
   },
   (t) => [uniqueIndex('login_tokens_token_hash_unique').on(t.tokenHash)],
+);
+
+/** OAuth 連携アカウント(ログイン手段。1ユーザーが複数プロバイダを持てる) */
+export const oauthAccounts = sqliteTable(
+  'oauth_accounts',
+  {
+    id: text('id').primaryKey(), // ULID
+    provider: text('provider', { enum: ['github', 'google'] }).notNull(),
+    /** プロバイダ側の不変ユーザー ID(GitHub id / Google sub) */
+    providerUserId: text('provider_user_id').notNull(),
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => users.actorId),
+    /** 表示用ラベル(GitHub ログイン名、Google メールアドレスなど) */
+    label: text('label'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('oauth_accounts_provider_user_unique').on(t.provider, t.providerUserId),
+    index('oauth_accounts_user_idx').on(t.userActorId),
+  ],
 );
 
 // ---------------------------------------------------------------------------

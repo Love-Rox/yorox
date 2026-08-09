@@ -8,7 +8,16 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { getCookie } from 'hono/cookie';
-import { consumeLoginToken, issueSignupTicket, requestMagicLink } from '../auth/magic-link';
+import {
+  consumeLoginToken,
+  consumeLoginTokenDetailed,
+  issueSignupTicket,
+  requestMagicLink,
+} from '../auth/magic-link';
+import { getProvider, providerCredentials, type OAuthProviderId } from '../auth/oauth';
+import { generateToken } from '../lib/token';
+import { ulid } from '../lib/ulid';
+import { getSessionActorId } from './route-auth';
 import {
   clearSessionCookieHeader,
   createSession,
@@ -20,7 +29,7 @@ import { createDb, schema } from '../db/client';
 import { HandleTakenError, validateHandle } from '../domain/groups';
 import { createUser, EmailTakenError, isHandleAvailable } from '../domain/users';
 import { createDirectSender } from '../mail/send';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -102,8 +111,9 @@ auth.post('/auth/signup', async (c) => {
   }
 
   // チケット(メール検証済みトークン)をここで消費する
-  const email = await consumeLoginToken(db, ticket);
-  if (!email) return c.redirect('/login?error=expired', 302);
+  const consumed = await consumeLoginTokenDetailed(db, ticket);
+  if (!consumed) return c.redirect('/login?error=expired', 302);
+  const { email, oauthPayload } = consumed;
 
   try {
     const { userActorId } = await createUser(db, {
@@ -112,6 +122,16 @@ auth.post('/auth/signup', async (c) => {
       displayName,
       origin: new URL(c.req.url).origin,
     });
+    // OAuth 経由のサインアップなら、そのプロバイダを自動で連携する
+    if (oauthPayload) {
+      await linkOAuthAccount(
+        db,
+        oauthPayload.provider as OAuthProviderId,
+        oauthPayload.providerUserId,
+        oauthPayload.label,
+        userActorId,
+      );
+    }
     const { token: sessionToken, expiresAt } = await createSession(db, userActorId);
     c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
     return c.redirect('/', 302);
@@ -121,6 +141,171 @@ auth.post('/auth/signup', async (c) => {
     }
     throw err;
   }
+});
+
+
+// ---------------------------------------------------------------------------
+// OAuth(Authorization Code フロー)
+// ---------------------------------------------------------------------------
+
+const OAUTH_STATE_COOKIE = 'yorox_oauth_state';
+
+function oauthRedirectUri(c: Context, provider: string): string {
+  return `${new URL(c.req.url).origin}/auth/oauth/${provider}/callback`;
+}
+
+/** OAuth アカウントをユーザーに紐付ける。他ユーザーに紐付いていれば false */
+async function linkOAuthAccount(
+  db: ReturnType<typeof createDb>,
+  provider: OAuthProviderId,
+  providerUserId: string,
+  label: string,
+  userActorId: string,
+): Promise<boolean> {
+  const existing = await db.query.oauthAccounts.findFirst({
+    where: (t, { and: a, eq: e }) => a(e(t.provider, provider), e(t.providerUserId, providerUserId)),
+  });
+  if (existing) return existing.userActorId === userActorId;
+  await db.insert(schema.oauthAccounts).values({
+    id: ulid(),
+    provider,
+    providerUserId,
+    userActorId,
+    label,
+    createdAt: new Date(),
+  });
+  return true;
+}
+
+/**
+ * OAuth 開始。?link=1 なら「ログイン済みユーザーへの追加連携」モード。
+ * state はワンタイム値を cookie に持たせて callback で照合する。
+ */
+auth.get('/auth/oauth/:provider/start', async (c) => {
+  const providerId = c.req.param('provider');
+  const provider = getProvider(providerId);
+  const env = await getEnv();
+  const creds = provider && providerCredentials(env, provider.id);
+  if (!provider || !creds) return c.notFound();
+
+  const mode = c.req.query('link') === '1' ? 'link' : 'login';
+  const state = generateToken();
+  c.header(
+    'set-cookie',
+    `${OAUTH_STATE_COOKIE}=${state}.${mode}; Max-Age=600; Path=/; HttpOnly; SameSite=Lax${isSecure(c) ? '; Secure' : ''}`,
+  );
+  return c.redirect(
+    provider.authorizeUrl(creds.clientId, oauthRedirectUri(c, provider.id), state),
+    302,
+  );
+});
+
+auth.get('/auth/oauth/:provider/callback', async (c) => {
+  const providerId = c.req.param('provider');
+  const provider = getProvider(providerId);
+  const env = await getEnv();
+  const creds = provider && providerCredentials(env, provider.id);
+  if (!provider || !creds) return c.notFound();
+
+  // state 検証(CSRF 対策)
+  const stateCookie = getCookie(c, OAUTH_STATE_COOKIE) ?? '';
+  const [cookieState, mode] = stateCookie.split('.');
+  c.header(
+    'set-cookie',
+    `${OAUTH_STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isSecure(c) ? '; Secure' : ''}`,
+  );
+  const state = c.req.query('state');
+  const code = c.req.query('code');
+  if (!code || !state || !cookieState || state !== cookieState) {
+    return c.redirect('/login?error=oauth_state', 302);
+  }
+
+  const identity = await provider.fetchIdentity(
+    creds.clientId,
+    creds.clientSecret,
+    code,
+    oauthRedirectUri(c, provider.id),
+  );
+  if (!identity) return c.redirect('/login?error=oauth_failed', 302);
+
+  const db = createDb(env.DB);
+
+  // 追加連携モード: ログイン済みユーザーに紐付ける
+  if (mode === 'link') {
+    const actorId = await getSessionActorId(db, c);
+    if (!actorId) return c.redirect('/login', 302);
+    const ok = await linkOAuthAccount(
+      db,
+      provider.id,
+      identity.providerUserId,
+      identity.label,
+      actorId,
+    );
+    return c.redirect(
+      ok
+        ? '/settings/profile?oauth_ok=1#oauth'
+        : `/settings/profile?oauth_error=${encodeURIComponent('この' + provider.name + ' アカウントは別のユーザーに連携済みです')}#oauth`,
+      302,
+    );
+  }
+
+  // ログインモード: 連携済みならログイン
+  const linked = await db.query.oauthAccounts.findFirst({
+    where: (t, { and: a, eq: e }) =>
+      a(e(t.provider, provider.id), e(t.providerUserId, identity.providerUserId)),
+  });
+  if (linked) {
+    const { token: sessionToken, expiresAt } = await createSession(db, linked.userActorId);
+    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+    return c.redirect('/', 302);
+  }
+
+  // 未連携: 検証済みメールが既存ユーザーと一致すれば自動リンクしてログイン
+  if (identity.email) {
+    const existing = await db.query.users.findFirst({
+      where: eq(schema.users.email, identity.email),
+    });
+    if (existing) {
+      await linkOAuthAccount(
+        db,
+        provider.id,
+        identity.providerUserId,
+        identity.label,
+        existing.actorId,
+      );
+      const { token: sessionToken, expiresAt } = await createSession(db, existing.actorId);
+      c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+      return c.redirect('/', 302);
+    }
+    // 新規: メール検証済みチケット(OAuth ペイロード付き)でオンボーディングへ
+    const ticket = await issueSignupTicket(db, identity.email, new Date(), {
+      provider: provider.id,
+      providerUserId: identity.providerUserId,
+      label: identity.label,
+    });
+    return c.redirect(`/onboarding?ticket=${ticket}`, 302);
+  }
+
+  return c.redirect('/login?error=oauth_no_email', 302);
+});
+
+/** OAuth 連携の解除(メールログインは常に残るため安全) */
+auth.post('/auth/oauth/:id/unlink', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  await db
+    .delete(schema.oauthAccounts)
+    .where(
+      // 自分の連携のみ削除できる
+      and(
+        eq(schema.oauthAccounts.id, c.req.param('id')),
+        eq(schema.oauthAccounts.userActorId, actorId),
+      ),
+    );
+  return c.redirect('/settings/profile#oauth', 302);
 });
 
 auth.post('/auth/logout', async (c) => {

@@ -84,6 +84,46 @@ export async function consumeLoginToken(
 }
 
 /** 新規サインアップ用: メール検証済みチケットを発行する */
-export async function issueSignupTicket(db: Db, email: string, now: Date = new Date()) {
-  return issueLoginToken(db, email, SIGNUP_TICKET_TTL_MS, now);
+export async function issueSignupTicket(
+  db: Db,
+  email: string,
+  now: Date = new Date(),
+  oauthPayload?: { provider: string; providerUserId: string; label: string },
+) {
+  const token = generateToken();
+  await db.insert(schema.loginTokens).values({
+    id: ulid(),
+    tokenHash: await hashToken(token),
+    email,
+    oauthPayload: oauthPayload ?? null,
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + SIGNUP_TICKET_TTL_MS),
+  });
+  return token;
+}
+
+/**
+ * consumeLoginToken の詳細版: メールに加えて OAuth ペイロードも返す
+ * (OAuth 経由サインアップの自動リンク用)。
+ */
+export async function consumeLoginTokenDetailed(
+  db: Db,
+  token: string,
+  now: Date = new Date(),
+): Promise<{ email: string; oauthPayload: { provider: string; providerUserId: string; label: string } | null } | null> {
+  const tokenHash = await hashToken(token);
+  const row = await db.query.loginTokens.findFirst({
+    where: and(
+      eq(schema.loginTokens.tokenHash, tokenHash),
+      isNull(schema.loginTokens.usedAt),
+      gt(schema.loginTokens.expiresAt, now),
+    ),
+  });
+  if (!row) return null;
+  const result = await db
+    .update(schema.loginTokens)
+    .set({ usedAt: now })
+    .where(and(eq(schema.loginTokens.id, row.id), isNull(schema.loginTokens.usedAt)));
+  if ((result.meta?.changes ?? 0) !== 1) return null;
+  return { email: row.email, oauthPayload: row.oauthPayload ?? null };
 }

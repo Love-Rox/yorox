@@ -13,6 +13,11 @@ interface Env {
   /** 送信元(例: Yorox <noreply@yorox.example>)。未設定ならメール送信無効 */
   MAIL_FROM?: string;
   RESEND_API_KEY?: string;
+  /** OAuth ログイン(未設定のプロバイダはログイン画面に出ない) */
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USERNAME?: string;

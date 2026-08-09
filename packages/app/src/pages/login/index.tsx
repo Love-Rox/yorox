@@ -1,15 +1,22 @@
 import { unstable_getRequest as getRequest } from 'waku/router/server';
+import { enabledProviders } from '../../auth/oauth';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_email: 'メールアドレスの形式が正しくありません。',
   invalid_token: 'リンクが正しくありません。',
   expired: 'リンクの有効期限が切れています。もう一度お試しください。',
   conflict: '登録中に競合が発生しました。もう一度お試しください。',
+  oauth_state: 'ログインの検証に失敗しました。もう一度お試しください。',
+  oauth_failed: '外部サービスでのログインに失敗しました。もう一度お試しください。',
+  oauth_no_email:
+    '外部サービスから検証済みメールアドレスを取得できませんでした。メールでログインしてください。',
 };
 
 export default async function LoginPage() {
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
+  const { env } = await import('cloudflare:workers');
+  const providers = enabledProviders(env);
 
   return (
     <div className="max-w-sm">
@@ -42,6 +49,22 @@ export default async function LoginPage() {
           ログインリンクを送る
         </button>
       </form>
+      {providers.length > 0 && (
+        <div className="mt-6 border-t border-rule pt-5">
+          <p className="meta-mono text-sm text-neutral">または外部サービスでログイン</p>
+          <div className="mt-3 space-y-2">
+            {providers.map((p) => (
+              <a
+                key={p.id}
+                href={`/auth/oauth/${p.id}/start`}
+                className="btn-quiet block w-full text-center"
+              >
+                {p.name} でログイン
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

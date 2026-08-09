@@ -6,6 +6,7 @@ import { HelpTip } from '../../components/help-tip';
 import { LoginRequired } from '../../components/login-required';
 import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
+import { enabledProviders } from '../../auth/oauth';
 import { listClaimedAliases } from '../../server/claim';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
@@ -39,11 +40,18 @@ export default async function ProfileSettingsPage() {
   const claimOk = url.searchParams.get('claim_ok');
   const claimError = url.searchParams.get('claim_error');
   const notifySaved = url.searchParams.get('notify_saved');
+  const oauthOk = url.searchParams.get('oauth_ok');
+  const oauthError = url.searchParams.get('oauth_error');
   const aliases = await listClaimedAliases(db, user.actorId);
   const account = await db.query.users.findFirst({
     where: eq(schema.users.actorId, user.actorId),
   });
   const host = url.host;
+  const providers = enabledProviders(env);
+  const oauthLinks = await db.query.oauthAccounts.findMany({
+    where: eq(schema.oauthAccounts.userActorId, user.actorId),
+  });
+  const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
 
   return (
     <div className="max-w-xl">
@@ -140,6 +148,69 @@ export default async function ProfileSettingsPage() {
           保存する
         </button>
       </form>
+
+      {/* ---- ログイン方法(OAuth) ---- */}
+      <section id="oauth" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+        <h2 className="display t-md">
+          ログイン方法
+          <HelpTip text="メールでのログインリンクは常に使えます。外部サービスを連携すると、そのアカウントのボタン一つでログインできるようになります。連携を解除してもメールでログインできるため安全です。" />
+        </h2>
+        {oauthOk && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            連携しました。
+          </p>
+        )}
+        {oauthError && (
+          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+            {oauthError}
+          </p>
+        )}
+        <p className="mt-3 text-sm">
+          メール({account?.email})でのログイン: <strong>常に有効</strong>
+        </p>
+        {oauthLinks.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {oauthLinks.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {providerName(o.provider)}
+                  {o.label && (
+                    <span className="meta-mono ml-2 text-sm text-neutral">{o.label}</span>
+                  )}
+                </span>
+                <form method="post" action={`/auth/oauth/${o.id}/unlink`}>
+                  <button
+                    type="submit"
+                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                  >
+                    解除
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        {providers.filter((p) => !oauthLinks.some((o) => o.provider === p.id)).length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {providers
+              .filter((p) => !oauthLinks.some((o) => o.provider === p.id))
+              .map((p) => (
+                <a
+                  key={p.id}
+                  href={`/auth/oauth/${p.id}/start?link=1`}
+                  className="btn-quiet"
+                >
+                  {p.name} を連携
+                </a>
+              ))}
+          </div>
+        )}
+        {providers.length === 0 && (
+          <p className="mt-3 text-sm text-neutral">
+            このインスタンスでは外部サービスログインは設定されていません。
+          </p>
+        )}
+      </section>
 
       {/* ---- お知らせ設定 ---- */}
       <section id="notifications" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
