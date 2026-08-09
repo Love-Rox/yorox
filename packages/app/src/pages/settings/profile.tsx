@@ -7,6 +7,7 @@ import { LoginRequired } from '../../components/login-required';
 import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
 import { enabledProviders } from '../../auth/oauth';
+import { PasskeyRegisterButton } from '../../components/passkey-buttons';
 import { listClaimedAliases } from '../../server/claim';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
@@ -50,6 +51,9 @@ export default async function ProfileSettingsPage() {
   const providers = enabledProviders(env);
   const oauthLinks = await db.query.oauthAccounts.findMany({
     where: eq(schema.oauthAccounts.userActorId, user.actorId),
+  });
+  const passkeyList = await db.query.passkeys.findMany({
+    where: eq(schema.passkeys.userActorId, user.actorId),
   });
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
 
@@ -168,6 +172,42 @@ export default async function ProfileSettingsPage() {
         <p className="mt-3 text-sm">
           メール({account?.email})でのログイン: <strong>常に有効</strong>
         </p>
+
+        <div className="mt-4 border-t border-rule pt-4">
+          <h3 className="text-sm font-bold">パスキー</h3>
+          <p className="mt-1 text-sm text-neutral">
+            指紋・顔認証などでワンタップログインできます。デバイスごとに登録してください。
+          </p>
+          {passkeyList.length > 0 && (
+            <ul className="mt-2 space-y-2">
+              {passkeyList.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm">
+                    {p.label || 'パスキー'}
+                    <span className="meta-mono ml-2 text-neutral">
+                      {new Intl.DateTimeFormat('ja-JP', {
+                        dateStyle: 'medium',
+                        timeZone: 'Asia/Tokyo',
+                      }).format(p.createdAt)}{' '}
+                      登録
+                    </span>
+                  </span>
+                  <form method="post" action={`/auth/passkey/${p.id}/delete`}>
+                    <button
+                      type="submit"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-3">
+            <PasskeyRegisterButton />
+          </div>
+        </div>
         {oauthLinks.length > 0 && (
           <ul className="mt-3 space-y-2">
             {oauthLinks.map((o) => (

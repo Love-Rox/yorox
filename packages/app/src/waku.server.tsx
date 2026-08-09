@@ -2,6 +2,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 import apRoutes from './server/ap-routes';
 import authRoutes from './server/auth-routes';
+import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
 import fileRoutes from './server/file-routes';
 import groupRoutes from './server/group-routes';
@@ -13,6 +14,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
   middlewareFns: [
     apRoutes,
     authRoutes,
+    passkeyRoutes,
     eventRoutes,
     manageRoutes,
     fileRoutes,

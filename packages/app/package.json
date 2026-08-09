@@ -17,6 +17,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.2",
     "@yorox/ap": "workspace:*",
     "@yorox/slot-coordinator": "workspace:*",
     "drizzle-orm": "^0.45.2",

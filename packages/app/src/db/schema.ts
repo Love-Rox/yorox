@@ -229,6 +229,32 @@ export const loginTokens = sqliteTable(
   (t) => [uniqueIndex('login_tokens_token_hash_unique').on(t.tokenHash)],
 );
 
+/** パスキー(WebAuthn クレデンシャル)。1ユーザーが複数登録できる */
+export const passkeys = sqliteTable(
+  'passkeys',
+  {
+    id: text('id').primaryKey(), // ULID
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => users.actorId),
+    /** WebAuthn credential ID(base64url) */
+    credentialId: text('credential_id').notNull(),
+    /** COSE 公開鍵(base64url) */
+    publicKey: text('public_key').notNull(),
+    /** クローン検知用の署名カウンタ */
+    counter: integer('counter').notNull().default(0),
+    transports: text('transports', { mode: 'json' }).$type<string[]>(),
+    /** 表示用ラベル(登録時の端末情報など) */
+    label: text('label'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('passkeys_credential_unique').on(t.credentialId),
+    index('passkeys_user_idx').on(t.userActorId),
+  ],
+);
+
 /** OAuth 連携アカウント(ログイン手段。1ユーザーが複数プロバイダを持てる) */
 export const oauthAccounts = sqliteTable(
   'oauth_accounts',

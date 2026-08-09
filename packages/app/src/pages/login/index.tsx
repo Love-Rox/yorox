@@ -1,5 +1,6 @@
 import { unstable_getRequest as getRequest } from 'waku/router/server';
 import { enabledProviders } from '../../auth/oauth';
+import { PasskeyLoginButton } from '../../components/passkey-buttons';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_email: 'メールアドレスの形式が正しくありません。',
@@ -49,6 +50,12 @@ export default async function LoginPage() {
           ログインリンクを送る
         </button>
       </form>
+      <div className="mt-6 border-t border-rule pt-5">
+        <p className="meta-mono text-sm text-neutral">またはパスキーでログイン</p>
+        <div className="mt-3">
+          <PasskeyLoginButton />
+        </div>
+      </div>
       {providers.length > 0 && (
         <div className="mt-6 border-t border-rule pt-5">
           <p className="meta-mono text-sm text-neutral">または外部サービスでログイン</p>
