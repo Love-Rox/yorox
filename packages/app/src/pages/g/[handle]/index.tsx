@@ -142,6 +142,14 @@ export default async function GroupPage({ handle }: { handle: string }) {
         </section>
       )}
 
+      {group.tokushoho && (
+        <p className="mt-6 text-sm">
+          <Link to={`/g/${handle}/legal/tokushoho`} className="link">
+            特定商取引法に基づく表記
+          </Link>
+        </p>
+      )}
+
       <p className="meta-mono mt-10 border-b-2 border-ink pb-2 text-sm text-neutral">
         イベント · {events.length}件
       </p>

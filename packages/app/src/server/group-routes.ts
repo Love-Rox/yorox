@@ -242,6 +242,32 @@ groups.post('/g/:handle/posts/:postId/delete', async (c) => {
   return c.redirect(`/g/${handle}#timeline`, 302);
 });
 
+
+/** 特定商取引法に基づく表記の保存 */
+groups.post('/g/:handle/settings/tokushoho', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const { TOKUSHOHO_FIELDS } = await import('../domain/tokushoho');
+  const tokushoho = Object.fromEntries(
+    TOKUSHOHO_FIELDS.map((f) => [f.key, str(form[f.key]).slice(0, 2000)]),
+  ) as unknown as import('../domain/tokushoho').Tokushoho;
+  // すべて空なら削除(=未設定に戻す)
+  const allEmpty = Object.values(tokushoho).every((v) => v.length === 0);
+  await db
+    .update(schema.groups)
+    .set({ tokushoho: allEmpty ? null : tokushoho })
+    .where(eq(schema.groups.actorId, ctx.groupActorId));
+  return c.redirect(`/g/${handle}/settings#tokushoho`, 302);
+});
+
 /** メンバー追加(handle 指定) */
 groups.post('/g/:handle/members', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);

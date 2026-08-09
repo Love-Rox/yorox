@@ -296,6 +296,10 @@ export const groups = sqliteTable('groups', {
   bskyAppPassword: text('bsky_app_password'),
   /** 接続済み Stripe アカウント ID(Connect)。決済はこの口座で直接受ける */
   stripeAccountId: text('stripe_account_id'),
+  /** 特定商取引法に基づく表記(グループ=事業者ごと。null=未設定) */
+  tokushoho: text('tokushoho', { mode: 'json' }).$type<
+    import('./schema-types').TokushohoJson
+  >(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

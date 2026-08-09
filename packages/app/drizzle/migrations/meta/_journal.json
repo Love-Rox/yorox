@@ -183,6 +183,13 @@
       "when": 1786252433347,
       "tag": "0025_stripe",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1786261128660,
+      "tag": "0026_group-tokushoho",
+      "breakpoints": true
     }
   ]
 }

@@ -45,6 +45,12 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
   const { stripeConnectConfigured } = await import('../../../lib/stripe');
   const stripeAvailable = stripeConnectConfigured(env);
 
+  const { TOKUSHOHO_FIELDS, tokushohoTemplate } = await import(
+    '../../../domain/tokushoho'
+  );
+  const tokushohoFields = TOKUSHOHO_FIELDS;
+  const tokushohoValues = { ...tokushohoTemplate(), ...(group.tokushoho ?? {}) };
+
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
 
@@ -135,6 +141,77 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               </a>
             </div>
           )}
+        </section>
+      )}
+
+      {/* ---- 特定商取引法に基づく表記 ---- */}
+      {canSettings && (
+        <section id="tokushoho" className="mt-10 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            特定商取引法に基づく表記
+            <HelpTip text="有料イベントを開催する場合、通信販売の事業者として表記の義務があります。ここで設定するとグループの公開ページに表示されます。" />
+          </h2>
+
+          <div className="mt-3 border-2 border-accent p-3 text-sm">
+            <p className="font-bold text-accent">これはテンプレート(雛形)です</p>
+            <p className="mt-1">
+              入力欄には一般的な例をあらかじめ入れてありますが、
+              <strong>そのままで法的要件を満たすことを保証するものではありません</strong>。
+              各事業者(主催者)の責任で、実態に合わせて必ず書き換えてください。
+              不明な点は専門家にご確認ください。
+            </p>
+          </div>
+
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm font-bold">
+              テンプレが押さえている項目(概要)
+            </summary>
+            <ul className="mt-2 space-y-1 text-sm">
+              {tokushohoFields.map((f) => (
+                <li key={f.key} className="border-b border-rule pb-1">
+                  <span className="font-bold">{f.label}</span>
+                  <span className="ml-2 text-neutral">— {f.hint}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          <form
+            method="post"
+            action={`/g/${handle}/settings/tokushoho`}
+            className="mt-4 space-y-4"
+          >
+            {tokushohoFields.map((f) => (
+              <label key={f.key} className="block">
+                <span className="text-sm font-bold">{f.label}</span>
+                {f.multiline ? (
+                  <textarea
+                    name={f.key}
+                    rows={2}
+                    defaultValue={tokushohoValues[f.key]}
+                    className="input mt-1 leading-relaxed"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    name={f.key}
+                    defaultValue={tokushohoValues[f.key]}
+                    className="input mt-1"
+                  />
+                )}
+              </label>
+            ))}
+            <div className="flex flex-wrap items-center gap-4">
+              <button type="submit" className="btn cursor-pointer">
+                保存
+              </button>
+              {group.tokushoho && (
+                <Link to={`/g/${handle}/legal/tokushoho`} className="link text-sm">
+                  公開ページを見る
+                </Link>
+              )}
+            </div>
+          </form>
         </section>
       )}
 
