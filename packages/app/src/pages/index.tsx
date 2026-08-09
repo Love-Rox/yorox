@@ -1,6 +1,5 @@
 import { Link } from 'waku';
 import { ActorKindMark } from '../components/actor-kind';
-import { getCurrentUser } from '../server/current-user';
 import { getDb, listUpcomingEvents } from '../server/data';
 
 const DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -24,7 +23,6 @@ const TOP_EVENT_LIMIT = 12;
 export default async function HomePage() {
   const db = await getDb();
   const upcoming = await listUpcomingEvents(db, TOP_EVENT_LIMIT);
-  const user = await getCurrentUser();
 
   return (
     <div>
@@ -39,11 +37,6 @@ export default async function HomePage() {
           <Link to="/docs" className="link">
             使い方
           </Link>
-          {user && (
-            <Link to="/groups/new" className="link">
-              グループを作る
-            </Link>
-          )}
         </span>
       </div>
 

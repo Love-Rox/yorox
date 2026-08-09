@@ -147,7 +147,19 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
 
       {memberships.length > 0 && (
         <section className="mt-10">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">グループ</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-2">
+            <h2 className="display t-md">グループ</h2>
+            {isSelf && (
+              <Link to="/groups/new" className="btn-quiet">
+                共用グループを作成
+              </Link>
+            )}
+          </div>
+          {isSelf && (
+            <p className="mt-2 text-sm text-neutral">
+              個人グループはあなた1人用です。仲間と共同で運営するなら共用グループを作成してください。
+            </p>
+          )}
           <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
             {memberships.map((m) => (
               <li key={m.handle} className="flex items-center gap-1.5">

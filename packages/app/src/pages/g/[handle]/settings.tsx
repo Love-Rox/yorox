@@ -336,42 +336,53 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
             ))}
           </ul>
 
-          <details className="mt-4 border-2 border-ink">
-            <summary className="cursor-pointer p-3 text-sm font-bold">メンバーを追加</summary>
-            <form
-              method="post"
-              action={`/g/${handle}/members`}
-              className="flex flex-wrap items-end gap-3 border-t-2 border-ink p-4"
-            >
-              <label className="block min-w-48 flex-1">
-                <span className="text-sm font-bold">ハンドル</span>
-                <input
-                  type="text"
-                  name="member_handle"
-                  required
-                  className="input meta-mono mt-1"
-                  placeholder="@kyoto-taro"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-bold">ロール</span>
-                <select
-                  name="role_id"
-                  defaultValue={roles.find((r) => r.name === 'メンバー')?.id}
-                  className="input mt-1"
-                >
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" className="btn cursor-pointer">
-                追加
-              </button>
-            </form>
-          </details>
+          {group.isPersonal ? (
+            <p className="mt-4 border-2 border-rule bg-paper-2 p-3 text-sm text-neutral">
+              個人グループは、あなた1人のためのグループです。他のメンバーは追加できません。
+              仲間と共同で運営したい場合は、
+              <Link to="/groups/new" className="link">
+                共用グループを新しく作成
+              </Link>
+              してください。
+            </p>
+          ) : (
+            <details className="mt-4 border-2 border-ink">
+              <summary className="cursor-pointer p-3 text-sm font-bold">メンバーを追加</summary>
+              <form
+                method="post"
+                action={`/g/${handle}/members`}
+                className="flex flex-wrap items-end gap-3 border-t-2 border-ink p-4"
+              >
+                <label className="block min-w-48 flex-1">
+                  <span className="text-sm font-bold">ハンドル</span>
+                  <input
+                    type="text"
+                    name="member_handle"
+                    required
+                    className="input meta-mono mt-1"
+                    placeholder="@kyoto-taro"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold">ロール</span>
+                  <select
+                    name="role_id"
+                    defaultValue={roles.find((r) => r.name === 'メンバー')?.id}
+                    className="input mt-1"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit" className="btn cursor-pointer">
+                  追加
+                </button>
+              </form>
+            </details>
+          )}
         </section>
       )}
 

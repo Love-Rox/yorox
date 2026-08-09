@@ -125,6 +125,17 @@ export async function addMemberByHandle(
   roleId: string,
   now: Date = new Date(),
 ): Promise<void> {
+  // 個人グループ(本人1人=本人)は他メンバーを追加できない。
+  // 共同運営したい場合は共用グループを新規作成する
+  const group = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, groupActorId),
+  });
+  if (group?.isPersonal) {
+    throw new Error(
+      '個人グループには他のメンバーを追加できません。共同運営するには共用グループを新しく作成してください。',
+    );
+  }
+
   const actor = await db.query.actors.findFirst({
     where: and(
       eq(schema.actors.handle, handle),
