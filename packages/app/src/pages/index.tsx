@@ -31,6 +31,14 @@ export default async function HomePage() {
         name="description"
         content="Yorox は、コミュニティが自分たちで運営できる分散型のイベント管理プラットフォームです。メール登録だけで、告知・申込・抽選・当日の QR チェックインまで。"
       />
+      <meta property="og:site_name" content="Yorox" />
+      <meta property="og:title" content="Yorox" />
+      <meta
+        property="og:description"
+        content="コミュニティが自分たちで運営できる、分散型のイベント管理プラットフォーム。"
+      />
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content="https://yorox.love-rox.cc/" />
 
       {/* サービスの名称と目的(トップに明示) */}
       <section className="mb-10">
