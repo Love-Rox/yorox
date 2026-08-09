@@ -13,6 +13,9 @@ import {
 } from '../../../../../server/data';
 import { hasGroupPermission } from '../../../../../server/route-auth';
 import { renderSVG } from 'uqr';
+import { and, eq, isNull } from 'drizzle-orm';
+import { Avatar } from '../../../../../components/avatar';
+import { schema } from '../../../../../db/client';
 
 export default async function ManagePage({
   handle,
@@ -50,6 +53,24 @@ export default async function ManagePage({
 
   const { event, slots, sessions, materials } = detail;
   const { rows, history } = await listManageParticipations(db, eventId);
+
+  // QR 中央に埋め込むグループアイコン(個人グループはオーナーのアバターに委譲)
+  let groupAvatarUrl = detail.groupActor?.avatarUrl ?? null;
+  if (!groupAvatarUrl && detail.groupActor) {
+    const groupRow = await db.query.groups.findFirst({
+      where: eq(schema.groups.actorId, detail.groupActor.id),
+    });
+    if (groupRow?.isPersonal && detail.groupActor.handle) {
+      const owner = await db.query.actors.findFirst({
+        where: and(
+          eq(schema.actors.handle, detail.groupActor.handle),
+          isNull(schema.actors.domain),
+          eq(schema.actors.kind, 'user'),
+        ),
+      });
+      groupAvatarUrl = owner?.avatarUrl ?? null;
+    }
+  }
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
@@ -109,11 +130,27 @@ export default async function ManagePage({
                     セルフチェックイン(出席記録)できます。ログイン済みで参加確定の
                     本人のみ記録されます。
                   </p>
-                  <div
-                    className="mt-3 w-full max-w-60 border border-rule bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
-                    // uqr が生成する QR SVG のみを埋め込む
-                    dangerouslySetInnerHTML={{ __html: renderSVG(checkinUrl) }}
-                  />
+                  <div className="relative mt-3 w-full max-w-60">
+                    <div
+                      className="border border-rule bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
+                      // uqr が生成する QR SVG のみを埋め込む(ロゴ重畳に耐える誤り訂正 H)
+                      dangerouslySetInnerHTML={{ __html: renderSVG(checkinUrl, { ecc: 'H' }) }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                    >
+                      <span className="rounded-full border border-rule bg-white p-1">
+                        <Avatar
+                          avatarUrl={groupAvatarUrl}
+                          displayName={detail.groupActor?.displayName ?? ''}
+                        />
+                      </span>
+                    </span>
+                  </div>
+                  <p className="mt-2 max-w-60 border-2 border-ink p-2 text-center text-sm font-bold">
+                    Yorox アカウントをお持ちでない方は個別受付します
+                  </p>
                   <p className="meta-mono mt-2 text-sm break-all text-neutral">{checkinUrl}</p>
                   <form
                     method="post"
