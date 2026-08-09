@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import {
+  ContactValue,
   instanceInfo,
   LegalNav,
   OperatorNotice,
@@ -11,10 +13,11 @@ import {
  */
 export default async function TokushohoPage() {
   const info = await instanceInfo();
-  const rows: [string, string][] = [
+  const rows: [string, ReactNode][] = [
     ['サービス名', info.name],
     ['運営者', info.operator],
-    ['連絡先', info.contact],
+    ['所在地・電話番号', '請求があった場合には遅滞なく開示します(連絡先までご請求ください)'],
+    ['連絡先', <ContactValue contact={info.contact} contactHref={info.contactHref} />],
     ['販売価格', '各イベントページに表示(有料イベントの場合)'],
     ['代金の支払時期・方法', '各イベントの定めによる(現地払い / 外部決済 / カード決済)'],
     [

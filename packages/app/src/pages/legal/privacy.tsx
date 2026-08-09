@@ -1,4 +1,5 @@
 import {
+  ContactValue,
   instanceInfo,
   LegalNav,
   OperatorNotice,
@@ -39,6 +40,30 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">Cookie の利用</h2>
+        <p className="mt-2 text-sm leading-relaxed">
+          ログイン状態の維持のために、必要不可欠な Cookie(セッション Cookie)を
+          使用します。広告目的や外部トラッキングのための Cookie は使用しません。
+        </p>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">委託先(外部サービス)</h2>
+        <p className="mt-2 text-sm leading-relaxed">
+          本サービスの提供のため、次の外部サービスを利用します:
+        </p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+          <li>ホスティング・配信基盤(例: Cloudflare)</li>
+          <li>メール配信(例: Resend / SMTP プロバイダ / Cloudflare Email)</li>
+          <li>カード決済(利用する場合の Stripe)</li>
+        </ul>
+        <p className="mt-2 text-sm leading-relaxed text-neutral">
+          具体的な委託先は運営者の設定によります。各社のプライバシーポリシーも
+          あわせてご確認ください。
+        </p>
+      </section>
+
+      <section className="mt-6">
         <h2 className="display border-b-2 border-ink pb-2 t-md">第三者提供・連合</h2>
         <p className="mt-2 text-sm leading-relaxed">
           本サービスは ActivityPub による分散型連合に対応します。イベントを公開した場合や
@@ -50,14 +75,19 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">保管・削除</h2>
+        <h2 className="display border-b-2 border-ink pb-2 t-md">保管・削除・エクスポート</h2>
         <p className="mt-2 text-sm leading-relaxed">
-          情報は利用目的の達成に必要な期間保管します。アカウントの削除・情報の開示等の
-          ご要望は下記までご連絡ください。
+          情報は利用目的の達成に必要な期間保管します。利用者はプロフィール設定の
+          「データと退会」から、自身のデータのエクスポート(JSON)およびアカウントの
+          削除(退会)をいつでも行えます。退会時、メールアドレス等の個人情報は削除され、
+          主催者側の集計に必要な範囲の記録は匿名化して保持されることがあります。
+          情報の開示・訂正等のご要望は下記までご連絡ください。
         </p>
       </section>
 
-      <p className="mt-8 text-sm text-neutral">お問い合わせ: {info.contact}</p>
+      <p className="mt-8 text-sm text-neutral">
+        お問い合わせ: <ContactValue contact={info.contact} contactHref={info.contactHref} />
+      </p>
     </article>
   );
 }

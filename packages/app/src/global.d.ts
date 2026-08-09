@@ -34,6 +34,8 @@ interface Env {
   INSTANCE_NAME?: string;
   LEGAL_OPERATOR?: string;
   LEGAL_CONTACT?: string;
+  /** 問い合わせフォームの送信先。設定すると /contact が有効になる */
+  CONTACT_EMAIL?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USERNAME?: string;

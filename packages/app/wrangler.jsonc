@@ -40,7 +40,13 @@
     "MAIL_RATE_PER_MINUTE": "10",
     "MAIL_RATE_PER_HOUR": "100",
     // 公式サーバーのみ: セルフホストガイドを表示(オプトイン)
-    "SELF_HOSTING_GUIDE": "1"
+    "SELF_HOSTING_GUIDE": "1",
+    // 公開用のインスタンス情報(法的ページ・フッター)
+    "PUBLIC_ORIGIN": "https://yorox.love-rox.cc",
+    "INSTANCE_NAME": "Yorox",
+    "LEGAL_OPERATOR": "Rox Developer",
+    // 設定すると /contact 問い合わせフォームが有効になり、この宛先へ届く
+    "CONTACT_EMAIL": "yorox-admin@love-rox.cc"
   },
   "r2_buckets": [
     {

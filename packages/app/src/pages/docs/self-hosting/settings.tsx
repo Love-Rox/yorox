@@ -102,6 +102,10 @@ export default async function SelfHostingSettingsPage() {
                 ['STRIPE_SECRET_KEY ほか', 'カード決済(Stripe Connect)を有効化'],
                 ['MAIL_TRANSPORT=cloudflare', 'Cloudflare Email Service で送信'],
                 ['PUBLIC_ORIGIN', '公開 URL(リバースプロキシ背後では必須)'],
+                ['INSTANCE_NAME', 'サイト名(法的ページ等に表示)'],
+                ['LEGAL_OPERATOR', '運営者名(利用規約・特商法に表示)'],
+                ['LEGAL_CONTACT', '連絡先(問い合わせフォーム未使用時に表示)'],
+                ['CONTACT_EMAIL', '設定すると /contact 問い合わせフォームが有効・宛先'],
                 ['DATA_DIR', 'データ保存先(既定 /data)'],
                 ['PORT', '待受ポート(既定 8080)'],
               ].map(([k, v]) => (

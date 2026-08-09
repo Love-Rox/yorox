@@ -3,6 +3,7 @@ import adapter from 'waku/adapters/cloudflare';
 import apRoutes from './server/ap-routes';
 import stripeRoutes from './server/stripe-routes';
 import calendarRoutes from './server/calendar-routes';
+import contactRoutes from './server/contact-routes';
 import authRoutes from './server/auth-routes';
 import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
@@ -17,6 +18,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
     apRoutes,
     stripeRoutes,
     calendarRoutes,
+    contactRoutes,
     authRoutes,
     passkeyRoutes,
     eventRoutes,
