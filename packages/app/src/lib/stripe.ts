@@ -154,6 +154,25 @@ export async function createCheckoutSession(
   return { id: session.id, url: session.url };
 }
 
+/** 接続アカウント上で返金する(payment_intent 指定) */
+export async function createRefund(
+  env: Env,
+  input: { stripeAccount: string; paymentIntent: string },
+): Promise<{ id: string } | null> {
+  try {
+    return await stripeRequest<{ id: string }>(
+      env,
+      'POST',
+      '/v1/refunds',
+      { payment_intent: input.paymentIntent },
+      { stripeAccount: input.stripeAccount },
+    );
+  } catch (err) {
+    console.error('[stripe] refund failed:', err);
+    return null;
+  }
+}
+
 /** 定数時間比較(署名検証用) */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

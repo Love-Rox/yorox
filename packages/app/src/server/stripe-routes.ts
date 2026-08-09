@@ -203,6 +203,14 @@ stripe.post('/webhooks/stripe', async (c) => {
         where: eq(schema.payments.id, paymentId),
       });
       if (payment && payment.status === 'pending' && systemActorId) {
+        // 返金に使う payment_intent を控える(providerRef を上書き)
+        const pi = obj.payment_intent;
+        if (typeof pi === 'string') {
+          await db
+            .update(schema.payments)
+            .set({ providerRef: pi })
+            .where(eq(schema.payments.id, paymentId));
+        }
         await markPayment(db, paymentId, 'paid', systemActorId);
       }
     }

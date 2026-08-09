@@ -25,6 +25,17 @@ export const Footer = () => {
             サイトオーナー向け
           </Link>
         </nav>
+        <nav aria-label="規約" className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Link to="/legal/terms" className="link text-neutral">
+            利用規約
+          </Link>
+          <Link to="/legal/privacy" className="link text-neutral">
+            プライバシー
+          </Link>
+          <Link to="/legal/tokushoho" className="link text-neutral">
+            特定商取引法
+          </Link>
+        </nav>
         <div className="meta-mono mt-4 text-sm leading-7 text-neutral">
           このインスタンスは Yorox v{__YOROX_VERSION__} ({__YOROX_COMMIT__})
           で運営されています。Yorox

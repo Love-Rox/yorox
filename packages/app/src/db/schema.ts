@@ -625,7 +625,7 @@ export const payments = sqliteTable(
     currency: text('currency').notNull().default('JPY'),
     method: text('method', { enum: ['onsite', 'external', 'stripe'] }).notNull(),
     status: text('status', {
-      enum: ['pending', 'paid', 'refund_required', 'refunded', 'waived'],
+      enum: ['pending', 'paid', 'refund_required', 'refunded', 'no_refund', 'waived'],
     })
       .notNull()
       .default('pending'),

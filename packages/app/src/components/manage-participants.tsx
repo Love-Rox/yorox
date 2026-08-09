@@ -22,6 +22,7 @@ const PAYMENT_LABEL: Record<string, string> = {
   paid: '支払済み',
   refund_required: '要返金',
   refunded: '返金済み',
+  no_refund: '返金なし',
   waived: '免除',
 };
 
@@ -268,7 +269,7 @@ export function ManageParticipants({
                         {p.paymentId && p.paymentStatus && (
                           <span
                             className={`border px-2 py-1 text-sm font-bold ${
-                              p.paymentStatus === 'paid' || p.paymentStatus === 'waived'
+                              p.paymentStatus === 'paid' || p.paymentStatus === 'waived' || p.paymentStatus === 'refunded' || p.paymentStatus === 'no_refund'
                                 ? 'border-accent-2 text-accent-2'
                                 : 'border-accent text-accent'
                             }`}
@@ -288,12 +289,26 @@ export function ManageParticipants({
                         {canAttendance &&
                           p.paymentId &&
                           p.paymentStatus === 'refund_required' && (
-                            <form method="post" action={`/payments/${p.paymentId}/mark`}>
-                              <input type="hidden" name="status" value="refunded" />
-                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                                返金済みにする
-                              </button>
-                            </form>
+                            <span className="flex flex-wrap gap-2">
+                              <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                                <input type="hidden" name="status" value="refunded" />
+                                <button
+                                  type="submit"
+                                  className="btn-quiet cursor-pointer text-sm"
+                                >
+                                  返金する
+                                </button>
+                              </form>
+                              <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                                <input type="hidden" name="status" value="no_refund" />
+                                <button
+                                  type="submit"
+                                  className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                                >
+                                  返金しない
+                                </button>
+                              </form>
+                            </span>
                           )}
                         {/* 出欠記録(確定者のみ) */}
                         {canAttendance && p.status === 'accepted' && (

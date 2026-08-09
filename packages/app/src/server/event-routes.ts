@@ -205,6 +205,7 @@ const CSV_PAYMENT_LABEL: Record<string, string> = {
   paid: '支払済み',
   refund_required: '要返金',
   refunded: '返金済み',
+  no_refund: '返金なし',
   waived: '免除',
 };
 

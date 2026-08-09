@@ -57,7 +57,7 @@ export async function ensurePayment(
 export async function markPayment(
   db: Db,
   paymentId: string,
-  newStatus: 'paid' | 'refunded' | 'waived',
+  newStatus: 'paid' | 'refunded' | 'no_refund' | 'waived',
   markedByActorId: string,
   now: Date = new Date(),
 ): Promise<void> {

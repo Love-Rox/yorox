@@ -28,6 +28,10 @@ interface Env {
   STRIPE_SECRET_KEY?: string;
   STRIPE_CONNECT_CLIENT_ID?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  /** 法的ページ・フッター用のインスタンス情報(任意) */
+  INSTANCE_NAME?: string;
+  LEGAL_OPERATOR?: string;
+  LEGAL_CONTACT?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USERNAME?: string;

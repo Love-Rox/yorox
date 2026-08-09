@@ -47,7 +47,7 @@ async function authorizeForParticipation(
   participationId: string,
   actorId: string,
   permission: Permission,
-): Promise<{ eventId: string; handle: string } | null> {
+): Promise<{ eventId: string; handle: string; groupActorId: string } | null> {
   const participation = await db.query.participations.findFirst({
     where: eq(schema.participations.id, participationId),
   });
@@ -64,7 +64,7 @@ async function authorizeForEvent(
   eventId: string,
   actorId: string,
   permission: Permission,
-): Promise<{ eventId: string; handle: string } | null> {
+): Promise<{ eventId: string; handle: string; groupActorId: string } | null> {
   const event = await db.query.events.findFirst({ where: eq(schema.events.id, eventId) });
   if (!event) return null;
   const groupActor = await db.query.actors.findFirst({
@@ -72,7 +72,7 @@ async function authorizeForEvent(
   });
   if (!groupActor?.handle) return null;
   const allowed = await hasGroupPermission(db, event.groupActorId, actorId, permission);
-  return allowed ? { eventId: event.id, handle: groupActor.handle } : null;
+  return allowed ? { eventId: event.id, handle: groupActor.handle, groupActorId: event.groupActorId } : null;
 }
 
 const manage = new Hono();
@@ -202,9 +202,38 @@ manage.post('/payments/:id/mark', async (c) => {
 
   const form = await c.req.parseBody();
   const status = str(form.status);
-  if (status !== 'paid' && status !== 'refunded' && status !== 'waived') {
+  if (
+    status !== 'paid' &&
+    status !== 'refunded' &&
+    status !== 'no_refund' &&
+    status !== 'waived'
+  ) {
     return c.text('invalid status', 400);
   }
+
+  // Stripe 枠の「返金する」は実際に Stripe で返金してからマークする
+  if (status === 'refunded' && payment.method === 'stripe' && payment.providerRef) {
+    const env = await getEnv();
+    const { stripeConfigured, createRefund } = await import('../lib/stripe');
+    if (stripeConfigured(env)) {
+      const group = await db.query.groups.findFirst({
+        where: eq(schema.groups.actorId, ctx.groupActorId),
+      });
+      if (group?.stripeAccountId) {
+        const refund = await createRefund(env, {
+          stripeAccount: group.stripeAccountId,
+          paymentIntent: payment.providerRef,
+        });
+        if (!refund) {
+          return c.redirect(
+            `/g/${ctx.handle}/events/${ctx.eventId}/manage?error=${encodeURIComponent('Stripe での返金に失敗しました。Stripe ダッシュボードをご確認ください。')}`,
+            302,
+          );
+        }
+      }
+    }
+  }
+
   await markPayment(db, payment.id, status, actorId);
   return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
 });
