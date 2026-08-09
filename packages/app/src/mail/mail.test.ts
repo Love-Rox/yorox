@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { computeSendBudget, DEFAULT_RATE_LIMITS, retryBackoffMs } from './queue';
+import { parseFrom, textToHtml } from './transport';
+
+describe('textToHtml', () => {
+  it('改行を保持し(pre-wrap)、HTML をエスケープする', () => {
+    const html = textToHtml('1行目\n2行目 <b>&"');
+    expect(html).toContain('white-space:pre-wrap');
+    expect(html).toContain('1行目\n2行目');
+    expect(html).toContain('&lt;b&gt;');
+    expect(html).toContain('&amp;');
+    expect(html).not.toContain('<b>');
+  });
+});
+
+describe('parseFrom', () => {
+  it('"名前 <addr>" を分解する', () => {
+    expect(parseFrom('Yorox <noreply@example.com>')).toEqual({
+      email: 'noreply@example.com',
+      name: 'Yorox',
+    });
+  });
+  it('アドレスのみ', () => {
+    expect(parseFrom('a@b.com')).toEqual({ email: 'a@b.com' });
+  });
+});
 
 describe('computeSendBudget', () => {
   const limits = { perMinute: 10, perHour: 100 };

@@ -8,6 +8,8 @@
  * - 将来: Gmail API(OAuth)トランスポート / Docker 版は nodemailer 実装を
  *   同じ IF で差し替える
  */
+import { escapeHtml } from '../lib/html';
+
 export interface MailMessage {
   to: string;
   subject: string;
@@ -44,6 +46,7 @@ export class ResendTransport implements MailTransport {
         to: [message.to],
         subject: message.subject,
         text: message.bodyText,
+        html: textToHtml(message.bodyText),
       }),
     });
     if (!res.ok) {
@@ -67,6 +70,7 @@ export class ResendTransport implements MailTransport {
             to: [m.to],
             subject: m.subject,
             text: m.bodyText,
+            html: textToHtml(m.bodyText),
           })),
         ),
       });
@@ -75,6 +79,15 @@ export class ResendTransport implements MailTransport {
       }
     }
   }
+}
+
+/**
+ * プレーンテキスト本文を、改行を保持した HTML に変換する。
+ * HTML 表示のメールクライアントでは text/plain の改行が無視されるため、
+ * エスケープしたうえで white-space:pre-wrap で包む。
+ */
+export function textToHtml(text: string): string {
+  return `<div style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;line-height:1.6">${escapeHtml(text)}</div>`;
 }
 
 /** "Yorox <noreply@example.com>" 形式を分解する */
@@ -106,6 +119,8 @@ export class CloudflareEmailTransport implements MailTransport {
       from: from.name ? { email: from.email, name: from.name } : from.email,
       subject: message.subject,
       text: message.bodyText,
+      // HTML 表示のクライアントでも改行が保持されるよう html パートも付ける
+      html: textToHtml(message.bodyText),
     };
     await this.binding.send(builder);
   }
@@ -153,6 +168,7 @@ export class SmtpTransport implements MailTransport {
         to: message.to,
         subject: message.subject,
         text: message.bodyText,
+        html: textToHtml(message.bodyText),
       },
     );
   }
@@ -185,6 +201,7 @@ export class NodeSmtpTransport implements MailTransport {
       to: message.to,
       subject: message.subject,
       text: message.bodyText,
+      html: textToHtml(message.bodyText),
     });
   }
 }
