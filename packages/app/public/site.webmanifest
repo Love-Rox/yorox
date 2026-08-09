@@ -1,0 +1,21 @@
+{
+  "name": "Yorox",
+  "short_name": "Yorox",
+  "description": "自分たちで運営する、イベントの寄合所",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4efde",
+  "theme_color": "#1b2240",
+  "icons": [
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
