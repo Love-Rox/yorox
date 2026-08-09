@@ -27,6 +27,11 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
   const me = await getCurrentUser();
   const isSelf = me?.actorId === actor.id;
 
+  // 連携済み Fediverse アカウント(claim)。rel=me で相互リンクになる
+  const fediAliases = await db.query.actors.findMany({
+    where: eq(schema.actors.claimedByActorId, actor.id),
+  });
+
   // 所属グループ(公開情報)
   const memberships = await db
     .select({
@@ -94,6 +99,23 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                   >
                     <ServiceIcon url={link} />
                     {new URL(link).hostname.replace(/^www\./, '')}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {fediAliases.length > 0 && (
+            <ul className="mt-2 flex flex-wrap gap-4 text-sm">
+              {fediAliases.map((a) => (
+                <li key={a.id}>
+                  <a
+                    href={a.uri}
+                    className="link meta-mono inline-flex items-center gap-1"
+                    rel="me noreferrer"
+                    target="_blank"
+                  >
+                    <ServiceIcon url={a.uri} />
+                    @{a.handle}@{a.domain}
                   </a>
                 </li>
               ))}

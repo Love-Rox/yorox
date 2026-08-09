@@ -2,6 +2,11 @@ import { Link } from 'waku';
 
 const GUIDES = [
   {
+    href: '/docs/faq',
+    title: 'よくある質問',
+    description: 'ログイン・申込・キャンセル・出欠・Fediverse 連携などの FAQ',
+  },
+  {
     href: '/docs/participants',
     title: '参加者向けガイド',
     description: 'アカウント作成からイベント参加・キャンセルまで',

@@ -63,7 +63,22 @@ export default async function ParticipantsPage({
                   className="flex items-center gap-3 border-b border-rule py-3"
                 >
                   <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
-                  {p.domain ? (
+                  {p.domain && p.claimedHandle ? (
+                    // 連携済みリモート: 名前は自サーバーのプロフィールへ、リモートハンドルは本人サーバーへ
+                    <span className="font-bold">
+                      <Link to={`/u/${p.claimedHandle}`} className="link">
+                        <ActorName name={p.displayName} emojis={p.emojis} />
+                      </Link>
+                      <a
+                        href={p.uri}
+                        className="meta-mono ml-2 text-sm font-normal text-neutral"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        @{p.handle}@{p.domain}
+                      </a>
+                    </span>
+                  ) : p.domain ? (
                     <a href={p.uri} className="link font-bold" rel="noreferrer" target="_blank">
                       <ActorName name={p.displayName} emojis={p.emojis} />
                       <span className="meta-mono ml-2 text-sm font-normal text-neutral">

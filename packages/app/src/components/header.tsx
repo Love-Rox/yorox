@@ -37,6 +37,9 @@ export const Header = async () => {
             </Link>
           </h1>
           <nav className="flex min-h-11 items-center gap-4 text-sm">
+            <Link to="/docs/faq" className="link flex min-h-11 items-center">
+              FAQ
+            </Link>
             {user ? (
               <>
                 {pendingRequests > 0 && (

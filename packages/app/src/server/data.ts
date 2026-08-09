@@ -3,6 +3,7 @@
  * cloudflare:workers の env は workerd ランタイム内でのみ解決される。
  */
 import { and, asc, desc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
 import { createDb, schema, type Db } from '../db/client';
 
 export async function getDb(): Promise<Db> {
@@ -231,6 +232,7 @@ export async function getOwnParticipations(db: Db, eventId: string, actorId: str
 
 /** 参加者一覧(確定者のみ、本人が隠している人を除く) */
 export async function listVisibleParticipants(db: Db, eventId: string) {
+  const claimedActor = alias(schema.actors, 'claimed_actor');
   return db
     .select({
       actorId: schema.actors.id,
@@ -240,11 +242,14 @@ export async function listVisibleParticipants(db: Db, eventId: string) {
       uri: schema.actors.uri,
       avatarUrl: schema.actors.avatarUrl,
       emojis: schema.actors.emojis,
+      /** claim 済みリモートの場合、紐付いたローカルアカウントの handle */
+      claimedHandle: claimedActor.handle,
       slotId: schema.participations.slotId,
     })
     .from(schema.participations)
     .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
     .innerJoin(schema.actors, eq(schema.participations.actorId, schema.actors.id))
+    .leftJoin(claimedActor, eq(schema.actors.claimedByActorId, claimedActor.id))
     .where(
       and(
         eq(schema.slots.eventId, eventId),

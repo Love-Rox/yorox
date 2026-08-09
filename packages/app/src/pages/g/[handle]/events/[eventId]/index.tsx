@@ -104,7 +104,14 @@ export default async function EventPage({
     .filter((p) => speakerSlotIds.has(p.slotId))
     .map((p) => ({
       name: p.displayName,
-      url: p.domain ? p.uri : p.handle ? `/u/${p.handle}` : null,
+      // 連携済みリモートは自サーバーのプロフィールを優先
+      url: p.claimedHandle
+        ? `/u/${p.claimedHandle}`
+        : p.domain
+          ? p.uri
+          : p.handle
+            ? `/u/${p.handle}`
+            : null,
       emojis: p.emojis,
     }));
   const speakers = [
@@ -807,8 +814,13 @@ export default async function EventPage({
                   );
                   return (
                     <li key={`${p.slotId}-${p.actorId}`} title={label}>
-                      {p.domain ? (
-                        // リモート参加者は本人の Fediverse プロフィールへ
+                      {p.domain && p.claimedHandle ? (
+                        // 連携済みリモートは自サーバーのプロフィールへ
+                        <Link to={`/u/${p.claimedHandle}`} aria-label={label}>
+                          {avatar}
+                        </Link>
+                      ) : p.domain ? (
+                        // 未連携リモートは本人の Fediverse プロフィールへ
                         <a href={p.uri} rel="noreferrer" target="_blank" aria-label={label}>
                           {avatar}
                         </a>
