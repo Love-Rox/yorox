@@ -41,6 +41,7 @@ export default async function ProfileSettingsPage() {
   const claimOk = url.searchParams.get('claim_ok');
   const claimError = url.searchParams.get('claim_error');
   const notifySaved = url.searchParams.get('notify_saved');
+  const calSaved = url.searchParams.get('cal_saved');
   const oauthOk = url.searchParams.get('oauth_ok');
   const oauthError = url.searchParams.get('oauth_error');
   const aliases = await listClaimedAliases(db, user.actorId);
@@ -253,6 +254,43 @@ export default async function ProfileSettingsPage() {
       </section>
 
       {/* ---- お知らせ設定 ---- */}
+      {/* ---- 参加予定カレンダー(ics 購読) ---- */}
+      <section id="calendar" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+        <h2 className="display t-md">
+          参加予定カレンダー
+          <HelpTip text="参加確定したイベントが自動で入るカレンダーを、Google カレンダーや Apple カレンダーで購読できます。以後の参加・キャンセルも自動で反映されます。URL は秘密にしてください(知っている人はあなたの参加予定を見られます)。" />
+        </h2>
+        {calSaved && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            発行しました。
+          </p>
+        )}
+        {account?.calendarToken ? (
+          <div className="mt-3">
+            <p className="text-sm text-neutral">
+              下の URL をカレンダーアプリの「URL で購読」に貼り付けてください。
+            </p>
+            <p className="meta-mono mt-2 rounded border border-rule bg-paper-2 p-2 text-sm break-all">
+              {host && `https://${host}`}/calendar/{account.calendarToken}/yorox.ics
+            </p>
+            <form method="post" action="/profile/calendar-token" className="mt-3">
+              <button
+                type="submit"
+                className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+              >
+                URL を再発行(古い URL は無効になります)
+              </button>
+            </form>
+          </div>
+        ) : (
+          <form method="post" action="/profile/calendar-token" className="mt-3">
+            <button type="submit" className="btn-quiet cursor-pointer">
+              購読用 URL を発行
+            </button>
+          </form>
+        )}
+      </section>
+
       <section id="notifications" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
         <h2 className="display t-md">
           お知らせの受け取り

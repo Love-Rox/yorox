@@ -201,6 +201,8 @@ export const users = sqliteTable('users', {
   emailNotifications: integer('email_notifications', { mode: 'boolean' })
     .notNull()
     .default(true),
+  /** 参加予定カレンダー(ics)購読用の秘密トークン。null=未発行 */
+  calendarToken: text('calendar_token'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

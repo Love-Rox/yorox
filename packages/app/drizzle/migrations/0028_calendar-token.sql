@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `calendar_token` text;

@@ -10,6 +10,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/node';
 import apRoutes from './server/ap-routes';
 import stripeRoutes from './server/stripe-routes';
+import calendarRoutes from './server/calendar-routes';
 import authRoutes from './server/auth-routes';
 import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
@@ -55,6 +56,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
     cronMiddleware,
     apRoutes,
     stripeRoutes,
+    calendarRoutes,
     authRoutes,
     passkeyRoutes,
     eventRoutes,

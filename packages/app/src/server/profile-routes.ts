@@ -2,6 +2,7 @@
  * プロフィール編集(本人)とプロフィール URL のエンドポイント。
  */
 import { and, eq, isNull } from 'drizzle-orm';
+import { generateToken } from '../lib/token';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
@@ -79,6 +80,20 @@ profile.post('/profile/update', async (c) => {
 
 /** アバター画像のアップロード */
 
+
+
+/** 参加予定カレンダー(ics)購読トークンの発行・再発行 */
+profile.post('/profile/calendar-token', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  await db
+    .update(schema.users)
+    .set({ calendarToken: generateToken() })
+    .where(eq(schema.users.actorId, actorId));
+  return c.redirect('/settings/profile?cal_saved=1#calendar', 302);
+});
 
 /** お知らせ受け取り設定 */
 profile.post('/profile/notifications', async (c) => {

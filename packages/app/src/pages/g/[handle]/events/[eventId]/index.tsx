@@ -8,6 +8,7 @@ import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
 import { HelpTip } from '../../../../../components/help-tip';
 import { ServiceIcon } from '../../../../../components/service-icon';
+import { googleCalendarUrl } from '../../../../../lib/ics';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
 import {
@@ -202,22 +203,49 @@ export default async function EventPage({
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="display t-xl">{event.title}</h1>
-          {canEdit && (
-            <p className="mt-3 flex flex-wrap gap-3">
-              <Link
-                to={`/g/${handle}/events/${eventId}/edit`}
-                className="btn-quiet inline-block"
-              >
-                編集
-              </Link>
-              <Link
-                to={`/g/${handle}/events/${eventId}/manage`}
-                className="btn-quiet inline-block"
-              >
-                管理コンソール
-              </Link>
-            </p>
-          )}
+          <p className="mt-3 flex flex-wrap gap-3">
+            {event.visibility === 'public' && (
+              <>
+                <a
+                  href={`/events/${eventId}/calendar.ics`}
+                  className="btn-quiet inline-block"
+                >
+                  カレンダーに追加(.ics)
+                </a>
+                <a
+                  href={googleCalendarUrl({
+                    title: event.title,
+                    start: event.startsAt,
+                    end: event.endsAt,
+                    location:
+                      event.venueName ?? (event.onlineUrl ? 'オンライン' : null),
+                    details: canonicalUrl,
+                  })}
+                  className="btn-quiet inline-block"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Google カレンダー
+                </a>
+              </>
+            )}
+            {canEdit && (
+              <>
+                <Link
+                  to={`/g/${handle}/events/${eventId}/edit`}
+                  className="btn-quiet inline-block"
+                >
+                  編集
+                </Link>
+                <Link
+                  to={`/g/${handle}/events/${eventId}/manage`}
+                  className="btn-quiet inline-block"
+                >
+                  管理コンソール
+                </Link>
+              </>
+            )}
+          </p>
         </div>
       </header>
 
