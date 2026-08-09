@@ -234,10 +234,51 @@ export default async function EventPage({
           <p className="mt-1 text-sm text-neutral">
             参加枠を設定してから公開してください。公開すると一覧に載り、申込を受け付けます。
           </p>
+          {event.publishAt && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 border-2 border-accent-2 p-3">
+              <p className="text-sm font-bold text-accent-2">
+                予約公開: {FULL_FMT.format(event.publishAt)}
+                <span className="ml-2 font-normal text-neutral">
+                  (5分間隔の処理のため数分前後します)
+                </span>
+              </p>
+              <form method="post" action={`/events/${event.id}/schedule-cancel`}>
+                <button
+                  type="submit"
+                  className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                >
+                  予約を取り消す
+                </button>
+              </form>
+            </div>
+          )}
+          {slots.length > 0 && !event.publishAt && (
+            <form
+              method="post"
+              action={`/events/${event.id}/schedule-publish`}
+              className="mt-3 flex flex-wrap items-end gap-2"
+            >
+              <label className="block">
+                <span className="text-sm font-bold">
+                  予約公開
+                  <HelpTip text="指定した日時に自動で公開されます(5分間隔の処理のため数分前後します)。公開時にフォロワーへの告知や Bluesky クロスポストも同時に行われます。" />
+                </span>
+                <input
+                  type="datetime-local"
+                  name="publish_at"
+                  required
+                  className="input meta-mono mt-1"
+                />
+              </label>
+              <button type="submit" className="btn-quiet cursor-pointer">
+                予約する
+              </button>
+            </form>
+          )}
           {slots.length > 0 && (
             <form method="post" action={`/events/${event.id}/publish`} className="mt-3">
               <button type="submit" className="btn cursor-pointer">
-                公開する
+                {event.publishAt ? '予約を待たず今すぐ公開する' : '公開する'}
               </button>
             </form>
           )}

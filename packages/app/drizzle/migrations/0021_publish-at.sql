@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `publish_at` integer;

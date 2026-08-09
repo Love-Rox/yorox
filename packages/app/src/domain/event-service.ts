@@ -111,7 +111,7 @@ export async function publishEvent(
 ): Promise<void> {
   await db
     .update(schema.events)
-    .set({ visibility: 'public', publishedAt: now, updatedAt: now })
+    .set({ visibility: 'public', publishedAt: now, publishAt: null, updatedAt: now })
     .where(eq(schema.events.id, eventId));
   await emitDomainEvent(db, 'event.published', { eventId }, now);
 }

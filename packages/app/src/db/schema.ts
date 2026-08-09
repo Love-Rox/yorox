@@ -315,6 +315,8 @@ export const events = sqliteTable(
     /** セルフチェックイン用トークン(QR に載せる)。null = 無効 */
     checkinToken: text('checkin_token'),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    /** 予約公開時刻。draft のままこの時刻を過ぎると cron が自動公開する */
+    publishAt: integer('publish_at', { mode: 'timestamp_ms' }),
     createdByActorId: text('created_by_actor_id')
       .notNull()
       .references(() => actors.id),

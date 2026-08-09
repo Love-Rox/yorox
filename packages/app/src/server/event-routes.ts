@@ -273,6 +273,47 @@ events.get('/events/:id/participants.csv', async (c) => {
   });
 });
 
+
+/** 予約公開の設定 */
+events.post('/events/:id/schedule-publish', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
+  if (ctx.event.visibility !== 'draft') return c.redirect(eventUrl, 302);
+
+  const form = await c.req.parseBody();
+  const publishAt = parseLocalDateTime(form.publish_at);
+  if (!publishAt) {
+    return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
+  }
+  await db
+    .update(schema.events)
+    .set({ publishAt, updatedAt: new Date() })
+    .where(eq(schema.events.id, ctx.event.id));
+  return c.redirect(eventUrl, 302);
+});
+
+/** 予約公開の取消 */
+events.post('/events/:id/schedule-cancel', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  await db
+    .update(schema.events)
+    .set({ publishAt: null, updatedAt: new Date() })
+    .where(eq(schema.events.id, ctx.event.id));
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
 /** セルフチェックイン用トークンの発行/再発行(出欠管理権限) */
 events.post('/events/:id/checkin/enable', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);

@@ -6,13 +6,18 @@
 import { and, eq, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import { purgeExpiredSessions } from '../auth/session';
 import { createDb, schema, type Db } from '../db/client';
+import { publishEvent } from '../domain/event-service';
 import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
 import { ApNoteDriver } from '../notifications/ap-driver';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
 import { ConsoleDriver, QueueEmailDriver, type NotificationDriver } from '../notifications/driver';
-import { enqueueEventAnnouncement, processApDeliveries } from './ap-delivery';
+import {
+  announceEventNow,
+  enqueueEventAnnouncement,
+  processApDeliveries,
+} from './ap-delivery';
 
 function buildDrivers(env: Env, db: Db): NotificationDriver[] {
   const drivers: NotificationDriver[] = [new ConsoleDriver()];
@@ -61,6 +66,27 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
       console.log(`[scheduled] lottery slot=${slot.id}`, result);
     } catch (err) {
       console.error(`[scheduled] lottery slot=${slot.id} failed:`, err);
+    }
+  }
+
+  // 予約公開: 時刻を過ぎた下書きを公開し、AP 告知 + Bluesky クロスポストまで行う
+  const duePublishes = await db
+    .select({ id: schema.events.id })
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.visibility, 'draft'),
+        isNotNull(schema.events.publishAt),
+        lte(schema.events.publishAt, now),
+      ),
+    );
+  for (const event of duePublishes) {
+    try {
+      await publishEvent(db, event.id, now);
+      await announceEventNow(db, event.id);
+      console.log(`[scheduled] published event ${event.id} (予約公開)`);
+    } catch (err) {
+      console.error(`[scheduled] scheduled publish failed (event=${event.id}):`, err);
     }
   }
 
