@@ -30,12 +30,12 @@ export const Header = async () => {
     <header className="w-full">
       <div className="mx-auto w-full max-w-5xl px-[clamp(1rem,4vw,1.5rem)] pt-8 pb-4">
         <div className="flex items-end justify-between gap-4">
-          <h1 className="leading-none">
-            <Link to="/" className="flex items-center gap-3">
+          <div className="leading-none">
+            <Link to="/" className="flex items-center gap-3" aria-label="Yorox ホーム">
               <LogoMark size={40} />
               <Wordmark height={30} />
             </Link>
-          </h1>
+          </div>
           <nav className="flex min-h-11 items-center gap-4 text-sm">
             <Link to="/docs/faq" className="link flex min-h-11 items-center">
               FAQ

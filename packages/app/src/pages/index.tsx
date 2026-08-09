@@ -26,7 +26,27 @@ export default async function HomePage() {
 
   return (
     <div>
-      <title>Yorox</title>
+      <title>Yorox — 分散型イベント管理プラットフォーム</title>
+      <meta
+        name="description"
+        content="Yorox は、コミュニティが自分たちで運営できる分散型のイベント管理プラットフォームです。メール登録だけで、告知・申込・抽選・当日の QR チェックインまで。"
+      />
+
+      {/* サービスの名称と目的(トップに明示) */}
+      <section className="mb-10">
+        <h1 className="display t-xl">Yorox</h1>
+        <p className="mt-3 max-w-[62ch] leading-relaxed text-neutral">
+          <strong className="text-ink">Yorox</strong>{' '}
+          は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
+          分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき、
+          イベントの告知・参加申込(先着 / 抽選 / 補欠の繰上)・有料イベントの決済・
+          当日の QR チェックインまでを一つで行えます。使い方は{' '}
+          <Link to="/docs" className="link">
+            ガイド
+          </Link>
+          をご覧ください。
+        </p>
+      </section>
 
       {/* Index-First: 導入は一行、以降はリストが主役 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
