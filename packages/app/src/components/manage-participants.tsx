@@ -58,12 +58,14 @@ export interface ManageRow {
 }
 
 export function ManageParticipants({
+  eventId,
   slots,
   rows,
   history,
   canLottery,
   canAttendance,
 }: {
+  eventId: string;
   slots: ManageSlot[];
   rows: ManageRow[];
   history: Record<string, { attended: number; noShow: number }>;
@@ -71,12 +73,21 @@ export function ManageParticipants({
   canAttendance: boolean;
 }) {
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const q = query.trim().toLowerCase();
   const matches = (r: ManageRow) =>
     !q ||
     r.displayName.toLowerCase().includes(q) ||
     (r.handle ?? '').toLowerCase().includes(q) ||
     (r.domain ?? '').toLowerCase().includes(q);
+  const selectable = rows.filter((r) => r.status !== 'cancelled');
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <>
@@ -91,6 +102,65 @@ export function ManageParticipants({
             aria-label="参加者を検索"
           />
         </div>
+      )}
+
+      {/* ---- 参加者へメッセージ(宛先ごとに個別配送、相互に宛先は見えない) ---- */}
+      {canAttendance && selectable.length > 0 && (
+        <details className="mt-4 border-2 border-ink">
+          <summary className="cursor-pointer p-3 text-sm font-bold">
+            参加者へメッセージを送る
+            {selected.size > 0 && (
+              <span className="meta-mono ml-2 font-normal text-neutral">
+                {selected.size}名 選択中
+              </span>
+            )}
+          </summary>
+          <form
+            method="post"
+            action={`/events/${eventId}/message`}
+            className="space-y-3 border-t border-rule p-3"
+          >
+            <p className="text-sm text-neutral">
+              下のリストで宛先にチェックを入れてください。ローカルの参加者にはメール、
+              Fediverse の参加者にはダイレクトメッセージで、
+              <strong>1人ずつ個別に</strong>届きます(他の参加者のアカウントは互いに見えません)。
+            </p>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <button
+                type="button"
+                className="btn-quiet cursor-pointer"
+                onClick={() => setSelected(new Set(selectable.map((r) => r.id)))}
+              >
+                全員を選択({selectable.length}名)
+              </button>
+              <button
+                type="button"
+                className="btn-quiet cursor-pointer"
+                onClick={() => setSelected(new Set())}
+              >
+                選択を解除
+              </button>
+            </div>
+            <textarea
+              name="body"
+              rows={4}
+              required
+              maxLength={2000}
+              className="input leading-relaxed"
+              placeholder="会場の入館方法、開始時間の変更、懇親会のご案内など"
+            />
+            {[...selected].map((id) => (
+              <input key={id} type="hidden" name="recipients" value={id} />
+            ))}
+            <button
+              type="submit"
+              disabled={selected.size === 0}
+              className="btn cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {selected.size === 0 ? '宛先を選択してください' : `${selected.size}名に送信`}
+            </button>
+          </form>
+        </details>
       )}
 
       {slots.map((slot) => {
@@ -135,6 +205,15 @@ export function ManageParticipants({
                       className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3"
                     >
                       <div className="flex min-w-0 items-center gap-3">
+                        {canAttendance && p.status !== 'cancelled' && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(p.id)}
+                            onChange={() => toggle(p.id)}
+                            aria-label={`${p.displayName} を宛先に含める`}
+                            className="size-4 shrink-0"
+                          />
+                        )}
                         <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                         <div className="min-w-0">
                           <span className="font-bold">

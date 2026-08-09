@@ -53,6 +53,7 @@ export default async function ManagePage({
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
+  const messageSent = url.searchParams.get('message_sent');
 
   return (
     <div>
@@ -70,6 +71,11 @@ export default async function ManagePage({
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
           {decodeURIComponent(error)}
+        </p>
+      )}
+      {messageSent && (
+        <p role="status" className="mt-4 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          {messageSent}名にメッセージを送信しました(メールは数分以内に配送されます)。
         </p>
       )}
 
@@ -138,6 +144,7 @@ export default async function ManagePage({
 
       {/* ---- 枠ごとの参加者管理(検索付き・クライアント絞り込み) ---- */}
       <ManageParticipants
+        eventId={eventId}
         slots={slots.map((s) => ({
           id: s.id,
           name: s.name,

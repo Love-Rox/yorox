@@ -182,7 +182,8 @@ export async function sendReplyNote(
   input: {
     group: GroupRow;
     remoteActor: RemoteActorRow;
-    inReplyToUri: string;
+    /** 省略時はリプライではなく単独のダイレクト Note になる */
+    inReplyToUri?: string | undefined;
     /** 省略時は /notes/ 配下の URI になる(claim 完了通知など) */
     eventId?: string | undefined;
     text: string;
@@ -198,13 +199,13 @@ export async function sendReplyNote(
     id: `${idBase}/${ulid()}`,
     type: 'Note',
     attributedTo: input.group.uri,
-    inReplyTo: input.inReplyToUri,
     to: [input.remoteActor.uri],
     content: `<p><a href="${escapeHtml(input.remoteActor.uri)}" rel="noreferrer">${escapeHtml(handle)}</a> ${escapeHtml(input.text)}</p>`,
     mediaType: 'text/html',
     published: new Date().toISOString(),
     tag: [{ type: 'Mention', href: input.remoteActor.uri, name: handle }],
   };
+  if (input.inReplyToUri) note.inReplyTo = input.inReplyToUri;
   const create = activities.create(input.group.uri, note, {
     id: `${note.id}/activity`,
     to: input.remoteActor.uri,

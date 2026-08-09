@@ -2,7 +2,7 @@
  * イベント作成・公開・枠追加・申込・キャンセルの HTTP エンドポイント。
  * フォーム POST(SameSite=Lax cookie + Origin 検証)で受ける。
  */
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
@@ -18,7 +18,9 @@ import type { SlotConditions } from '../db/schema';
 import { geocodeAddress } from '../lib/geocode';
 import { generateToken } from '../lib/token';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
+import { enqueueMail } from '../mail/queue';
 import { getSlotCoordinator } from './coordinator';
+import { sendReplyNote } from './remote-join';
 import { listManageParticipations } from './data';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -312,6 +314,91 @@ events.post('/events/:id/schedule-cancel', async (c) => {
     .set({ publishAt: null, updatedAt: new Date() })
     .where(eq(schema.events.id, ctx.event.id));
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
+
+/**
+ * 主催者から参加者へのメッセージ送信。
+ * 宛先ごとに個別配送する(ローカル = メール / リモート = グループ名義の
+ * ダイレクト Note)ため、参加者同士のアカウント名は互いに見えない。
+ */
+events.post('/events/:id/message', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  const allowed =
+    (await hasGroupPermission(db, event.groupActorId, actorId, 'attendance.manage')) ||
+    (await hasGroupPermission(db, event.groupActorId, actorId, 'event.edit'));
+  if (!allowed || !group?.handle) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody({ all: true });
+  const body = str(form.body).slice(0, 2000);
+  const manageUrl = `/g/${group.handle}/events/${event.id}/manage`;
+  if (!body) {
+    return c.redirect(`${manageUrl}?error=${encodeURIComponent('メッセージ本文を入力してください')}`, 302);
+  }
+  const raw = form['recipients'];
+  const recipientIds = (Array.isArray(raw) ? raw : raw !== undefined ? [raw] : [])
+    .filter((v): v is string => typeof v === 'string');
+  if (recipientIds.length === 0) {
+    return c.redirect(`${manageUrl}?error=${encodeURIComponent('宛先を選択してください')}`, 302);
+  }
+
+  // 宛先の検証: このイベントの参加行に限る
+  const slots = await db.query.slots.findMany({
+    where: eq(schema.slots.eventId, event.id),
+  });
+  const rows = slots.length
+    ? await db.query.participations.findMany({
+        where: and(
+          inArray(schema.participations.slotId, slots.map((sl) => sl.id)),
+          inArray(schema.participations.id, recipientIds),
+        ),
+      })
+    : [];
+
+  let sent = 0;
+  const seenActors = new Set<string>();
+  for (const row of rows) {
+    if (seenActors.has(row.actorId)) continue; // 複数枠の重複宛先は1通に
+    seenActors.add(row.actorId);
+    const recipient = await db.query.actors.findFirst({
+      where: eq(schema.actors.id, row.actorId),
+    });
+    if (!recipient) continue;
+    if (recipient.state === 'local') {
+      const account = await db.query.users.findFirst({
+        where: eq(schema.users.actorId, recipient.id),
+      });
+      if (!account) continue;
+      await enqueueMail(db, {
+        to: account.email,
+        subject: `[Yorox] 「${event.title}」主催者からのお知らせ`,
+        bodyText: `${body}\n\n--\n${event.title}\n${new URL(c.req.url).origin}/g/${group.handle}/events/${event.id}`,
+      });
+      sent++;
+    } else if (recipient.inboxUrl || recipient.sharedInboxUrl) {
+      c.executionCtx.waitUntil(
+        sendReplyNote(db, {
+          group,
+          remoteActor: recipient,
+          eventId: event.id,
+          text: `【${event.title}】${body}`,
+        }),
+      );
+      sent++;
+    }
+  }
+  return c.redirect(`${manageUrl}?message_sent=${sent}`, 302);
 });
 
 /** セルフチェックイン用トークンの発行/再発行(出欠管理権限) */
