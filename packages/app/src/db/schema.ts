@@ -424,6 +424,8 @@ export const events = sqliteTable(
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
     /** 予約公開時刻。draft のままこの時刻を過ぎると cron が自動公開する */
     publishAt: integer('publish_at', { mode: 'timestamp_ms' }),
+    /** 開催前リマインダーを送った時刻(重複送信防止) */
+    reminderSentAt: integer('reminder_sent_at', { mode: 'timestamp_ms' }),
     createdByActorId: text('created_by_actor_id')
       .notNull()
       .references(() => actors.id),

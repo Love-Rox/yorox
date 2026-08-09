@@ -3,10 +3,11 @@
  * - 抽選締切が来た枠の抽選実行
  * - 通知 outbox のディスパッチ
  */
-import { and, eq, isNotNull, lte, ne, sql } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import { purgeExpiredSessions } from '../auth/session';
 import { createDb, schema, type Db } from '../db/client';
 import { publishEvent } from '../domain/event-service';
+import { emitDomainEvent } from '../domain/events';
 import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
@@ -87,6 +88,50 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
       console.log(`[scheduled] published event ${event.id} (予約公開)`);
     } catch (err) {
       console.error(`[scheduled] scheduled publish failed (event=${event.id}):`, err);
+    }
+  }
+
+  // 開催前リマインダー: 24時間以内に始まる公開イベントの参加確定者へ一度だけ通知
+  const reminderWindowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const dueReminders = await db
+    .select({ id: schema.events.id })
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.visibility, 'public'),
+        isNull(schema.events.reminderSentAt),
+        gte(schema.events.startsAt, now),
+        lte(schema.events.startsAt, reminderWindowEnd),
+      ),
+    );
+  for (const event of dueReminders) {
+    try {
+      const attendees = await db
+        .select({
+          participationId: schema.participations.id,
+          slotId: schema.participations.slotId,
+          actorId: schema.participations.actorId,
+        })
+        .from(schema.participations)
+        .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+        .where(
+          and(
+            eq(schema.slots.eventId, event.id),
+            eq(schema.participations.status, 'accepted'),
+          ),
+        );
+      for (const a of attendees) {
+        await emitDomainEvent(db, 'participation.reminder', a, now);
+      }
+      await db
+        .update(schema.events)
+        .set({ reminderSentAt: now })
+        .where(eq(schema.events.id, event.id));
+      if (attendees.length > 0) {
+        console.log(`[scheduled] reminders queued for ${event.id}: ${attendees.length}`);
+      }
+    } catch (err) {
+      console.error(`[scheduled] reminder failed (event=${event.id}):`, err);
     }
   }
 
