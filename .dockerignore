@@ -1,0 +1,11 @@
+.git
+node_modules
+**/node_modules
+**/dist
+**/.wrangler
+**/data
+**/data-node
+**/.dev.vars
+**/.playwright-mcp
+docs
+*.md

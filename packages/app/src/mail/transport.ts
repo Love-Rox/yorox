@@ -158,6 +158,37 @@ export class SmtpTransport implements MailTransport {
   }
 }
 
+
+/** Node(Docker)ランタイム用 SMTP 実装(nodemailer)。ビルド時に選択される */
+export class NodeSmtpTransport implements MailTransport {
+  readonly name = 'smtp-node';
+
+  constructor(
+    private readonly config: SmtpConfig,
+    private readonly from: string,
+  ) {}
+
+  async send(message: MailMessage): Promise<void> {
+    // Node ビルドでのみ実行される(vite にはバンドルさせない)
+    const nodemailer = (await import(/* @vite-ignore */ 'nodemailer')) as
+      typeof import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      ...(this.config.username && this.config.password
+        ? { auth: { user: this.config.username, pass: this.config.password } }
+        : {}),
+    });
+    await transporter.sendMail({
+      from: this.from,
+      to: message.to,
+      subject: message.subject,
+      text: message.bodyText,
+    });
+  }
+}
+
 /**
  * 環境変数からトランスポートを構築する。未設定なら null(コンソールのみで動く)。
  *
@@ -175,17 +206,18 @@ export function createTransportFromEnv(env: Env): MailTransport | null {
 
   if (env.MAIL_TRANSPORT === 'smtp' && env.SMTP_HOST) {
     const port = Number.parseInt(env.SMTP_PORT ?? '587', 10);
-    return new SmtpTransport(
-      {
-        host: env.SMTP_HOST,
-        port,
-        username: env.SMTP_USERNAME,
-        password: env.SMTP_PASSWORD,
-        secure: env.SMTP_SECURE === '1' || port === 465,
-        startTls: env.SMTP_START_TLS !== '0' && port !== 465,
-      },
-      from,
-    );
+    const config = {
+      host: env.SMTP_HOST,
+      port,
+      username: env.SMTP_USERNAME,
+      password: env.SMTP_PASSWORD,
+      secure: env.SMTP_SECURE === '1' || port === 465,
+      startTls: env.SMTP_START_TLS !== '0' && port !== 465,
+    };
+    // Node(Docker)ビルドでは nodemailer、Workers では worker-mailer
+    return __YOROX_TARGET__ === 'node'
+      ? new NodeSmtpTransport(config, from)
+      : new SmtpTransport(config, from);
   }
 
   if (env.RESEND_API_KEY) {

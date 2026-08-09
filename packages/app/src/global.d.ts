@@ -2,6 +2,8 @@ declare module '*.css';
 
 // ビルド時に waku.config.ts の define で注入される
 declare const __YOROX_VERSION__: string;
+/** ビルドターゲット('cloudflare' | 'node')。waku.config の define で注入 */
+declare const __YOROX_TARGET__: string;
 declare const __YOROX_COMMIT__: string;
 
 // シークレット(wrangler secret / .dev.vars)は wrangler types に現れないため補完する

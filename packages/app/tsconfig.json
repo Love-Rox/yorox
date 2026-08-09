@@ -11,7 +11,14 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["./worker-configuration.d.ts"],
-    "jsx": "react-jsx"
+    "types": [
+      "./worker-configuration.d.ts"
+    ],
+    "jsx": "react-jsx",
+    "paths": {
+      "#server-entry": [
+        "./src/waku.server.cloudflare.tsx"
+      ]
+    }
   }
 }

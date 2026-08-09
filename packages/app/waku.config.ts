@@ -17,11 +17,25 @@ const commit = (() => {
   }
 })();
 
+// ビルドターゲット: cloudflare(既定)| node(Docker 自己ホスト)
+const target = process.env.YOROX_TARGET === 'node' ? 'node' : 'cloudflare';
+
 export default defineConfig({
   vite: {
     define: {
       __YOROX_VERSION__: JSON.stringify(version),
       __YOROX_COMMIT__: JSON.stringify(commit),
+      __YOROX_TARGET__: JSON.stringify(target),
+    },
+    resolve: {
+      alias: {
+        // サーバーエントリとランタイムをターゲットで切り替える
+        '#server-entry':
+          target === 'node' ? '/src/waku.server.node.tsx' : '/src/waku.server.cloudflare.tsx',
+        ...(target === 'node'
+          ? { 'cloudflare:workers': '/src/runtime/cloudflare-node-shim.ts' }
+          : {}),
+      },
     },
     environments: {
       rsc: {
@@ -30,7 +44,10 @@ export default defineConfig({
         },
         build: {
           rolldownOptions: {
-            platform: 'neutral',
+            platform: target === 'node' ? 'node' : 'neutral',
+            ...(target === 'node'
+              ? { external: ['better-sqlite3', 'nodemailer', 'worker-mailer'] }
+              : {}),
           },
         },
       },
@@ -40,7 +57,10 @@ export default defineConfig({
         },
         build: {
           rolldownOptions: {
-            platform: 'neutral',
+            platform: target === 'node' ? 'node' : 'neutral',
+            ...(target === 'node'
+              ? { external: ['better-sqlite3', 'nodemailer', 'worker-mailer'] }
+              : {}),
           },
         },
       },
@@ -49,10 +69,14 @@ export default defineConfig({
       tailwindcss(),
       react(),
       babel({ presets: [reactCompilerPreset()] }),
-      cloudflare({
-        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
-        inspectorPort: false,
-      }),
+      ...(target === 'cloudflare'
+        ? [
+            cloudflare({
+              viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
+              inspectorPort: false,
+            }),
+          ]
+        : []),
     ],
   },
 });

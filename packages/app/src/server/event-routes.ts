@@ -15,6 +15,7 @@ import {
   SlotFullError,
 } from '../domain/participation';
 import type { SlotConditions } from '../db/schema';
+import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
 import { generateToken } from '../lib/token';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
@@ -180,7 +181,7 @@ events.post('/events/:id/update', async (c) => {
     });
     // 公開済みイベントの変更はフォロワーへ Update(Note) で通知
     if (ctx.event.visibility === 'public') {
-      c.executionCtx.waitUntil(announceEventUpdateNow(db, ctx.event.id));
+      deferWork(c, announceEventUpdateNow(db, ctx.event.id));
     }
     return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
   } catch {
@@ -387,7 +388,7 @@ events.post('/events/:id/message', async (c) => {
       });
       sent++;
     } else if (recipient.inboxUrl || recipient.sharedInboxUrl) {
-      c.executionCtx.waitUntil(
+      deferWork(c, 
         sendReplyNote(db, {
           group,
           remoteActor: recipient,
@@ -437,7 +438,7 @@ events.post('/events/:id/publish', async (c) => {
 
   await publishEvent(db, ctx.event.id);
   // フォロワーへの AP 告知は応答をブロックせず即時配信(失敗分は cron が再試行)
-  c.executionCtx.waitUntil(announceEventNow(db, ctx.event.id));
+  deferWork(c, announceEventNow(db, ctx.event.id));
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 

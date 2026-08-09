@@ -1,0 +1,30 @@
+# Yorox 自己ホスト用 docker compose
+# 起動: docker compose up -d → http://localhost:8080
+services:
+  yorox:
+    build: .
+    ports:
+      - '8080:8080'
+    volumes:
+      - yorox-data:/data
+    environment:
+      # ファイルアップロード(アバター・サムネイル)を有効化
+      FILE_UPLOADS: '1'
+      MAX_UPLOAD_MB: '5'
+      # メール送信(SMTP)。未設定の間はログイン用リンクがコンテナログに出る
+      # MAIL_TRANSPORT: smtp
+      # MAIL_FROM: 'Yorox <noreply@example.com>'
+      # SMTP_HOST: smtp.example.com
+      # SMTP_PORT: '587'
+      # SMTP_USERNAME: user
+      # SMTP_PASSWORD: pass
+      # 送信レート上限(任意)
+      # MAIL_RATE_PER_MINUTE: '10'
+      # MAIL_RATE_PER_HOUR: '100'
+      # OAuth ログイン(任意)
+      # GITHUB_CLIENT_ID: ...
+      # GITHUB_CLIENT_SECRET: ...
+      # GOOGLE_CLIENT_ID: ...
+      # GOOGLE_CLIENT_SECRET: ...
+volumes:
+  yorox-data:

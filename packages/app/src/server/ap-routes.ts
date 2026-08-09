@@ -24,6 +24,7 @@ import { count, desc, eq, and, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { deferWork } from '../lib/defer';
 import { ensureActorKeys } from '../lib/actor-keys';
 import { buildInstanceActorDoc, getInstanceActorSigner } from '../lib/instance-actor';
 import { buildEventAnnouncement, buildGroupPostNote } from './ap-delivery';
@@ -193,7 +194,7 @@ async function verifyInboxRequest(c: Context, body: string) {
       // プロフィール(名前・アバター・カスタム絵文字)が古ければ裏で再取得
       const STALE_MS = 24 * 60 * 60 * 1000;
       if (signer.state !== 'local' && Date.now() - signer.updatedAt.getTime() > STALE_MS) {
-        c.executionCtx.waitUntil(
+        deferWork(c, 
           fetchRemoteActor(signer.uri, fetchSigner)
             .then((doc) => (doc ? upsertRemoteActor(db, doc).then(() => undefined) : undefined))
             .catch(() => undefined),
@@ -266,7 +267,7 @@ async function handleGroupActivity(
         id: `${group.uri}#accepts/follows/${ulid()}`,
         to: signer.uri,
       });
-      c.executionCtx.waitUntil(
+      deferWork(c, 
         deliverActivity({
           activity: accept,
           inboxUrl,
@@ -292,7 +293,7 @@ async function handleGroupActivity(
       method: 'join',
     });
     console.log(`[ap] remote join (activity): ${signer.uri} -> ${event.id}: ${result.outcome}`);
-    c.executionCtx.waitUntil(
+    deferWork(c, 
       sendJoinResponse(db, { group, remoteActor: signer, joinActivity: activity, result }),
     );
     return c.body(null, 202);
@@ -339,7 +340,7 @@ async function handleGroupActivity(
           : 'アカウントの連携が完了しました!このアカウントでの参加履歴が Yorox アカウントに紐付きます。';
       console.log(`[ap] claim code from ${signer.uri}: ${claimResult === 'invalid' ? 'invalid' : 'linked'}`);
       if (noteId) {
-        c.executionCtx.waitUntil(
+        deferWork(c, 
           sendReplyNote(db, { group, remoteActor: signer, inReplyToUri: noteId, text }),
         );
       }
@@ -357,7 +358,7 @@ async function handleGroupActivity(
         : await processRemoteCancel(db, { event, remoteActor: signer });
     console.log(`[ap] remote ${command} (reply): ${signer.uri} -> ${event.id}: ${result.outcome}`);
     const noteUri = typeof note.id === 'string' ? note.id : inReplyTo!;
-    c.executionCtx.waitUntil(
+    deferWork(c, 
       sendReplyNote(db, {
         group,
         remoteActor: signer,

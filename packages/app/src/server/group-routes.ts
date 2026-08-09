@@ -5,6 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { ulid } from '../lib/ulid';
@@ -203,7 +204,7 @@ groups.post('/g/:handle/posts', async (c) => {
   };
   await db.insert(schema.groupPosts).values(post);
   // フォロワーへの配信+Bluesky クロスポスト(応答をブロックしない)
-  c.executionCtx.waitUntil(
+  deferWork(c, 
     announceGroupPostNow(db, ctx.groupActorId, {
       id: post.id,
       bodyHtml: renderMarkdownToHtml(bodyMd),
@@ -237,7 +238,7 @@ groups.post('/g/:handle/posts/:postId/delete', async (c) => {
 
   await db.delete(schema.groupPosts).where(eq(schema.groupPosts.id, post.id));
   // リモートに残った Note を Delete で消す
-  c.executionCtx.waitUntil(announceGroupPostDeleteNow(db, group, post.id));
+  deferWork(c, announceGroupPostDeleteNow(db, group, post.id));
   return c.redirect(`/g/${handle}#timeline`, 302);
 });
 
