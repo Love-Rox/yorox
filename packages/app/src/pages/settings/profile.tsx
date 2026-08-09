@@ -269,22 +269,54 @@ export default async function ProfileSettingsPage() {
           </p>
         )}
         {account?.calendarToken ? (
-          <div className="mt-3">
-            <p className="text-sm text-neutral">
-              下の URL をカレンダーアプリの「URL で購読」に貼り付けてください。
-            </p>
-            <p className="meta-mono mt-2 rounded border border-rule bg-paper-2 p-2 text-sm break-all">
-              {host && `https://${host}`}/calendar/{account.calendarToken}/yorox.ics
-            </p>
-            <form method="post" action="/profile/calendar-token" className="mt-3">
-              <button
-                type="submit"
-                className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
-              >
-                URL を再発行(古い URL は無効になります)
-              </button>
-            </form>
-          </div>
+          (() => {
+            const icsPath = `/calendar/${account.calendarToken}/yorox.ics`;
+            const httpsUrl = host ? `https://${host}${icsPath}` : icsPath;
+            const webcalUrl = host ? `webcal://${host}${icsPath}` : icsPath;
+            const googleUrl = host
+              ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(httpsUrl)}`
+              : null;
+            return (
+              <div className="mt-3">
+                <p className="text-sm text-neutral">
+                  ボタンから購読するか、URL をカレンダーアプリの「URL で購読」に貼り付けてください。
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a href={webcalUrl} className="btn-quiet inline-block">
+                    カレンダーに購読(Apple ほか)
+                  </a>
+                  {googleUrl && (
+                    <a
+                      href={googleUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-quiet inline-block"
+                    >
+                      Google カレンダーに追加
+                    </a>
+                  )}
+                  <a href={icsPath} className="btn-quiet inline-block" download>
+                    .ics をダウンロード
+                  </a>
+                </div>
+                <p className="mt-3 text-sm text-neutral">購読 URL(貼り付け用):</p>
+                <a
+                  href={httpsUrl}
+                  className="link meta-mono mt-1 block rounded border border-rule bg-paper-2 p-2 text-sm break-all"
+                >
+                  {httpsUrl}
+                </a>
+                <form method="post" action="/profile/calendar-token" className="mt-3">
+                  <button
+                    type="submit"
+                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                  >
+                    URL を再発行(古い URL は無効になります)
+                  </button>
+                </form>
+              </div>
+            );
+          })()
         ) : (
           <form method="post" action="/profile/calendar-token" className="mt-3">
             <button type="submit" className="btn-quiet cursor-pointer">
