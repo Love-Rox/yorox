@@ -2,7 +2,6 @@ import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import {
   GUIDE_STEPS,
-  GuideNav,
   isGuideEnabled,
 } from '../../../components/selfhost-guide';
 
@@ -19,7 +18,6 @@ export default async function SelfHostingIndexPage() {
         </Link>
       </p>
       <h1 className="display mt-2 t-xl">自分のサーバーで運営する</h1>
-      <GuideNav current="" />
 
       <p className="mt-6">
         Yorox はオープンソースの分散型プラットフォームです。このサーバーを

@@ -2,7 +2,6 @@ import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import {
   Cmd,
-  GuideNav,
   NextStep,
   isGuideEnabled,
 } from '../../../components/selfhost-guide';
@@ -20,7 +19,6 @@ export default async function SelfHostingDomainPage() {
         </Link>
       </p>
       <h1 className="display mt-2 t-xl">STEP 2: 公開する(ドメインと HTTPS)</h1>
-      <GuideNav current="domain" />
 
       <div className="mt-6 border-2 border-accent p-4">
         <p className="font-bold text-accent">最重要: ドメインは一度決めたら変えられません</p>

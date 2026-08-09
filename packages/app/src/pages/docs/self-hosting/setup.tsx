@@ -2,7 +2,6 @@ import { Link } from 'waku';
 import { unstable_notFound as notFound } from 'waku/router/server';
 import {
   Cmd,
-  GuideNav,
   NextStep,
   isGuideEnabled,
 } from '../../../components/selfhost-guide';
@@ -20,7 +19,6 @@ export default async function SelfHostingSetupPage() {
         </Link>
       </p>
       <h1 className="display mt-2 t-xl">STEP 1: 起動する</h1>
-      <GuideNav current="setup" />
 
       <section className="mt-6">
         <h2 className="display border-b-2 border-ink pb-2 t-md">1. 取得して起動</h2>
