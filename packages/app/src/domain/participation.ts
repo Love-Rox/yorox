@@ -14,6 +14,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
+import { GroupBlockedError, isActorBlocked } from './blocks';
 import { evaluateConditions, type ApplicantInfo } from './conditions';
 import { emitDomainEvent } from './events';
 import { drawRandom, drawWeighted, type LotteryApplicant } from './lottery';
@@ -109,6 +110,12 @@ export async function joinSlot(
   const now = input.now ?? new Date();
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, input.slotId) });
   if (!slot) throw new Error(`slot not found: ${input.slotId}`);
+
+  // グループのブロック対象は申込を受け付けない
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
+  if (event && (await isActorBlocked(db, event.groupActorId, input.actorId))) {
+    throw new GroupBlockedError();
+  }
 
   const applicant = await getApplicantInfo(db, input.actorId);
   const condResult = evaluateConditions(slot.conditions, applicant, now);

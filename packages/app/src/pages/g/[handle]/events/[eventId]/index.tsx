@@ -57,6 +57,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   full: 'この枠は満席です(補欠枠も含む)。',
   already: 'この枠には既に申し込み済みです。',
   condition: '参加条件を満たしていません。',
+  blocked: 'このグループのイベントには参加できません。',
   slot_invalid: '枠の入力内容を確認してください。',
   stripe: '決済処理を開始できませんでした。時間をおいて再度お試しください。',
   duplicate_failed: 'イベントを複製できませんでした。時間をおいて再度お試しください。',

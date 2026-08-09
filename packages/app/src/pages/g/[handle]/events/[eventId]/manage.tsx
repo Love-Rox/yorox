@@ -47,6 +47,12 @@ export default async function ManagePage({
     user.actorId,
     'event.edit',
   );
+  const canBlock = await hasGroupPermission(
+    db,
+    detail.event.groupActorId,
+    user.actorId,
+    'member.manage',
+  );
   const eventManagers = canEdit
     ? await db
         .select({
@@ -220,6 +226,8 @@ export default async function ManagePage({
         history={Object.fromEntries(history)}
         canLottery={canLottery}
         canAttendance={canAttendance}
+        canBlock={canBlock}
+        groupHandle={handle}
       />
 
       {/* ---- 共同管理者(イベント単位) ---- */}

@@ -20,6 +20,7 @@ import {
   joinSlot,
   SlotFullError,
 } from '../domain/participation';
+import { GroupBlockedError } from '../domain/blocks';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
@@ -640,6 +641,7 @@ events.post('/slots/:id/join', async (c) => {
       return c.redirect(`${eventUrl}?error=already`, 302);
     if (err instanceof ConditionNotMetError)
       return c.redirect(`${eventUrl}?error=condition&reason=${encodeURIComponent(err.reason)}`, 302);
+    if (err instanceof GroupBlockedError) return c.redirect(`${eventUrl}?error=blocked`, 302);
     throw err;
   }
 });

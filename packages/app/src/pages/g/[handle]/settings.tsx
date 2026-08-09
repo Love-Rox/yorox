@@ -51,8 +51,12 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
   const tokushohoFields = TOKUSHOHO_FIELDS;
   const tokushohoValues = { ...tokushohoTemplate(), ...(group.tokushoho ?? {}) };
 
+  const { listBlocks } = await import('../../../domain/blocks');
+  const blocks = canMembers ? await listBlocks(db, actor.id) : [];
+
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
+  const blockError = url.searchParams.get('block_error');
 
   return (
     <div className="max-w-2xl">
@@ -367,6 +371,92 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                 追加
               </button>
             </form>
+          </details>
+        </section>
+      )}
+
+      {/* ---- 参加者ブロック ---- */}
+      {canMembers && (
+        <section id="blocks" className="mt-10 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            参加者ブロック
+            <HelpTip text="ブロックした相手は、このグループのイベントへ申し込めなくなります。Fediverse 連携済みのアカウントには本人・連携先の双方に効きます。" />
+          </h2>
+          <p className="mt-2 text-sm text-neutral">
+            ブロックした相手は、このグループのイベントに参加申込できなくなります。
+            既存の参加はここでは取り消されません(必要なら各イベントの管理画面で対応してください)。
+          </p>
+
+          {blockError && (
+            <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+              {blockError}
+            </p>
+          )}
+
+          {blocks.length > 0 ? (
+            <ul className="mt-4">
+              {blocks.map((b) => (
+                <li
+                  key={b.blockedActorId}
+                  className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3"
+                >
+                  <div className="min-w-0">
+                    <span className="font-bold">{b.displayName}</span>
+                    {b.handle && (
+                      <span className="meta-mono ml-2 text-sm text-neutral">
+                        @{b.handle}
+                        {b.domain && b.domain !== 'bsky' ? `@${b.domain}` : ''}
+                        {b.domain === 'bsky' ? ' (Bluesky)' : ''}
+                      </span>
+                    )}
+                    {b.reason && <p className="mt-0.5 text-sm text-neutral">理由: {b.reason}</p>}
+                  </div>
+                  <form method="post" action={`/g/${handle}/blocks/remove`}>
+                    <input type="hidden" name="blocked_actor_id" value={b.blockedActorId} />
+                    <button
+                      type="submit"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                    >
+                      解除
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-neutral">ブロック中のアカウントはありません。</p>
+          )}
+
+          <details className="mt-4 border-2 border-ink">
+            <summary className="cursor-pointer p-3 text-sm font-bold">
+              ハンドルでブロックを追加
+            </summary>
+            <form
+              method="post"
+              action={`/g/${handle}/blocks`}
+              className="flex flex-wrap items-end gap-3 border-t-2 border-ink p-4"
+            >
+              <label className="block min-w-48 flex-1">
+                <span className="text-sm font-bold">ハンドル(このインスタンスのユーザー)</span>
+                <input
+                  type="text"
+                  name="handle"
+                  required
+                  className="input meta-mono mt-1"
+                  placeholder="@kyoto-taro"
+                />
+              </label>
+              <label className="block min-w-48 flex-1">
+                <span className="text-sm font-bold">理由(任意・記録用)</span>
+                <input type="text" name="reason" className="input mt-1" />
+              </label>
+              <button type="submit" className="btn cursor-pointer">
+                ブロック
+              </button>
+            </form>
+            <p className="border-t border-rule px-4 py-3 text-sm text-neutral">
+              Fediverse からの参加者は、各イベントの管理画面の参加者一覧からブロックできます。
+            </p>
           </details>
         </section>
       )}

@@ -371,6 +371,31 @@ export const groupMembers = sqliteTable(
   ],
 );
 
+/**
+ * 参加者ブロック。グループ管理者が特定アクター(ローカル/リモート)を
+ * ブロックすると、そのグループのイベントへの申込が拒否される。
+ */
+export const groupBlocks = sqliteTable(
+  'group_blocks',
+  {
+    groupActorId: text('group_actor_id')
+      .notNull()
+      .references(() => groups.actorId),
+    blockedActorId: text('blocked_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    reason: text('reason'),
+    createdByActorId: text('created_by_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.groupActorId, t.blockedActorId] }),
+    index('group_blocks_blocked_idx').on(t.blockedActorId),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // イベント
 // ---------------------------------------------------------------------------

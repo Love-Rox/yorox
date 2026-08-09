@@ -22,6 +22,7 @@ import {
   removeMember,
   RoleInUseError,
 } from '../domain/groups';
+import { blockActor, unblockActor } from '../domain/blocks';
 import { PERMISSIONS, type Permission } from '../domain/permissions';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -177,6 +178,83 @@ groups.post('/g/:handle/settings/bluesky/disconnect', async (c) => {
     .set({ bskyIdentifier: null, bskyAppPassword: null })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
   return c.redirect(`/g/${handle}/settings`, 302);
+});
+
+/** 安全なローカル相対パスだけを戻り先として許可する(オープンリダイレクト防止) */
+function safeReturnTo(v: unknown, fallback: string): string {
+  const s = str(v);
+  return s.startsWith('/') && !s.startsWith('//') ? s : fallback;
+}
+
+/** 参加者をブロック(member.manage)。actor_id 直指定 or ローカル handle で指定 */
+groups.post('/g/:handle/blocks', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'member.manage');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const returnTo = safeReturnTo(form.return_to, `/g/${handle}/settings#blocks`);
+  const sep = returnTo.includes('?') ? '&' : '?';
+  const err = (msg: string) =>
+    c.redirect(`${returnTo}${sep}block_error=${encodeURIComponent(msg)}`, 302);
+
+  // 対象アクターの解決: actor_id 直指定を優先、無ければローカル handle
+  let targetActorId = str(form.actor_id);
+  if (!targetActorId) {
+    const targetHandle = str(form.handle).replace(/^@/, '').toLowerCase();
+    if (!targetHandle) return err('ブロックするユーザーを指定してください');
+    const actor = await db.query.actors.findFirst({
+      where: and(
+        eq(schema.actors.handle, targetHandle),
+        isNull(schema.actors.domain),
+        eq(schema.actors.kind, 'user'),
+      ),
+    });
+    if (!actor) return err(`ユーザー @${targetHandle} が見つかりません`);
+    targetActorId = actor.id;
+  } else {
+    const exists = await db.query.actors.findFirst({
+      where: eq(schema.actors.id, targetActorId),
+    });
+    if (!exists) return err('対象のアカウントが見つかりません');
+  }
+
+  // 自分自身・自グループはブロックできない
+  if (targetActorId === actorId || targetActorId === ctx.groupActorId) {
+    return err('この相手はブロックできません');
+  }
+
+  await blockActor(db, {
+    groupActorId: ctx.groupActorId,
+    blockedActorId: targetActorId,
+    createdByActorId: actorId,
+    reason: str(form.reason) || undefined,
+  });
+  return c.redirect(returnTo, 302);
+});
+
+/** ブロック解除(member.manage) */
+groups.post('/g/:handle/blocks/remove', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'member.manage');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const blockedActorId = str(form.blocked_actor_id);
+  if (blockedActorId) {
+    await unblockActor(db, ctx.groupActorId, blockedActorId);
+  }
+  return c.redirect(safeReturnTo(form.return_to, `/g/${handle}/settings#blocks`), 302);
 });
 
 

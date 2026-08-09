@@ -65,6 +65,8 @@ export function ManageParticipants({
   history,
   canLottery,
   canAttendance,
+  canBlock = false,
+  groupHandle,
 }: {
   eventId: string;
   slots: ManageSlot[];
@@ -72,6 +74,8 @@ export function ManageParticipants({
   history: Record<string, { attended: number; noShow: number }>;
   canLottery: boolean;
   canAttendance: boolean;
+  canBlock?: boolean;
+  groupHandle?: string;
 }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -328,6 +332,33 @@ export function ManageParticipants({
                               </button>
                             </form>
                           </>
+                        )}
+                        {canBlock && groupHandle && (
+                          <form
+                            method="post"
+                            action={`/g/${groupHandle}/blocks`}
+                            onSubmit={(e) => {
+                              if (
+                                !confirm(
+                                  `${p.displayName} をブロックします。以後このグループのイベントに申し込めなくなります。よろしいですか?`,
+                                )
+                              )
+                                e.preventDefault();
+                            }}
+                          >
+                            <input type="hidden" name="actor_id" value={p.actorId} />
+                            <input
+                              type="hidden"
+                              name="return_to"
+                              value={`/g/${groupHandle}/events/${eventId}/manage`}
+                            />
+                            <button
+                              type="submit"
+                              className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                            >
+                              ブロック
+                            </button>
+                          </form>
                         )}
                       </div>
                     </li>
