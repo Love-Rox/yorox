@@ -35,6 +35,12 @@ export default async function CheckinPage({ token }: { token: string }) {
   const slots = await db.query.slots.findMany({
     where: eq(schema.slots.eventId, event.id),
   });
+  // 連携済み Fediverse アカウントで参加した分も本人としてチェックインできるよう、
+  // 本人+全エイリアスの participations を対象にする
+  const aliases = await db.query.actors.findMany({
+    where: eq(schema.actors.claimedByActorId, user.actorId),
+  });
+  const identityIds = [user.actorId, ...aliases.map((a) => a.id)];
   const participation =
     slots.length > 0
       ? await db.query.participations.findFirst({
@@ -43,7 +49,7 @@ export default async function CheckinPage({ token }: { token: string }) {
               schema.participations.slotId,
               slots.map((s) => s.id),
             ),
-            eq(schema.participations.actorId, user.actorId),
+            inArray(schema.participations.actorId, identityIds),
             inArray(schema.participations.status, ['accepted', 'payment_pending']),
           ),
         })
@@ -55,6 +61,11 @@ export default async function CheckinPage({ token }: { token: string }) {
         <p>
           「{event.title}」への参加確定済みの申込がこのアカウントにありません。
           補欠・抽選待ちの場合はチェックインできません。
+        </p>
+        <p className="mt-2 text-neutral">
+          Misskey / Mastodon から申し込んだ場合は、プロフィール設定の
+          「Fediverse アカウント連携」でそのアカウントを紐付けるとチェックインできます。
+          連携しない場合は受付スタッフにお声がけください。
         </p>
         <p className="mt-2">
           <Link to={eventUrl} className="link">

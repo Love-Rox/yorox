@@ -25,6 +25,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
+import { buildInstanceActorDoc, getInstanceActorSigner } from '../lib/instance-actor';
 import { buildEventAnnouncement } from './ap-delivery';
 import { deliverActivity } from '../lib/deliver';
 import { renderMarkdownToHtml } from '../lib/markdown';
@@ -124,6 +125,13 @@ ap.get('/nodeinfo/2.1', (c) => {
   });
 });
 
+/** インスタンスアクター(signed fetch の署名主体)。Threads 等が鍵の照合に使う */
+ap.get('/actor', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const doc = await buildInstanceActorDoc(db, new URL(c.req.url).origin);
+  return c.body(JSON.stringify(doc), 200, { 'content-type': AP_MEDIA_TYPE });
+});
+
 /**
  * 未実装の inbox。URL 予約のみ行い 501 を返す。
  */
@@ -163,8 +171,12 @@ async function verifyInboxRequest(c: Context, body: string) {
   const path = new URL(c.req.url).pathname;
 
   const db = createDb((await getEnv()).DB);
+  const fetchSigner = await getInstanceActorSigner(db, new URL(c.req.url).origin);
   for (const forceRefresh of [false, true]) {
-    const signer = await resolveRemoteActorByKeyId(db, parsed.keyId, { forceRefresh });
+    const signer = await resolveRemoteActorByKeyId(db, parsed.keyId, {
+      forceRefresh,
+      signer: fetchSigner,
+    });
     if (!signer?.publicKeyPem) {
       console.warn('inbox: signer resolution failed', parsed.keyId);
       return null;
@@ -182,7 +194,7 @@ async function verifyInboxRequest(c: Context, body: string) {
       const STALE_MS = 24 * 60 * 60 * 1000;
       if (signer.state !== 'local' && Date.now() - signer.updatedAt.getTime() > STALE_MS) {
         c.executionCtx.waitUntil(
-          fetchRemoteActor(signer.uri)
+          fetchRemoteActor(signer.uri, fetchSigner)
             .then((doc) => (doc ? upsertRemoteActor(db, doc).then(() => undefined) : undefined))
             .catch(() => undefined),
         );

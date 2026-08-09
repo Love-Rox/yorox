@@ -16,6 +16,7 @@ import { schema } from '../db/client';
 import { hashToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
 import { fetchBskyProfile } from '../lib/bluesky';
+import { getInstanceActorSigner } from '../lib/instance-actor';
 import { fetchRemoteActor, upsertRemoteActor } from '../lib/remote-actor';
 
 const CODE_TTL_MS = 30 * 60 * 1000;
@@ -136,6 +137,8 @@ export async function claimByRelMe(
   remoteRef: string,
   profileUrls: string[],
 ): Promise<RelMeResult> {
+  const origin = new URL(profileUrls[0]!).origin;
+  const fetchSigner = await getInstanceActorSigner(db, origin);
   let actorUri: string | null = null;
   const acctMatch = /^@?([^@\s]+)@([^@\s]+)$/.exec(remoteRef.trim());
   if (acctMatch) {
@@ -147,7 +150,7 @@ export async function claimByRelMe(
     return { ok: false, reason: '「@user@host」形式か URL を入力してください' };
   }
 
-  const doc = await fetchRemoteActor(actorUri);
+  const doc = await fetchRemoteActor(actorUri, fetchSigner);
   if (!doc) return { ok: false, reason: 'リモートアカウントを取得できませんでした' };
 
   if (!actorLinksTo(doc, profileUrls)) {

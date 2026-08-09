@@ -62,7 +62,8 @@ export function buildSigningString(
 export interface SignRequestInput {
   method: string;
   url: string;
-  body: string;
+  /** GET など本文なしのリクエストは省略(Digest を署名対象に含めない) */
+  body?: string;
   /** 例: https://host/groups/{ulid}#main-key */
   keyId: string;
   privateKeyPem: string;
@@ -70,17 +71,20 @@ export interface SignRequestInput {
 
 /**
  * 送信リクエストに付与するヘッダ一式(Date / Digest / Signature / Host)を作る。
+ * body 省略時は署名付き GET(signed fetch)用に Digest を含めない。
  */
 export async function signRequest(input: SignRequestInput): Promise<Record<string, string>> {
   const url = new URL(input.url);
   const date = new Date().toUTCString();
-  const digest = await computeDigest(input.body);
-  const headerNames = ['(request-target)', 'host', 'date', 'digest'];
+  const headerNames = ['(request-target)', 'host', 'date'];
   const headers: Record<string, string> = {
     host: url.host,
     date,
-    digest,
   };
+  if (input.body !== undefined) {
+    headerNames.push('digest');
+    headers.digest = await computeDigest(input.body);
+  }
   const signingString = buildSigningString(
     input.method,
     url.pathname + url.search,
@@ -94,9 +98,7 @@ export async function signRequest(input: SignRequestInput): Promise<Record<strin
     new TextEncoder().encode(signingString),
   );
   return {
-    host: url.host,
-    date,
-    digest,
+    ...headers,
     signature: [
       `keyId="${input.keyId}"`,
       'algorithm="rsa-sha256"',

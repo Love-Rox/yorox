@@ -6,21 +6,45 @@
  * リモートもローカルと同じ actors 行(state='remote_unclaimed')になる。
  */
 import { eq } from 'drizzle-orm';
-import { AP_MEDIA_TYPE, type ApActor } from '@yorox/ap';
+import { AP_MEDIA_TYPE, signRequest, type ApActor } from '@yorox/ap';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from './ulid';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
-/** リモートのアクター文書を取得する(失敗時 null) */
-export async function fetchRemoteActor(uri: string): Promise<ApActor | null> {
+export interface FetchSigner {
+  keyId: string;
+  privateKeyPem: string;
+}
+
+/**
+ * リモートのアクター文書を取得する(失敗時 null)。
+ * signer を渡すと署名付き GET(signed fetch)になる。Threads や
+ * Mastodon の認証フェッチモードはこれを要求する。
+ */
+export async function fetchRemoteActor(
+  uri: string,
+  signer?: FetchSigner,
+): Promise<ApActor | null> {
   try {
+    const headers: Record<string, string> = {
+      accept: `${AP_MEDIA_TYPE}, application/activity+json`,
+      'user-agent': `Yorox/${__YOROX_VERSION__} (+https://github.com/Love-Rox/yorox)`,
+    };
+    if (signer) {
+      Object.assign(
+        headers,
+        await signRequest({
+          method: 'GET',
+          url: uri,
+          keyId: signer.keyId,
+          privateKeyPem: signer.privateKeyPem,
+        }),
+      );
+    }
     const res = await fetch(uri, {
-      headers: {
-        accept: `${AP_MEDIA_TYPE}, application/activity+json`,
-        'user-agent': `Yorox/${__YOROX_VERSION__} (+https://github.com/Love-Rox/yorox)`,
-      },
+      headers,
       redirect: 'follow',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -106,7 +130,7 @@ export async function upsertRemoteActor(db: Db, doc: ApActor) {
 export async function resolveRemoteActorByKeyId(
   db: Db,
   keyId: string,
-  opts: { forceRefresh?: boolean } = {},
+  opts: { forceRefresh?: boolean; signer?: FetchSigner } = {},
 ) {
   const actorUri = keyId.split('#')[0]!;
   const cached = await db.query.actors.findFirst({
@@ -115,7 +139,7 @@ export async function resolveRemoteActorByKeyId(
   // ローカルアクターは常に DB が正(再フェッチしない)
   if (cached?.state === 'local') return cached;
   if (!opts.forceRefresh && cached?.publicKeyPem) return cached;
-  const doc = await fetchRemoteActor(actorUri);
+  const doc = await fetchRemoteActor(actorUri, opts.signer);
   if (!doc) return null;
   return upsertRemoteActor(db, doc);
 }
