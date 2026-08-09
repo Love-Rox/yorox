@@ -192,7 +192,7 @@ export default async function ProfileSettingsPage() {
             {aliases.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2">
                 <a href={a.uri} className="link meta-mono text-sm" rel="noreferrer" target="_blank">
-                  @{a.handle}@{a.domain}
+                  {a.domain === 'bsky' ? `@${a.handle} (Bluesky)` : `@${a.handle}@${a.domain}`}
                 </a>
                 <form method="post" action="/profile/claim-unlink">
                   <input type="hidden" name="remote_actor_id" value={a.id} />
@@ -227,6 +227,30 @@ export default async function ProfileSettingsPage() {
                 </button>
               </form>
             )}
+          </div>
+          <div>
+            <h3 className="text-sm font-bold">方法3: Bluesky アカウントを連携</h3>
+            <p className="mt-1 text-sm text-neutral">
+              Bluesky プロフィールの説明文に
+              <span className="meta-mono"> https://{host}/u/{me.handle} </span>
+              を追加してから、ハンドルを入力してください。
+            </p>
+            <form
+              method="post"
+              action="/profile/claim-bsky"
+              className="mt-2 flex flex-wrap gap-2"
+            >
+              <input
+                type="text"
+                name="bsky_handle"
+                required
+                className="input meta-mono max-w-xs"
+                placeholder="you.bsky.social"
+              />
+              <button type="submit" className="btn-quiet cursor-pointer">
+                確認して連携
+              </button>
+            </form>
           </div>
           <div>
             <h3 className="text-sm font-bold">方法2: プロフィールのリンクで連携(rel=me)</h3>

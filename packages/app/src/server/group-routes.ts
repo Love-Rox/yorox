@@ -5,6 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { createBskySession } from '../lib/bluesky';
 import {
   addMemberByHandle,
   AlreadyMemberError,
@@ -116,6 +117,60 @@ groups.post('/g/:handle/settings', async (c) => {
   await db
     .update(schema.groups)
     .set({ descriptionMd: str(form.description_md) || null })
+    .where(eq(schema.groups.actorId, ctx.groupActorId));
+  return c.redirect(`/g/${handle}/settings`, 302);
+});
+
+
+/** Bluesky クロスポスト連携の登録(App Password を検証してから保存) */
+groups.post('/g/:handle/settings/bluesky', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const identifier = str(form.bsky_identifier).replace(/^@/, '');
+  const appPassword = str(form.bsky_app_password);
+  if (!identifier || !appPassword) {
+    return c.redirect(
+      `/g/${handle}/settings?error=${encodeURIComponent('Bluesky のハンドルと App Password を入力してください')}`,
+      302,
+    );
+  }
+  // 保存前にログインできるか検証する
+  const session = await createBskySession(identifier, appPassword);
+  if (!session) {
+    return c.redirect(
+      `/g/${handle}/settings?error=${encodeURIComponent('Bluesky にログインできませんでした。ハンドルと App Password を確認してください')}`,
+      302,
+    );
+  }
+  await db
+    .update(schema.groups)
+    .set({ bskyIdentifier: identifier, bskyAppPassword: appPassword })
+    .where(eq(schema.groups.actorId, ctx.groupActorId));
+  return c.redirect(`/g/${handle}/settings`, 302);
+});
+
+/** Bluesky 連携の解除 */
+groups.post('/g/:handle/settings/bluesky/disconnect', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  await db
+    .update(schema.groups)
+    .set({ bskyIdentifier: null, bskyAppPassword: null })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
   return c.redirect(`/g/${handle}/settings`, 302);
 });

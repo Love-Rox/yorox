@@ -115,7 +115,7 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                     target="_blank"
                   >
                     <ServiceIcon url={a.uri} />
-                    @{a.handle}@{a.domain}
+                    {a.domain === 'bsky' ? `@${a.handle}` : `@${a.handle}@${a.domain}`}
                   </a>
                 </li>
               ))}

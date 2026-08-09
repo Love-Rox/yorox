@@ -13,6 +13,11 @@ import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
+import {
+  buildBskyAnnouncementText,
+  createBskySession,
+  postToBluesky,
+} from '../lib/bluesky';
 import { deliverActivity } from '../lib/deliver';
 import { ulid } from '../lib/ulid';
 import { retryBackoffMs } from '../mail/queue';
@@ -241,6 +246,44 @@ export async function announceEventNow(db: Db, eventId: string): Promise<void> {
     // 即時配信の失敗は cron のリトライに任せる
     console.error(`[ap] immediate announce failed (event=${eventId}):`, err);
   }
+  // Bluesky クロスポスト(連携済みグループのみ。非冪等なので即時経路のみで行う)
+  try {
+    await crosspostEventToBluesky(db, eventId);
+  } catch (err) {
+    console.error(`[bsky] crosspost failed (event=${eventId}):`, err);
+  }
+}
+
+/** グループが Bluesky 連携済みなら公開イベントの告知を投稿する */
+async function crosspostEventToBluesky(db: Db, eventId: string): Promise<void> {
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, eventId),
+  });
+  if (!event || event.visibility !== 'public') return;
+  const group = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, event.groupActorId),
+  });
+  if (!group?.bskyIdentifier || !group.bskyAppPassword) return;
+  const actor = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!actor?.handle) return;
+
+  const session = await createBskySession(group.bskyIdentifier, group.bskyAppPassword);
+  if (!session) {
+    console.warn(`[bsky] login failed for group ${actor.handle}`);
+    return;
+  }
+  const origin = new URL(actor.uri).origin;
+  const humanUrl = `${origin}/g/${actor.handle}/events/${event.id}`;
+  const text = buildBskyAnnouncementText({
+    title: event.title,
+    startsAt: event.startsAt,
+    venueName: event.venueName,
+    humanUrl,
+  });
+  const uri = await postToBluesky(session, text, humanUrl);
+  if (uri) console.log(`[bsky] crossposted ${eventId} -> ${uri}`);
 }
 
 /**

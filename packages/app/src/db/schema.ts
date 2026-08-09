@@ -213,6 +213,13 @@ export const groups = sqliteTable('groups', {
   /** 個人グループ(GitHub のユーザー名前空間方式)かどうか */
   isPersonal: integer('is_personal', { mode: 'boolean' }).notNull().default(false),
   descriptionMd: text('description_md'),
+  /**
+   * Bluesky クロスポスト用の認証情報(任意)。
+   * App Password は失効可能な専用パスワードを登録してもらう
+   * (docs/DECISIONS.md: AT Protocol はネイティブ連合せずクロスポストで橋渡し)
+   */
+  bskyIdentifier: text('bsky_identifier'),
+  bskyAppPassword: text('bsky_app_password'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

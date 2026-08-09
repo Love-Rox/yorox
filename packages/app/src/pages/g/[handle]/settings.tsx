@@ -6,6 +6,7 @@ import {
 import { asc, eq } from 'drizzle-orm';
 import { schema } from '../../../db/client';
 import { PERMISSION_LABELS, PERMISSIONS } from '../../../domain/permissions';
+import { HelpTip } from '../../../components/help-tip';
 import { LoginRequired } from '../../../components/login-required';
 import { getCurrentUser } from '../../../server/current-user';
 import { getDb, getGroupByHandle } from '../../../server/data';
@@ -92,6 +93,73 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               保存
             </button>
           </form>
+        </section>
+      )}
+
+      {/* ---- Bluesky クロスポスト ---- */}
+      {canSettings && (
+        <section className="mt-10">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            Bluesky クロスポスト
+            <HelpTip text="連携すると、イベント公開時にこのグループの Bluesky アカウントへ告知が自動投稿されます。通常のパスワードではなく、Bluesky の設定で発行できる App Password(いつでも失効可能)を使ってください。" />
+          </h2>
+          {group.bskyIdentifier ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p>
+                連携中:{' '}
+                <a
+                  href={`https://bsky.app/profile/${group.bskyIdentifier}`}
+                  className="link meta-mono"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  @{group.bskyIdentifier}
+                </a>
+              </p>
+              <form method="post" action={`/g/${handle}/settings/bluesky/disconnect`}>
+                <button
+                  type="submit"
+                  className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                >
+                  連携を解除
+                </button>
+              </form>
+            </div>
+          ) : (
+            <form
+              method="post"
+              action={`/g/${handle}/settings/bluesky`}
+              className="mt-4 space-y-4"
+            >
+              <label className="block">
+                <span className="text-sm font-bold">Bluesky ハンドル</span>
+                <input
+                  type="text"
+                  name="bsky_identifier"
+                  required
+                  className="input meta-mono mt-1"
+                  placeholder="example.bsky.social"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold">App Password</span>
+                <input
+                  type="password"
+                  name="bsky_app_password"
+                  required
+                  className="input meta-mono mt-1"
+                  placeholder="xxxx-xxxx-xxxx-xxxx"
+                />
+                <span className="mt-1 block text-sm text-neutral">
+                  Bluesky の「設定 → プライバシーとセキュリティ → App Passwords」で
+                  発行した専用パスワードを使ってください(通常のパスワードは使わないでください)
+                </span>
+              </label>
+              <button type="submit" className="btn cursor-pointer">
+                連携する
+              </button>
+            </form>
+          )}
         </section>
       )}
 

@@ -15,6 +15,7 @@ import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { hashToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
+import { fetchBskyProfile } from '../lib/bluesky';
 import { fetchRemoteActor, upsertRemoteActor } from '../lib/remote-actor';
 
 const CODE_TTL_MS = 30 * 60 * 1000;
@@ -165,6 +166,69 @@ export async function claimByRelMe(
     remoteActorId: row.id,
     remoteHandle: row.handle && row.domain ? `@${row.handle}@${row.domain}` : row.uri,
   };
+}
+
+
+/**
+ * Bluesky アカウントの連携。プロフィールの説明文に自分の Yorox プロフィール URL が
+ * 書かれていることを確認して紐付ける(rel=me と同じ考え方)。
+ */
+export async function claimBluesky(
+  db: Db,
+  userActorId: string,
+  bskyHandle: string,
+  profileUrls: string[],
+): Promise<RelMeResult> {
+  const handle = bskyHandle.trim().replace(/^@/, '');
+  if (!handle) return { ok: false, reason: 'Bluesky ハンドルを入力してください' };
+  const profile = await fetchBskyProfile(handle);
+  if (!profile) return { ok: false, reason: 'Bluesky アカウントが見つかりませんでした' };
+
+  const description = profile.description ?? '';
+  const targets = profileUrls.map((u) => u.replace(/\/$/, ''));
+  if (!targets.some((t) => description.includes(t))) {
+    return {
+      ok: false,
+      reason:
+        'Bluesky プロフィールの説明文にあなたの Yorox プロフィール URL が見つかりませんでした。説明文に追加してから再度お試しください。',
+    };
+  }
+
+  const uri = `https://bsky.app/profile/${profile.did}`;
+  const now = new Date();
+  const existing = await db.query.actors.findFirst({
+    where: eq(schema.actors.uri, uri),
+  });
+  let actorId: string;
+  if (existing) {
+    if (existing.state === 'local') return { ok: false, reason: '連携できないアカウントです' };
+    actorId = existing.id;
+    await db
+      .update(schema.actors)
+      .set({
+        handle: profile.handle,
+        displayName: profile.displayName || profile.handle,
+        avatarUrl: profile.avatar ?? null,
+        updatedAt: now,
+      })
+      .where(eq(schema.actors.id, actorId));
+  } else {
+    actorId = ulid();
+    await db.insert(schema.actors).values({
+      id: actorId,
+      kind: 'user',
+      state: 'remote_unclaimed',
+      handle: profile.handle,
+      domain: 'bsky',
+      uri,
+      displayName: profile.displayName || profile.handle,
+      avatarUrl: profile.avatar ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  await linkRemoteAlias(db, actorId, userActorId);
+  return { ok: true, remoteActorId: actorId, remoteHandle: `@${profile.handle}` };
 }
 
 /** アクター文書のリンク欄(attachment PropertyValue / alsoKnownAs / url)に対象 URL があるか */
