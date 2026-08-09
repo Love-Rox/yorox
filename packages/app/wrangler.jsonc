@@ -38,7 +38,9 @@
     "FILE_UPLOADS": "1",
     "MAX_UPLOAD_MB": "5",
     "MAIL_RATE_PER_MINUTE": "10",
-    "MAIL_RATE_PER_HOUR": "100"
+    "MAIL_RATE_PER_HOUR": "100",
+    // 公式サーバーのみ: セルフホストガイドを表示(オプトイン)
+    "SELF_HOSTING_GUIDE": "1"
   },
   "r2_buckets": [
     {

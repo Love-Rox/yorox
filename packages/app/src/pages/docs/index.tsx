@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { isGuideEnabled } from '../../components/selfhost-guide';
 
 const GUIDES = [
   {
@@ -29,6 +30,17 @@ const GUIDES = [
 ];
 
 export default async function DocsIndexPage() {
+  const guideEnabled = await isGuideEnabled();
+  const guides = guideEnabled
+    ? [
+        ...GUIDES,
+        {
+          href: '/docs/self-hosting',
+          title: '自分のサーバーで運営する',
+          description: 'Docker で自分のインスタンスを立てる(4ステップガイド)',
+        },
+      ]
+    : GUIDES;
   return (
     <div>
       <title>使い方 - Yorox</title>
@@ -38,7 +50,7 @@ export default async function DocsIndexPage() {
         立場に合わせたガイドを用意しています。
       </p>
       <ul className="mt-8 space-y-4">
-        {GUIDES.map((guide) => (
+        {guides.map((guide) => (
           <li key={guide.href} className="border-b border-rule pb-4">
             <Link to={guide.href} className="event-row__title">
               {guide.title}
@@ -53,6 +65,6 @@ export default async function DocsIndexPage() {
 
 export const getConfig = async () => {
   return {
-    render: 'static',
+    render: 'dynamic',
   } as const;
 };
