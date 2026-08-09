@@ -8,6 +8,7 @@ import type { Hono } from 'hono/tiny';
 import type { MiddlewareHandler } from 'hono';
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/node';
+import crawlLog from './server/crawl-log';
 import apRoutes from './server/ap-routes';
 import stripeRoutes from './server/stripe-routes';
 import calendarRoutes from './server/calendar-routes';
@@ -55,6 +56,7 @@ function cronMiddleware(_opts: { app: Hono }): MiddlewareHandler {
 export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
   middlewareFns: [
     cronMiddleware,
+    crawlLog,
     apRoutes,
     stripeRoutes,
     calendarRoutes,

@@ -1,5 +1,6 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
+import crawlLog from './server/crawl-log';
 import apRoutes from './server/ap-routes';
 import stripeRoutes from './server/stripe-routes';
 import calendarRoutes from './server/calendar-routes';
@@ -15,6 +16,7 @@ import { runScheduledJobs } from './server/scheduled';
 
 export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
   middlewareFns: [
+    crawlLog,
     apRoutes,
     stripeRoutes,
     calendarRoutes,
