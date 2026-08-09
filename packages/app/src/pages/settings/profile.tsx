@@ -18,6 +18,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   no_file: 'ファイルが選択されていません。',
   too_large: 'ファイルサイズが上限を超えています。',
   bad_type: '対応していない画像形式です(PNG / JPEG / WebP / GIF)。',
+  delete_confirm: '退会するには確認欄に「退会」と入力してください。',
+  delete_owner:
+    'あなたが唯一の管理者になっている共同グループがあります。先に他の管理者へ引き継ぐか、グループを削除してから退会してください。',
 };
 
 export default async function ProfileSettingsPage() {
@@ -425,6 +428,48 @@ export default async function ProfileSettingsPage() {
               </button>
             </form>
           </div>
+        </div>
+      </section>
+
+      {/* ---- データと退会(危険な操作) ---- */}
+      <section id="danger" className="mt-10 scroll-mt-4 border-2 border-accent p-4">
+        <h2 className="display t-md text-accent">データと退会</h2>
+
+        <div className="mt-4">
+          <h3 className="text-sm font-bold">データのエクスポート</h3>
+          <p className="mt-1 text-sm text-neutral">
+            プロフィール・参加履歴・出欠・支払い・グループ所属を JSON でまとめてダウンロードします。
+          </p>
+          <a href="/profile/export.json" className="btn-quiet mt-2 inline-block" download>
+            エクスポート(JSON)
+          </a>
+        </div>
+
+        <div className="mt-6 border-t border-rule pt-6">
+          <h3 className="text-sm font-bold text-accent">アカウントの削除(退会)</h3>
+          <p className="mt-1 text-sm text-neutral">
+            退会すると、メールアドレス・ログイン情報・連携アカウントは削除され、
+            進行中の申込はキャンセルされます。過去の参加・出欠の記録は、主催者側の
+            集計のため匿名化された形で残ることがあります。この操作は取り消せません。
+          </p>
+          <form method="post" action="/profile/delete" className="mt-3">
+            <label className="block text-sm">
+              確認のため <span className="font-bold">退会</span> と入力してください
+              <input
+                type="text"
+                name="confirm"
+                autoComplete="off"
+                className="input mt-1 max-w-xs"
+                placeholder="退会"
+              />
+            </label>
+            <button
+              type="submit"
+              className="mt-3 min-h-11 cursor-pointer border-2 border-accent px-4 font-bold text-accent hover:bg-accent hover:text-paper"
+            >
+              退会する
+            </button>
+          </form>
         </div>
       </section>
     </div>

@@ -6,9 +6,12 @@ import { generateToken } from '../lib/token';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { deleteAccount, exportUserData } from '../domain/account';
 import { ulid } from '../lib/ulid';
+import { clearSessionCookieHeader } from '../auth/session';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
 import { claimBluesky, claimByRelMe, generateClaimCode, unlinkRemoteAlias } from './claim';
+import { isSecureRequest } from './http';
 import { getSessionActorId } from './route-auth';
 
 async function getEnv(): Promise<Env> {
@@ -93,6 +96,46 @@ profile.post('/profile/calendar-token', async (c) => {
     .set({ calendarToken: generateToken() })
     .where(eq(schema.users.actorId, actorId));
   return c.redirect('/settings/profile?cal_saved=1#calendar', 302);
+});
+
+/** 自分の全データを JSON でエクスポート(ダウンロード) */
+profile.get('/profile/export.json', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const data = await exportUserData(db, actorId);
+  return c.body(JSON.stringify(data, null, 2), 200, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-disposition': 'attachment; filename="yorox-account-export.json"',
+    'cache-control': 'private, no-store',
+  });
+});
+
+/** アカウント削除(退会) */
+profile.post('/profile/delete', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  // 確認入力(「退会」と入力)を必須にして誤操作を防ぐ
+  const form = await c.req.parseBody();
+  if (str(form.confirm) !== '退会') {
+    return c.redirect('/settings/profile?error=delete_confirm#danger', 302);
+  }
+
+  const result = await deleteAccount(db, actorId);
+  if (!result.ok) {
+    const names = result.groups.map((g) => g.handle ?? g.displayName).join(', ');
+    return c.redirect(
+      `/settings/profile?error=delete_owner&groups=${encodeURIComponent(names)}#danger`,
+      302,
+    );
+  }
+
+  // セッション cookie を破棄してトップへ
+  c.header('set-cookie', clearSessionCookieHeader(await isSecureRequest(c)));
+  return c.redirect('/?goodbye=1', 302);
 });
 
 /** お知らせ受け取り設定 */
