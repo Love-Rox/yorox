@@ -14,7 +14,7 @@ import {
 import { markPayment } from '../domain/payment';
 import { ulid } from '../lib/ulid';
 import type { Permission } from '../domain/permissions';
-import { getSessionActorId, hasGroupPermission } from './route-auth';
+import { getSessionActorId, hasEventPermission } from './route-auth';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -71,7 +71,7 @@ async function authorizeForEvent(
     where: eq(schema.actors.id, event.groupActorId),
   });
   if (!groupActor?.handle) return null;
-  const allowed = await hasGroupPermission(db, event.groupActorId, actorId, permission);
+  const allowed = await hasEventPermission(db, event, actorId, permission);
   return allowed ? { eventId: event.id, handle: groupActor.handle, groupActorId: event.groupActorId } : null;
 }
 

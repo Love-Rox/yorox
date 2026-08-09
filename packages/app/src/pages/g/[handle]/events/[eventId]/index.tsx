@@ -18,7 +18,7 @@ import {
   listVisibleParticipants,
 } from '../../../../../server/data';
 import { schema } from '../../../../../db/client';
-import { hasGroupPermission } from '../../../../../server/route-auth';
+import { hasEventPermission } from '../../../../../server/route-auth';
 
 const TZ = 'Asia/Tokyo';
 const TIME_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -84,7 +84,7 @@ export default async function EventPage({
 
   const user = await getCurrentUser();
   const canEdit = user
-    ? await hasGroupPermission(db, detail.event.groupActorId, user.actorId, 'event.edit')
+    ? await hasEventPermission(db, detail.event, user.actorId, 'event.edit')
     : false;
 
   // 下書きは編集権限を持つメンバーだけが見られる

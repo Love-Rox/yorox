@@ -18,12 +18,13 @@ import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
 import { generateToken } from '../lib/token';
+import { ulid } from '../lib/ulid';
 import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
 import { enqueueMail } from '../mail/queue';
 import { getSlotCoordinator } from './coordinator';
 import { sendReplyNote } from './remote-join';
 import { listManageParticipations } from './data';
-import { getSessionActorId, hasGroupPermission } from './route-auth';
+import { getSessionActorId, hasEventPermission, hasGroupPermission } from './route-auth';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -134,7 +135,7 @@ async function canEditEvent(
     where: eq(schema.actors.id, event.groupActorId),
   });
   if (!groupActor?.handle) return null;
-  const allowed = await hasGroupPermission(db, event.groupActorId, actorId, 'event.edit');
+  const allowed = await hasEventPermission(db, event, actorId, 'event.edit');
   return allowed ? { event, handle: groupActor.handle } : null;
 }
 
@@ -342,8 +343,8 @@ events.post('/events/:id/message', async (c) => {
     where: eq(schema.actors.id, event.groupActorId),
   });
   const allowed =
-    (await hasGroupPermission(db, event.groupActorId, actorId, 'attendance.manage')) ||
-    (await hasGroupPermission(db, event.groupActorId, actorId, 'event.edit'));
+    (await hasEventPermission(db, event, actorId, 'attendance.manage')) ||
+    (await hasEventPermission(db, event, actorId, 'event.edit'));
   if (!allowed || !group?.handle) return c.text('権限がありません', 403);
 
   const form = await c.req.parseBody({ all: true });
@@ -407,6 +408,64 @@ events.post('/events/:id/message', async (c) => {
   return c.redirect(`${manageUrl}?message_sent=${sent}`, 302);
 });
 
+
+/** イベント共同管理者の追加(handle 指定) */
+events.post('/events/:id/managers', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  const manageUrl = `/g/${ctx.handle}/events/${ctx.event.id}/manage`;
+
+  const form = await c.req.parseBody();
+  const handle = str(form.handle).replace(/^@/, '').toLowerCase();
+  if (!handle) return c.redirect(`${manageUrl}?error=${encodeURIComponent('ハンドルを入力してください')}`, 302);
+  const target = await db.query.actors.findFirst({
+    where: and(
+      eq(schema.actors.handle, handle),
+      isNull(schema.actors.domain),
+      eq(schema.actors.kind, 'user'),
+    ),
+  });
+  if (!target) {
+    return c.redirect(`${manageUrl}?error=${encodeURIComponent('そのハンドルのユーザーが見つかりません')}`, 302);
+  }
+  await db
+    .insert(schema.eventManagers)
+    .values({
+      id: ulid(),
+      eventId: ctx.event.id,
+      actorId: target.id,
+      addedByActorId: actorId,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing();
+  return c.redirect(`${manageUrl}#managers`, 302);
+});
+
+/** イベント共同管理者の削除 */
+events.post('/events/:id/managers/:actorId/remove', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  await db
+    .delete(schema.eventManagers)
+    .where(
+      and(
+        eq(schema.eventManagers.eventId, ctx.event.id),
+        eq(schema.eventManagers.actorId, c.req.param('actorId')),
+      ),
+    );
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}/manage#managers`, 302);
+});
+
 /** セルフチェックイン用トークンの発行/再発行(出欠管理権限) */
 events.post('/events/:id/checkin/enable', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
@@ -421,7 +480,7 @@ events.post('/events/:id/checkin/enable', async (c) => {
   const group = await db.query.actors.findFirst({
     where: eq(schema.actors.id, event.groupActorId),
   });
-  const allowed = await hasGroupPermission(db, event.groupActorId, actorId, 'attendance.manage');
+  const allowed = await hasEventPermission(db, event, actorId, 'attendance.manage');
   if (!allowed || !group?.handle) return c.text('権限がありません', 403);
 
   await db

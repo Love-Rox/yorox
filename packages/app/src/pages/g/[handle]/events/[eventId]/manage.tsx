@@ -11,7 +11,7 @@ import {
   getEventDetail,
   listManageParticipations,
 } from '../../../../../server/data';
-import { hasGroupPermission } from '../../../../../server/route-auth';
+import { hasEventPermission } from '../../../../../server/route-auth';
 import { renderSVG } from 'uqr';
 import { and, eq, isNull } from 'drizzle-orm';
 import { Avatar } from '../../../../../components/avatar';
@@ -31,24 +31,33 @@ export default async function ManagePage({
   const detail = await getEventDetail(db, eventId);
   if (!detail || detail.groupActor?.handle !== handle) return notFound();
 
-  const canEdit = await hasGroupPermission(
+  const canEdit = await hasEventPermission(db, detail.event, user.actorId, 'event.edit');
+  const canAttendance = await hasEventPermission(
+    db,
+    detail.event,
+    user.actorId,
+    'attendance.manage',
+  );
+  const canLottery = await hasEventPermission(db, detail.event, user.actorId, 'lottery.run');
+  // 共同管理者の追加/削除は主催者(グループの event.edit)のみに見せる
+  const { hasGroupPermission } = await import('../../../../../server/route-auth');
+  const canManageManagers = await hasGroupPermission(
     db,
     detail.event.groupActorId,
     user.actorId,
     'event.edit',
   );
-  const canAttendance = await hasGroupPermission(
-    db,
-    detail.event.groupActorId,
-    user.actorId,
-    'attendance.manage',
-  );
-  const canLottery = await hasGroupPermission(
-    db,
-    detail.event.groupActorId,
-    user.actorId,
-    'lottery.run',
-  );
+  const eventManagers = canEdit
+    ? await db
+        .select({
+          actorId: schema.actors.id,
+          displayName: schema.actors.displayName,
+          handle: schema.actors.handle,
+        })
+        .from(schema.eventManagers)
+        .innerJoin(schema.actors, eq(schema.eventManagers.actorId, schema.actors.id))
+        .where(eq(schema.eventManagers.eventId, eventId))
+    : [];
   if (!canEdit && !canAttendance && !canLottery) return notFound();
 
   const { event, slots, sessions, materials } = detail;
@@ -212,6 +221,69 @@ export default async function ManagePage({
         canLottery={canLottery}
         canAttendance={canAttendance}
       />
+
+      {/* ---- 共同管理者(イベント単位) ---- */}
+      {canManageManagers && (
+        <section id="managers" className="mt-12 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            このイベントの共同管理者
+          </h2>
+          <p className="mt-2 text-sm text-neutral">
+            グループのメンバーでない人にも、このイベントだけの運営(編集・出欠・抽選)を
+            手伝ってもらえます。グループ設定やメンバー管理の権限は付きません。
+          </p>
+          {eventManagers.length > 0 && (
+            <ul className="mt-3">
+              {eventManagers.map((m) => (
+                <li
+                  key={m.actorId}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-rule py-2"
+                >
+                  <span>
+                    {m.handle ? (
+                      <Link to={`/u/${m.handle}`} className="link font-bold">
+                        {m.displayName}
+                      </Link>
+                    ) : (
+                      <span className="font-bold">{m.displayName}</span>
+                    )}
+                    {m.handle && (
+                      <span className="meta-mono ml-2 text-sm text-neutral">@{m.handle}</span>
+                    )}
+                  </span>
+                  <form
+                    method="post"
+                    action={`/events/${eventId}/managers/${m.actorId}/remove`}
+                  >
+                    <button
+                      type="submit"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                    >
+                      外す
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            method="post"
+            action={`/events/${eventId}/managers`}
+            className="mt-3 flex flex-wrap gap-2"
+          >
+            <input
+              type="text"
+              name="handle"
+              required
+              className="input meta-mono max-w-xs"
+              placeholder="@handle(ユーザーのハンドル)"
+            />
+            <button type="submit" className="btn-quiet cursor-pointer">
+              追加
+            </button>
+          </form>
+        </section>
+      )}
 
       {/* ---- セッション管理 ---- */}
       {canEdit && (

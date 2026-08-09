@@ -165,6 +165,31 @@ export const groupPosts = sqliteTable(
   (t) => [index('group_posts_group_idx').on(t.groupActorId, t.createdAt)],
 );
 
+/**
+ * イベント単位の共同管理者(グループの役割とは別に、特定イベントだけを
+ * 手伝ってもらうための付与)。運用系の権限(編集・出欠・抽選)を持つ。
+ */
+export const eventManagers = sqliteTable(
+  'event_managers',
+  {
+    id: text('id').primaryKey(), // ULID
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id),
+    actorId: text('actor_id')
+      .notNull()
+      .references(() => actors.id),
+    addedByActorId: text('added_by_actor_id')
+      .notNull()
+      .references(() => actors.id),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('event_managers_event_actor_unique').on(t.eventId, t.actorId),
+    index('event_managers_event_idx').on(t.eventId),
+  ],
+);
+
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
 export const users = sqliteTable('users', {
   actorId: text('actor_id')

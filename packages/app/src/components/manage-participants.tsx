@@ -229,7 +229,9 @@ export function ManageParticipants({
                           <div className="meta-mono mt-0.5 text-sm text-neutral">
                             {STATUS_LABEL[p.status] ?? p.status}
                             {' · 過去実績 '}
-                            {total === 0 ? '記録なし' : `出席 ${h.attended} / ${total} 回`}
+                            {total === 0
+                              ? '記録なし'
+                              : `出席率 ${Math.round((h.attended / total) * 100)}%(${h.attended}/${total}回)`}
                             {p.attendanceStatus && (
                               <span className="ml-2 font-bold text-ink">
                                 [{p.attendanceStatus === 'attended' ? '出席' : '無断欠席'}]

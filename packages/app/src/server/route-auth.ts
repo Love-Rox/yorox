@@ -36,3 +36,40 @@ export async function hasGroupPermission(
     );
   return rows.some((r) => hasPermission(r.permissions, permission));
 }
+
+/** イベント共同管理者に与える運用権限(グループ設定・メンバー管理は含めない) */
+const EVENT_MANAGER_PERMISSIONS: Permission[] = [
+  'event.edit',
+  'attendance.manage',
+  'lottery.run',
+];
+
+/** そのイベントの共同管理者か */
+export async function isEventManager(
+  db: Db,
+  eventId: string,
+  actorId: string,
+): Promise<boolean> {
+  const row = await db.query.eventManagers.findFirst({
+    where: and(
+      eq(schema.eventManagers.eventId, eventId),
+      eq(schema.eventManagers.actorId, actorId),
+    ),
+  });
+  return !!row;
+}
+
+/**
+ * イベントに対する権限。グループの役割で持つか、または
+ * イベント共同管理者に付与される運用権限に含まれれば true。
+ */
+export async function hasEventPermission(
+  db: Db,
+  event: { id: string; groupActorId: string },
+  actorId: string,
+  permission: Permission,
+): Promise<boolean> {
+  if (await hasGroupPermission(db, event.groupActorId, actorId, permission)) return true;
+  if (!EVENT_MANAGER_PERMISSIONS.includes(permission)) return false;
+  return isEventManager(db, event.id, actorId);
+}
