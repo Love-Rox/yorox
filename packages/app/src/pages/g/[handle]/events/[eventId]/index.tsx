@@ -216,7 +216,7 @@ export default async function EventPage({
               <Menu label="カレンダーに追加">
                 <a
                   href={`/events/${eventId}/calendar.ics`}
-                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                 >
                   .ics をダウンロード
                 </a>
@@ -228,7 +228,7 @@ export default async function EventPage({
                     location: event.venueName ?? (event.onlineUrl ? 'オンライン' : null),
                     details: canonicalUrl,
                   })}
-                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                   rel="noreferrer"
                   target="_blank"
                 >
@@ -240,20 +240,20 @@ export default async function EventPage({
               <Menu label="主催者メニュー">
                 <a
                   href={`/g/${handle}/events/${eventId}/edit`}
-                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                 >
                   編集
                 </a>
                 <a
                   href={`/g/${handle}/events/${eventId}/manage`}
-                  className="block px-3 py-2 text-sm hover:bg-paper-2"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                 >
                   管理コンソール
                 </a>
                 <form method="post" action={`/events/${eventId}/duplicate`}>
                   <button
                     type="submit"
-                    className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-paper-2"
+                    className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                   >
                     複製して新規作成
                   </button>
