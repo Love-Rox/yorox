@@ -24,6 +24,8 @@ interface Env {
   GITHUB_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  DISCORD_CLIENT_ID?: string;
+  DISCORD_CLIENT_SECRET?: string;
   /** Stripe Connect(グループ口座での決済)。未設定なら Stripe 機能は無効 */
   STRIPE_SECRET_KEY?: string;
   STRIPE_CONNECT_CLIENT_ID?: string;

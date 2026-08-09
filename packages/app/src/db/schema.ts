@@ -287,7 +287,7 @@ export const oauthAccounts = sqliteTable(
   'oauth_accounts',
   {
     id: text('id').primaryKey(), // ULID
-    provider: text('provider', { enum: ['github', 'google'] }).notNull(),
+    provider: text('provider', { enum: ['github', 'google', 'discord'] }).notNull(),
     /** プロバイダ側の不変ユーザー ID(GitHub id / Google sub) */
     providerUserId: text('provider_user_id').notNull(),
     userActorId: text('user_actor_id')

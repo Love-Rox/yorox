@@ -6,7 +6,7 @@
  * {NAME}_CLIENT_ID / {NAME}_CLIENT_SECRET を追加するだけでよい。
  */
 
-export type OAuthProviderId = 'github' | 'google';
+export type OAuthProviderId = 'github' | 'google' | 'discord';
 
 export interface OAuthIdentity {
   providerUserId: string;
@@ -141,10 +141,61 @@ const google: OAuthProviderDef = {
   },
 };
 
-const PROVIDERS: Record<OAuthProviderId, OAuthProviderDef> = { github, google };
+
+/** Discord: OAuth2(identify email スコープ) */
+const discord: OAuthProviderDef = {
+  id: 'discord',
+  name: 'Discord',
+  authorizeUrl: (clientId, redirectUri, state) =>
+    `https://discord.com/oauth2/authorize?${new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      state,
+      response_type: 'code',
+      scope: 'identify email',
+    })}`,
+  async fetchIdentity(clientId, clientSecret, code, redirectUri) {
+    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+      ...timeout(),
+    });
+    if (!tokenRes.ok) return null;
+    const { access_token } = (await tokenRes.json()) as { access_token?: string };
+    if (!access_token) return null;
+
+    const userRes = await fetch('https://discord.com/api/users/@me', {
+      headers: { authorization: `Bearer ${access_token}` },
+      ...timeout(),
+    });
+    if (!userRes.ok) return null;
+    const user = (await userRes.json()) as {
+      id: string;
+      username: string;
+      global_name?: string;
+      email?: string;
+      verified?: boolean;
+    };
+    return {
+      providerUserId: user.id,
+      label: `@${user.username}`,
+      email: user.verified && user.email ? user.email.toLowerCase() : null,
+      displayName: user.global_name ?? user.username,
+    };
+  },
+};
+
+const PROVIDERS: Record<OAuthProviderId, OAuthProviderDef> = { github, google, discord };
 
 export function getProvider(id: string): OAuthProviderDef | null {
-  return id === 'github' || id === 'google' ? PROVIDERS[id] : null;
+  return id === 'github' || id === 'google' || id === 'discord' ? PROVIDERS[id] : null;
 }
 
 /** プロバイダの認証情報(未設定なら null = そのプロバイダは無効) */
@@ -152,8 +203,18 @@ export function providerCredentials(
   env: Env,
   id: OAuthProviderId,
 ): { clientId: string; clientSecret: string } | null {
-  const clientId = id === 'github' ? env.GITHUB_CLIENT_ID : env.GOOGLE_CLIENT_ID;
-  const clientSecret = id === 'github' ? env.GITHUB_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET;
+  const clientId =
+    id === 'github'
+      ? env.GITHUB_CLIENT_ID
+      : id === 'google'
+        ? env.GOOGLE_CLIENT_ID
+        : env.DISCORD_CLIENT_ID;
+  const clientSecret =
+    id === 'github'
+      ? env.GITHUB_CLIENT_SECRET
+      : id === 'google'
+        ? env.GOOGLE_CLIENT_SECRET
+        : env.DISCORD_CLIENT_SECRET;
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
 
