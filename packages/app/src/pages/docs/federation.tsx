@@ -26,30 +26,30 @@ export default async function FederationGuidePage() {
 
       <section className="mt-8">
         <h2 className="display border-b-2 border-ink pb-2 t-md">
-          ActivityPub による連合(準備中)
+          ActivityPub による連合
         </h2>
         <p className="mt-3">
           インスタンス同士は、Mastodon や Misskey と同じ
-          <strong> ActivityPub</strong> というプロトコルで繋がるよう設計されています。
-          現在は Fediverse アカウント(Mastodon 等)から
-          <strong>グループを検索してフォローする</strong>
-          ところまでが動作します。今後のバージョンでは次のことができるようになります:
+          <strong> ActivityPub</strong> というプロトコルで繋がります。現在、次のことが
+          できます:
         </p>
         <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>Fediverse アカウント(Mastodon 等)からグループを検索してフォローする</li>
           <li>フォロー中のグループの新しいイベント告知を自分のタイムラインで受け取る</li>
           <li>
             他のインスタンスや Fediverse(Mastodon 等)のアカウントから、
-            このインスタンスのイベントに参加申込する
+            このインスタンスのイベントに参加申込する(告知へのリプライ、または
+            Mobilizon 等からの Join。受け付けるかは主催が枠ごとに選べます)
           </li>
           <li>
             Fediverse アカウントを Yorox アカウントに紐付ける(claim)ことで、
             どこから参加しても同じ参加履歴として扱う
           </li>
-          <li>公開イベントを集約する「アグリゲータ」を誰でも建てられる公開仕様</li>
         </ul>
         <p className="mt-3">
           ID や URL の設計は初めから連合を前提にしているため、連合機能が広がっても
-          イベントやグループのアドレスは変わりません。
+          イベントやグループのアドレスは変わりません。公開イベントを集約する
+          「アグリゲータ」の公開仕様は今後の予定です。
         </p>
       </section>
 

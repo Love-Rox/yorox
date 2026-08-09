@@ -43,7 +43,7 @@ docker compose up -d`}</Cmd>
           出力されます:
         </p>
         <Cmd>{`docker compose logs -f yorox
-# → [mail] のあとに http://localhost:8080/auth/... のリンクが出る`}</Cmd>
+# → [mail:console] のあとに http://localhost:8080/auth/... のリンクが出る`}</Cmd>
         <p className="mt-3">
           そのリンクをブラウザで開き、ハンドル(@名前)と表示名を決めれば
           アカウント完成です。同じハンドルの個人グループも自動で作られ、

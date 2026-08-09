@@ -61,19 +61,21 @@ export default async function SelfHostingSettingsPage() {
           OAuth ログイン(任意)
         </h2>
         <p className="mt-3">
-          GitHub / Google の OAuth アプリを作成して設定すると、ログイン画面に
+          GitHub / Google / Discord の OAuth アプリを作成して設定すると、ログイン画面に
           ボタンが現れます。コールバック URL は
           <span className="meta-mono">
             {' '}
             https://あなたのドメイン/auth/oauth/github/callback{' '}
           </span>
-          (google も同様)です:
+          (google / discord も同様)です:
         </p>
         <Cmd>{`environment:
   GITHUB_CLIENT_ID: ...
   GITHUB_CLIENT_SECRET: ...
   GOOGLE_CLIENT_ID: ...
-  GOOGLE_CLIENT_SECRET: ...`}</Cmd>
+  GOOGLE_CLIENT_SECRET: ...
+  DISCORD_CLIENT_ID: ...
+  DISCORD_CLIENT_SECRET: ...`}</Cmd>
       </section>
 
       <section className="mt-8">
@@ -96,6 +98,9 @@ export default async function SelfHostingSettingsPage() {
                 ['MAX_UPLOAD_MB', 'アップロード上限 MB(既定 5)'],
                 ['GITHUB_CLIENT_ID / SECRET', 'GitHub ログイン'],
                 ['GOOGLE_CLIENT_ID / SECRET', 'Google ログイン'],
+                ['DISCORD_CLIENT_ID / SECRET', 'Discord ログイン'],
+                ['STRIPE_SECRET_KEY ほか', 'カード決済(Stripe Connect)を有効化'],
+                ['MAIL_TRANSPORT=cloudflare', 'Cloudflare Email Service で送信'],
                 ['PUBLIC_ORIGIN', '公開 URL(リバースプロキシ背後では必須)'],
                 ['DATA_DIR', 'データ保存先(既定 /data)'],
                 ['PORT', '待受ポート(既定 8080)'],

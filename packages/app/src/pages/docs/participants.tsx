@@ -18,6 +18,11 @@ export default async function ParticipantsGuidePage() {
           ログインリンクが届きます(パスワードは不要です)。初回はハンドルと表示名を
           決めるだけで完了。同じハンドルであなたの個人グループも作成されます。
         </p>
+        <p className="mt-3">
+          2回目以降は、メールのログインリンクのほか、<strong>パスキー</strong>(指紋・顔・
+          端末のロック)や、連携した <strong>GitHub / Google / Discord</strong> のボタンで
+          すぐログインできます(設定は任意)。
+        </p>
       </section>
 
       <section className="mt-8">
@@ -60,7 +65,35 @@ export default async function ParticipantsGuidePage() {
             参加が確定すると「参加者への案内」(会場の入り方や配信 URL など)が
             イベントページに表示されます
           </li>
+          <li>
+            開催24時間前に、参加確定者へリマインダーのお知らせが届きます
+          </li>
         </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">
+          カレンダー連携
+        </h2>
+        <p className="mt-3">
+          各イベントページから「カレンダーに追加」(.ics / Google カレンダー)ができます。
+          さらにプロフィール設定の「参加予定カレンダー」で購読 URL を発行すると、
+          参加確定したイベントが自動で入るカレンダーを Google / Apple カレンダーなどで
+          購読でき、以後の参加・キャンセルも自動で反映されます。
+        </p>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">
+          データと退会
+        </h2>
+        <p className="mt-3">
+          プロフィール設定の「データと退会」から、自分のプロフィール・参加履歴・
+          出欠・支払いなどを <strong>JSON でエクスポート</strong>できます。
+          <strong>退会</strong>すると、メールアドレスやログイン情報は削除され、
+          進行中の申込はキャンセルされます(主催者側の集計のため、過去の記録は
+          匿名化された形で残ることがあります)。
+        </p>
       </section>
     </article>
   );

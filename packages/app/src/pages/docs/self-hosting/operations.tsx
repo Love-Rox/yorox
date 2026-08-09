@@ -44,8 +44,8 @@ docker run --rm -v yorox-data:/data -v "$PWD":/backup alpine \\
       <section className="mt-8">
         <h2 className="display border-b-2 border-ink pb-2 t-md">ログの見方</h2>
         <Cmd>{`docker compose logs -f yorox
-# [mail]      … メール(SMTP 未設定時はログインリンクがここに出る)
-# [scheduled] … 5分毎の定期ジョブ(抽選・通知・予約公開・連合配信)
+# [mail:console] … ログインリンク(SMTP 未設定時にここへ出力)
+# [scheduled] … 5分毎の定期ジョブ(抽選・通知・リマインダー・予約公開・連合配信・メール送信)
 # [ap]        … Fediverse への配信
 # [node]      … 起動・マイグレーション`}</Cmd>
       </section>

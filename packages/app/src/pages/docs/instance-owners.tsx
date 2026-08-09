@@ -18,8 +18,13 @@ export default async function InstanceOwnersGuidePage() {
       <section className="mt-8">
         <h2 className="display border-b-2 border-ink pb-2 t-md">構成</h2>
         <p className="mt-3">
-          Yorox は Cloudflare Workers 上で動くよう作られています(将来は Docker
-          コンテナでのセルフホストにも対応予定)。使用するのは次のサービスです:
+          Yorox は<strong>2つの動かし方</strong>があります。手軽なのは Docker で、
+          1コンテナ(SQLite にデータを保存)で完結します —{' '}
+          <Link to="/docs/self-hosting" className="link">
+            自分のサーバーで運営する
+          </Link>
+          の4ステップガイドを用意しています。もう1つは Cloudflare Workers 上での
+          運用で、次のサービスを使います:
         </p>
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>Workers — アプリ本体(+先着枠を直列化する Durable Objects)</li>
@@ -27,6 +32,10 @@ export default async function InstanceOwnersGuidePage() {
           <li>R2 — 画像などのファイル置き場(任意)</li>
           <li>Cron Triggers — 抽選の自動実行・通知メールの配信</li>
         </ul>
+        <p className="mt-3 text-sm text-neutral">
+          Docker 版では D1 の代わりに SQLite、R2 の代わりにローカルファイル、Cron
+          Triggers の代わりに内蔵の定期実行が使われます(設定は同じ環境変数)。
+        </p>
       </section>
 
       <section className="mt-8">
@@ -49,13 +58,24 @@ export default async function InstanceOwnersGuidePage() {
         <p className="mt-3">主な設定(環境変数 / シークレット):</p>
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>
-            <strong>メール</strong> — MAIL_FROM と、Resend(RESEND_API_KEY)または
-            SMTP(SMTP_HOST 等。Gmail はアプリパスワードで利用可)。
-            送信レートは MAIL_RATE_PER_MINUTE / PER_HOUR で制御できます
+            <strong>メール</strong> — MAIL_FROM と、Resend(RESEND_API_KEY)/ SMTP
+            (SMTP_HOST 等。Gmail はアプリパスワードで利用可)/ Cloudflare Email
+            Service(MAIL_TRANSPORT=cloudflare)のいずれか。送信レートは
+            MAIL_RATE_PER_MINUTE / PER_HOUR で制御できます
           </li>
           <li>
             <strong>ファイルアップロード</strong> — FILE_UPLOADS=1 で有効化、
             MAX_UPLOAD_MB で容量上限
+          </li>
+          <li>
+            <strong>ソーシャルログイン(任意)</strong> — GitHub / Google / Discord の
+            OAuth アプリを登録すると、ログイン画面にボタンが出ます
+            (○○_CLIENT_ID / _SECRET)
+          </li>
+          <li>
+            <strong>カード決済(任意)</strong> — Stripe(STRIPE_SECRET_KEY 等)を
+            設定すると、各グループが自分の Stripe アカウントを連携してカード事前
+            決済を受け付けられます
           </li>
         </ul>
       </section>
