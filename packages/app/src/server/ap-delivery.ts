@@ -9,6 +9,7 @@
  * outbox の動的生成と同じ ID になる。
  */
 import { activities, buildEventNote, type ApActivity, type ApObject } from '@yorox/ap';
+import { escapeHtml } from '../lib/html';
 import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
@@ -29,14 +30,6 @@ const NOTE_DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
   timeStyle: 'short',
   timeZone: 'Asia/Tokyo',
 });
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
 
 /** イベント告知 Note の本文 HTML(タイトル・日時・会場・リンク) */
 export function buildAnnouncementHtml(event: {

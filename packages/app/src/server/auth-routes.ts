@@ -30,29 +30,37 @@ import { HandleTakenError, validateHandle } from '../domain/groups';
 import { createUser, EmailTakenError, isHandleAvailable } from '../domain/users';
 import { createDirectSender } from '../mail/send';
 import { and, eq } from 'drizzle-orm';
+import { assertSameOrigin, isSecureRequest, requestOrigin } from './http';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
   return env;
 }
 
-function isSecure(c: Context): boolean {
-  return new URL(c.req.url).protocol === 'https:';
-}
-
-/** POST の Origin 検証(同一オリジンのフォーム送信のみ受け付ける) */
-function assertSameOrigin(c: Context): boolean {
-  const origin = c.req.header('origin');
-  if (!origin) return true; // 同一オリジンのフォーム POST でも省略されるUAがあるため許容
-  return origin === new URL(c.req.url).origin;
-}
-
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** ログイン確認の中間ページ(GET でトークンを消費しないための緩衝) */
+function confirmLoginPage(token: string): string {
+  const safe = token.replace(/[^A-Za-z0-9_-]/g, '');
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ログイン - Yorox</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4efde;color:#1b2240;font-family:system-ui,sans-serif;padding:2rem}
+@media(prefers-color-scheme:dark){body{background:#12162b;color:#efe9d6}}
+.card{text-align:center;max-width:22rem}button{margin-top:1rem;padding:.7rem 2rem;font-weight:700;font-size:1rem;cursor:pointer;background:#1b2240;color:#f4efde;border:none}
+p{font-size:.9rem;opacity:.75}</style></head>
+<body><form class="card" method="post" action="/auth/magic-link/confirm">
+<input type="hidden" name="token" value="${safe}">
+<h1>Yorox にログイン</h1>
+<p>下のボタンを押すとログインが完了します。</p>
+<button type="submit">ログインする</button>
+</form></body></html>`;
+}
 
 const auth = new Hono();
 
 auth.post('/auth/magic-link/request', async (c) => {
-  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  if (!(await assertSameOrigin(c))) return c.text('forbidden', 403);
   const form = await c.req.parseBody();
   const email = typeof form.email === 'string' ? form.email.trim().toLowerCase() : '';
   if (!EMAIL_PATTERN.test(email)) {
@@ -63,13 +71,24 @@ auth.post('/auth/magic-link/request', async (c) => {
   // メールの存在有無を露出しないため、結果に関わらず同じ画面へ
   await requestMagicLink(db, createDirectSender(env), {
     email,
-    origin: new URL(c.req.url).origin,
+    origin: await requestOrigin(c),
   });
   return c.redirect('/login/sent', 302);
 });
 
-auth.get('/auth/magic-link/verify', async (c) => {
+// GET はトークンを消費せず確認ページを返す。メールのリンクプリフェッチ/
+// スキャナが単回トークンを先に潰すことと、SameSite=Lax の GET による
+// ログイン CSRF を防ぐ(実際の消費は Origin 検証付き POST で行う)。
+auth.get('/auth/magic-link/verify', (c) => {
   const token = c.req.query('token');
+  if (!token) return c.redirect('/login?error=invalid_token', 302);
+  return c.html(confirmLoginPage(token));
+});
+
+auth.post('/auth/magic-link/confirm', async (c) => {
+  if (!(await assertSameOrigin(c))) return c.text('forbidden', 403);
+  const form = await c.req.parseBody();
+  const token = typeof form.token === 'string' ? form.token : '';
   if (!token) return c.redirect('/login?error=invalid_token', 302);
 
   const env = await getEnv();
@@ -83,7 +102,7 @@ auth.get('/auth/magic-link/verify', async (c) => {
 
   if (existing) {
     const { token: sessionToken, expiresAt } = await createSession(db, existing.actorId);
-    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, await isSecureRequest(c)));
     return c.redirect('/', 302);
   }
 
@@ -93,7 +112,7 @@ auth.get('/auth/magic-link/verify', async (c) => {
 });
 
 auth.post('/auth/signup', async (c) => {
-  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  if (!(await assertSameOrigin(c))) return c.text('forbidden', 403);
   const form = await c.req.parseBody();
   const ticket = typeof form.ticket === 'string' ? form.ticket : '';
   const handle = typeof form.handle === 'string' ? form.handle.trim().toLowerCase() : '';
@@ -120,7 +139,7 @@ auth.post('/auth/signup', async (c) => {
       email,
       handle,
       displayName,
-      origin: new URL(c.req.url).origin,
+      origin: await requestOrigin(c),
     });
     // OAuth 経由のサインアップなら、そのプロバイダを自動で連携する
     if (oauthPayload) {
@@ -133,7 +152,7 @@ auth.post('/auth/signup', async (c) => {
       );
     }
     const { token: sessionToken, expiresAt } = await createSession(db, userActorId);
-    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, await isSecureRequest(c)));
     return c.redirect('/', 302);
   } catch (err) {
     if (err instanceof HandleTakenError || err instanceof EmailTakenError) {
@@ -150,8 +169,8 @@ auth.post('/auth/signup', async (c) => {
 
 const OAUTH_STATE_COOKIE = 'yorox_oauth_state';
 
-function oauthRedirectUri(c: Context, provider: string): string {
-  return `${new URL(c.req.url).origin}/auth/oauth/${provider}/callback`;
+async function oauthRedirectUri(c: Context, provider: string): Promise<string> {
+  return `${await requestOrigin(c)}/auth/oauth/${provider}/callback`;
 }
 
 /** OAuth アカウントをユーザーに紐付ける。他ユーザーに紐付いていれば false */
@@ -192,10 +211,10 @@ auth.get('/auth/oauth/:provider/start', async (c) => {
   const state = generateToken();
   c.header(
     'set-cookie',
-    `${OAUTH_STATE_COOKIE}=${state}.${mode}; Max-Age=600; Path=/; HttpOnly; SameSite=Lax${isSecure(c) ? '; Secure' : ''}`,
+    `${OAUTH_STATE_COOKIE}=${state}.${mode}; Max-Age=600; Path=/; HttpOnly; SameSite=Lax${await isSecureRequest(c) ? '; Secure' : ''}`,
   );
   return c.redirect(
-    provider.authorizeUrl(creds.clientId, oauthRedirectUri(c, provider.id), state),
+    provider.authorizeUrl(creds.clientId, await oauthRedirectUri(c, provider.id), state),
     302,
   );
 });
@@ -212,7 +231,7 @@ auth.get('/auth/oauth/:provider/callback', async (c) => {
   const [cookieState, mode] = stateCookie.split('.');
   c.header(
     'set-cookie',
-    `${OAUTH_STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isSecure(c) ? '; Secure' : ''}`,
+    `${OAUTH_STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${await isSecureRequest(c) ? '; Secure' : ''}`,
   );
   const state = c.req.query('state');
   const code = c.req.query('code');
@@ -224,7 +243,7 @@ auth.get('/auth/oauth/:provider/callback', async (c) => {
     creds.clientId,
     creds.clientSecret,
     code,
-    oauthRedirectUri(c, provider.id),
+    await oauthRedirectUri(c, provider.id),
   );
   if (!identity) return c.redirect('/login?error=oauth_failed', 302);
 
@@ -256,7 +275,7 @@ auth.get('/auth/oauth/:provider/callback', async (c) => {
   });
   if (linked) {
     const { token: sessionToken, expiresAt } = await createSession(db, linked.userActorId);
-    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+    c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, await isSecureRequest(c)));
     return c.redirect('/', 302);
   }
 
@@ -266,15 +285,16 @@ auth.get('/auth/oauth/:provider/callback', async (c) => {
       where: eq(schema.users.email, identity.email),
     });
     if (existing) {
-      await linkOAuthAccount(
+      const linked = await linkOAuthAccount(
         db,
         provider.id,
         identity.providerUserId,
         identity.label,
         existing.actorId,
       );
+      if (!linked) console.warn('[oauth] identity already linked to another user', provider.id);
       const { token: sessionToken, expiresAt } = await createSession(db, existing.actorId);
-      c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, isSecure(c)));
+      c.header('set-cookie', sessionCookieHeader(sessionToken, expiresAt, await isSecureRequest(c)));
       return c.redirect('/', 302);
     }
     // 新規: メール検証済みチケット(OAuth ペイロード付き)でオンボーディングへ
@@ -291,7 +311,7 @@ auth.get('/auth/oauth/:provider/callback', async (c) => {
 
 /** OAuth 連携の解除(メールログインは常に残るため安全) */
 auth.post('/auth/oauth/:id/unlink', async (c) => {
-  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  if (!(await assertSameOrigin(c))) return c.text('forbidden', 403);
   const env = await getEnv();
   const db = createDb(env.DB);
   const actorId = await getSessionActorId(db, c);
@@ -309,11 +329,11 @@ auth.post('/auth/oauth/:id/unlink', async (c) => {
 });
 
 auth.post('/auth/logout', async (c) => {
-  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  if (!(await assertSameOrigin(c))) return c.text('forbidden', 403);
   const env = await getEnv();
   const db = createDb(env.DB);
   await destroySession(db, getCookie(c, SESSION_COOKIE));
-  c.header('set-cookie', clearSessionCookieHeader(isSecure(c)));
+  c.header('set-cookie', clearSessionCookieHeader(await isSecureRequest(c)));
   return c.redirect('/', 302);
 });
 

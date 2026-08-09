@@ -98,6 +98,7 @@ export default async function SelfHostingSettingsPage() {
                 ['MAX_UPLOAD_MB', 'アップロード上限 MB(既定 5)'],
                 ['GITHUB_CLIENT_ID / SECRET', 'GitHub ログイン'],
                 ['GOOGLE_CLIENT_ID / SECRET', 'Google ログイン'],
+                ['PUBLIC_ORIGIN', '公開 URL(リバースプロキシ背後では必須)'],
                 ['DATA_DIR', 'データ保存先(既定 /data)'],
                 ['PORT', '待受ポート(既定 8080)'],
               ].map(([k, v]) => (

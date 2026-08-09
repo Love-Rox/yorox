@@ -155,11 +155,17 @@ async function verifyInboxRequest(c: Context, body: string) {
   const parsed = parseSignatureHeader(signatureHeader);
   if (!parsed) return null;
 
-  const dateHeader = c.req.header('date');
-  if (dateHeader) {
-    const skew = Math.abs(Date.now() - new Date(dateHeader).getTime());
-    if (!Number.isFinite(skew) || skew > MAX_CLOCK_SKEW_MS) return null;
+  // POST は必ず Digest と Date を署名対象に含めること。
+  // Digest 未署名だとボディ改竄が検知できず、Date 未署名だとリプレイ無制限になる。
+  if (!parsed.headers.includes('digest') || !parsed.headers.includes('date')) {
+    console.warn('inbox: signature missing digest/date coverage', parsed.keyId);
+    return null;
   }
+
+  const dateHeader = c.req.header('date');
+  if (!dateHeader) return null;
+  const skew = Math.abs(Date.now() - new Date(dateHeader).getTime());
+  if (!Number.isFinite(skew) || skew > MAX_CLOCK_SKEW_MS) return null;
 
   // 署名対象ヘッダを実リクエストから集める
   const headers: Record<string, string> = {};

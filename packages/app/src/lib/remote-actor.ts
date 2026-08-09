@@ -141,5 +141,11 @@ export async function resolveRemoteActorByKeyId(
   if (!opts.forceRefresh && cached?.publicKeyPem) return cached;
   const doc = await fetchRemoteActor(actorUri, opts.signer);
   if (!doc) return null;
+  // なりすまし防止: 取得したアクターは、フェッチ先 URL(= keyId のアクター)
+  // 自身であり、鍵の id が keyId と一致していなければならない。
+  // これを検証しないと、悪意あるサーバーが他人の URI と鍵を主張して
+  // その人物として発話できてしまう。
+  if (doc.id !== actorUri) return null;
+  if (doc.publicKey && doc.publicKey.id !== keyId) return null;
   return upsertRemoteActor(db, doc);
 }

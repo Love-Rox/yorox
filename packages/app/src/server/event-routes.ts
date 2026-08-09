@@ -209,7 +209,11 @@ const CSV_PAYMENT_LABEL: Record<string, string> = {
 };
 
 function csvCell(v: string): string {
-  return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
+  // 数式インジェクション対策: 先頭が = + - @ の値は Excel/Calc が数式として
+  // 実行しうるため、先頭にシングルクォートを付けて無害化する
+  // (表示名などにリモートユーザーの任意文字列が入るため必須)
+  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+  return /[",\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }
 
 /** 表示名からカスタム絵文字ショートコードを除去する */

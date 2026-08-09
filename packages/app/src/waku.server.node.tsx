@@ -20,6 +20,7 @@ import { runScheduledJobs } from './server/scheduled';
 
 const CRON_INTERVAL_MS = 5 * 60 * 1000;
 let cronStarted = false;
+let cronRunning = false;
 
 /** 5分毎の定期ジョブ(抽選・通知・AP 配信・予約公開)を起動する */
 function cronMiddleware(_opts: { app: Hono }): MiddlewareHandler {
@@ -27,11 +28,17 @@ function cronMiddleware(_opts: { app: Hono }): MiddlewareHandler {
     if (!cronStarted && process.env.YOROX_CRON !== '0') {
       cronStarted = true;
       const tick = async () => {
+        // 前回のジョブが 5 分以内に終わらなかった場合の再入防止
+        // (同じ未送信メール・AP 行を二重送信しないため)
+        if (cronRunning) return;
+        cronRunning = true;
         try {
           const { env } = await import('cloudflare:workers');
           await runScheduledJobs(env);
         } catch (err) {
           console.error('[node] scheduled jobs failed:', err);
+        } finally {
+          cronRunning = false;
         }
       };
       setInterval(tick, CRON_INTERVAL_MS);

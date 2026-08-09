@@ -8,6 +8,8 @@ services:
     volumes:
       - yorox-data:/data
     environment:
+      # 公開 URL(リバースプロキシで HTTPS 終端する場合は必須)
+      # PUBLIC_ORIGIN: 'https://events.example.com'
       # ファイルアップロード(アバター・サムネイル)を有効化
       FILE_UPLOADS: '1'
       MAX_UPLOAD_MB: '5'

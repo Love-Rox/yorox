@@ -5,20 +5,13 @@
  * 繰上・抽選結果などを届ける。
  */
 import { activities, AS_CONTEXT, type ApObject } from '@yorox/ap';
+import { escapeHtml } from '../lib/html';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
 import { deliverWithRetry } from '../server/ap-delivery';
 import type { Notification, NotificationDriver } from './driver';
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
 
 export class ApNoteDriver implements NotificationDriver {
   readonly name = 'ap-note';

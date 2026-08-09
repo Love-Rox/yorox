@@ -52,7 +52,7 @@ export class SlotSerializer extends DurableObject<Env> {
        SELECT ?, ?, ?, ?, 0, ?, ?
        WHERE (
          SELECT COUNT(*) FROM participations
-         WHERE slot_id = ? AND status IN ('accepted', 'payment_pending')
+         WHERE slot_id = ? AND status IN ('accepted', 'payment_pending', 'consent_pending')
        ) < ?`,
     )
       .bind(participationId, slotId, actorId, confirmStatus, appliedAtMs, appliedAtMs, slotId, capacity)

@@ -160,3 +160,23 @@ describe('validateHandle', () => {
     expect(validateHandle('')).toBe(false);
   });
 });
+
+describe('lottery draw with zero/limited seats', () => {
+  const applicants = [
+    { participationId: 'a' },
+    { participationId: 'b' },
+    { participationId: 'c' },
+  ];
+
+  it('drawRandom: 残席0なら誰も当選しない(定員超過ガード)', () => {
+    expect(drawRandom(applicants, 0).size).toBe(0);
+  });
+
+  it('drawRandom: 残席は上限どおり', () => {
+    expect(drawRandom(applicants, 2).size).toBe(2);
+  });
+
+  it('drawWeighted: 残席0なら誰も当選しない', () => {
+    expect(drawWeighted(applicants, 0).size).toBe(0);
+  });
+});

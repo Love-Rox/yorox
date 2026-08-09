@@ -15,6 +15,8 @@ interface Env {
   /** 送信元(例: Yorox <noreply@yorox.example>)。未設定ならメール送信無効 */
   MAIL_FROM?: string;
   RESEND_API_KEY?: string;
+  /** 公開オリジン(https://host)。リバースプロキシ背後で必須。未設定は x-forwarded-* / URL から推定 */
+  PUBLIC_ORIGIN?: string;
   /** '1' でセルフホストガイド(/docs/self-hosting)を表示(公式鯖向けオプトイン) */
   SELF_HOSTING_GUIDE?: string;
   /** OAuth ログイン(未設定のプロバイダはログイン画面に出ない) */

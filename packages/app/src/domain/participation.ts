@@ -49,6 +49,14 @@ export class AlreadyJoinedError extends Error {
   }
 }
 
+/** 未精算の支払いが残っているため再申込を止めた */
+export class ReJoinBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReJoinBlockedError';
+  }
+}
+
 async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo> {
   const actor = await db.query.actors.findFirst({
     where: eq(schema.actors.id, actorId),
@@ -113,27 +121,48 @@ export async function joinSlot(
     ),
   });
   if (existing && existing.status !== 'cancelled') throw new AlreadyJoinedError();
-  // 再申込を許すため、キャンセル済みレコードは消してから入れ直す
+  // 再申込を許すため、キャンセル済みレコードを消してから入れ直す
+  // (slotId+actorId は一意なので上書きではなく削除→再作成)。
+  // ただし payments/attendances が参照しているため、依存行を先に片付ける。
   if (existing) {
+    const payment = await db.query.payments.findFirst({
+      where: eq(schema.payments.participationId, existing.id),
+    });
+    // 未精算(未払い・支払済み・要返金)の支払いが残っている間は再申込を止める
+    // (返金記録を消さず、主催者の対応を待たせる)
+    if (payment && payment.status !== 'refunded' && payment.status !== 'waived') {
+      throw new ReJoinBlockedError(
+        '前回の申込に未精算のお支払いが残っています。主催者の返金対応の完了後に再度お申し込みください。',
+      );
+    }
+    await db
+      .delete(schema.attendances)
+      .where(eq(schema.attendances.participationId, existing.id));
+    await db.delete(schema.payments).where(eq(schema.payments.participationId, existing.id));
     await db.delete(schema.participations).where(eq(schema.participations.id, existing.id));
   }
 
   const participationId = ulid();
 
   if (slot.method === 'lottery') {
+    // 抽選実行後(締切超過)の申込は補欠として受ける。
+    // applied で入れると cron が再抽選し、当選席が定員ぶん再付与されて超過する。
+    const drawn = slot.lotteryAt != null && now.getTime() >= slot.lotteryAt.getTime();
+    const status = drawn ? 'waitlisted' : 'applied';
     await db.insert(schema.participations).values({
       id: participationId,
       slotId: input.slotId,
       actorId: input.actorId,
-      status: 'applied',
+      status,
       appliedAt: now,
     });
-    await emitDomainEvent(db, 'participation.applied', {
-      participationId,
-      slotId: input.slotId,
-      actorId: input.actorId,
-    }, now);
-    return { participationId, status: 'applied' };
+    await emitDomainEvent(
+      db,
+      drawn ? 'participation.waitlisted' : 'participation.applied',
+      { participationId, slotId: input.slotId, actorId: input.actorId },
+      now,
+    );
+    return { participationId, status };
   }
 
   // 先着の確定ステータス(支払い確認で確定の有料枠は payment_pending で定員保持)
@@ -174,7 +203,7 @@ export async function joinSlot(
     SELECT ${participationId}, ${input.slotId}, ${input.actorId}, ${target}, 0, ${now.getTime()}, ${now.getTime()}
     WHERE (
       SELECT COUNT(*) FROM participations
-      WHERE slot_id = ${input.slotId} AND status IN ('accepted', 'payment_pending')
+      WHERE slot_id = ${input.slotId} AND status IN ('accepted', 'payment_pending', 'consent_pending')
     ) < ${slot.capacity}
   `);
   if ((acceptedInsert.meta?.changes ?? 0) > 0) {
@@ -279,7 +308,7 @@ export async function promoteFromWaitlist(
     .where(
       and(
         eq(schema.participations.slotId, slotId),
-        sql`${schema.participations.status} IN ('accepted', 'payment_pending')`,
+        sql`${schema.participations.status} IN ('accepted', 'payment_pending', 'consent_pending')`,
       ),
     );
   if ((acceptedRow?.count ?? 0) >= slot.capacity) return;
@@ -316,10 +345,16 @@ export async function promoteFromWaitlist(
   }
 
   const target = confirmedStatus(slot);
-  await db
-    .update(schema.participations)
-    .set({ status: target, decidedAt: now })
-    .where(eq(schema.participations.id, next.id));
+  // 定員を原子的に再確認して繰り上げる(join の条件付き INSERT と最終席を
+  // 奪い合っても超過しないよう、単一ステートメントの条件付き UPDATE にする)
+  const promoted = await db.run(sql`
+    UPDATE participations SET status = ${target}, decided_at = ${now.getTime()}
+    WHERE id = ${next.id} AND status = 'waitlisted' AND (
+      SELECT COUNT(*) FROM participations
+      WHERE slot_id = ${slotId} AND status IN ('accepted', 'payment_pending', 'consent_pending')
+    ) < ${slot.capacity}
+  `);
+  if ((promoted.meta?.changes ?? 0) === 0) return; // 席が埋まった: 繰上せず終了
   await ensurePayment(db, next.id, slot, now);
   await emitDomainEvent(
     db,
@@ -382,6 +417,13 @@ export async function respondToPromotion(
       .set({ status: 'cancelled', cancelledAt: now })
       .where(eq(schema.participations.id, participationId));
     if (participation) {
+      // 状態遷移は必ずドメインイベントを伴わせる(CLAUDE.md)
+      await emitDomainEvent(
+        db,
+        'participation.cancelled',
+        { participationId, slotId: participation.slotId, actorId: participation.actorId },
+        now,
+      );
       await promoteFromWaitlist(db, participation.slotId, now);
     }
   }
@@ -513,10 +555,23 @@ export async function runLottery(
     lotteryApplicants = applicants.map((p) => ({ participationId: p.id }));
   }
 
+  // 既に席を持っている参加者(手動当選・繰上など)を定員から差し引く。
+  // これをしないと、当選席を毎回 capacity 名ぶん引いてしまい定員を超過する。
+  const [heldRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.participations)
+    .where(
+      and(
+        eq(schema.participations.slotId, slotId),
+        sql`${schema.participations.status} IN ('accepted', 'payment_pending', 'consent_pending')`,
+      ),
+    );
+  const seats = Math.max(0, slot.capacity - (heldRow?.count ?? 0));
+
   const winners =
     slot.lotteryLogic === 'weighted'
-      ? drawWeighted(lotteryApplicants, slot.capacity)
-      : drawRandom(lotteryApplicants, slot.capacity);
+      ? drawWeighted(lotteryApplicants, seats)
+      : drawRandom(lotteryApplicants, seats);
 
   const waitlistLimit =
     slot.waitlistModel === 'separate' ? (slot.waitlistCapacity ?? 0) : Number.MAX_SAFE_INTEGER;

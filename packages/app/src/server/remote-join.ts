@@ -10,6 +10,7 @@
  * エイリアス行(remote_unclaimed)としてそのまま participations に入る。
  */
 import { activities, AS_CONTEXT, type ApActivity, type ApObject } from '@yorox/ap';
+import { escapeHtml } from '../lib/html';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
@@ -162,14 +163,6 @@ export async function processRemoteCancel(
 /** 相手のフルハンドル(@user@domain) */
 function fullHandle(actor: RemoteActorRow): string {
   return actor.handle && actor.domain ? `@${actor.handle}@${actor.domain}` : actor.uri;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
 }
 
 /**
