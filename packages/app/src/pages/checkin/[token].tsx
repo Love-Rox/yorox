@@ -76,6 +76,21 @@ export default async function CheckinPage({ token }: { token: string }) {
     );
   }
 
+  // 中止イベントではチェックインさせない(出席記録も作らない)
+  if (event.cancelledAt) {
+    return (
+      <Result tone="error" title="このイベントは中止されました">
+        <p>「{event.title}」は中止されたため、チェックインできません。</p>
+        {event.cancelReason && <p className="mt-2 text-neutral">{event.cancelReason}</p>}
+        <p className="mt-2">
+          <Link to={eventUrl} className="link">
+            イベントページを確認する
+          </Link>
+        </p>
+      </Result>
+    );
+  }
+
   const existing = await db.query.attendances.findFirst({
     where: eq(schema.attendances.participationId, participation.id),
   });

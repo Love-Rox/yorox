@@ -7,6 +7,7 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import {
   decideParticipation,
+  EventCancelledError,
   recordAttendance,
   respondToPromotion,
   runLottery,
@@ -156,12 +157,32 @@ manage.post('/participations/:id/attendance', async (c) => {
   const status = str(form.status);
   if (status !== 'attended' && status !== 'no_show') return c.text('invalid status', 400);
 
-  await recordAttendance(db, {
-    participationId: c.req.param('id'),
-    status,
-    recordedByActorId: actorId,
+  const manageUrl = `/g/${ctx.handle}/events/${ctx.eventId}/manage`;
+  try {
+    await recordAttendance(db, {
+      participationId: c.req.param('id'),
+      status,
+      recordedByActorId: actorId,
+    });
+  } catch (err) {
+    // 中止イベントでは出欠を記録しない(参加率を不当に下げないため)
+    if (err instanceof EventCancelledError) {
+      return c.redirect(
+        `${manageUrl}?error=${encodeURIComponent('中止したイベントでは出欠を記録できません')}`,
+        302,
+      );
+    }
+    throw err;
+  }
+  await recordAudit(db, {
+    actorId,
+    action: 'attendance.record',
+    targetType: 'participation',
+    targetId: c.req.param('id'),
+    groupActorId: ctx.groupActorId,
+    metadata: { status },
   });
-  return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
+  return c.redirect(manageUrl, 302);
 });
 
 /** 参加者一覧の表示/非表示(本人のオプトアウト) */

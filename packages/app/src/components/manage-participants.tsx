@@ -67,6 +67,7 @@ export function ManageParticipants({
   canAttendance,
   canBlock = false,
   groupHandle,
+  eventCancelled = false,
 }: {
   eventId: string;
   slots: ManageSlot[];
@@ -76,6 +77,8 @@ export function ManageParticipants({
   canAttendance: boolean;
   canBlock?: boolean;
   groupHandle?: string;
+  /** 中止イベントでは出欠を記録させない(参加率を不当に下げないため) */
+  eventCancelled?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -210,7 +213,7 @@ export function ManageParticipants({
                       className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        {canAttendance && p.status !== 'cancelled' && (
+                        {canAttendance && !eventCancelled && p.status !== 'cancelled' && (
                           <input
                             type="checkbox"
                             checked={selected.has(p.id)}
@@ -317,7 +320,7 @@ export function ManageParticipants({
                             </span>
                           )}
                         {/* 出欠記録(確定者のみ) */}
-                        {canAttendance && p.status === 'accepted' && (
+                        {canAttendance && !eventCancelled && p.status === 'accepted' && (
                           <>
                             <form method="post" action={`/participations/${p.id}/attendance`}>
                               <input type="hidden" name="status" value="attended" />

@@ -505,6 +505,17 @@ export async function recordAttendance(
   },
   now: Date = new Date(),
 ): Promise<void> {
+  // 中止イベントでは出欠を記録しない。
+  // 記録できてしまうと「来られるはずのない回」の無断欠席で参加率が不当に下がる
+  const [target] = await db
+    .select({ cancelledAt: schema.events.cancelledAt })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .innerJoin(schema.events, eq(schema.slots.eventId, schema.events.id))
+    .where(eq(schema.participations.id, input.participationId))
+    .limit(1);
+  if (target?.cancelledAt) throw new EventCancelledError();
+
   const existing = await db.query.attendances.findFirst({
     where: eq(schema.attendances.participationId, input.participationId),
   });

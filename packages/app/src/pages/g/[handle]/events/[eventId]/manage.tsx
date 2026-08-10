@@ -228,6 +228,7 @@ export default async function ManagePage({
         canAttendance={canAttendance}
         canBlock={canBlock}
         groupHandle={handle}
+        eventCancelled={!!detail.event.cancelledAt}
       />
 
       {/* ---- 共同管理者(イベント単位) ---- */}
