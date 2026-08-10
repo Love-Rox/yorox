@@ -3,6 +3,7 @@
  * - /events/:id.ics       … 公開イベント1件のダウンロード
  * - /calendar/:token.ics  … ユーザーの参加確定イベントの購読フィード
  */
+import { isViewable } from '../domain/visibility';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
@@ -59,7 +60,7 @@ cal.get('/events/:id/calendar.ics', async (c) => {
   if (!ULID_RE.test(id)) return c.notFound();
   const db = createDb((await getEnv()).DB);
   const event = await db.query.events.findFirst({ where: eq(schema.events.id, id) });
-  if (!event || event.visibility !== 'public') return c.notFound();
+  if (!event || !isViewable(event.visibility)) return c.notFound();
   const group = await db.query.actors.findFirst({
     where: eq(schema.actors.id, event.groupActorId),
   });

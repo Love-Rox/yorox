@@ -481,7 +481,12 @@ export const events = sqliteTable(
       .notNull()
       .default('sessions'),
     /** draft は下書き。public のみ一覧・連合に流通する */
-    visibility: text('visibility', { enum: ['draft', 'public'] })
+    /**
+     * draft    = 下書き(主催のみ)
+     * unlisted = 限定公開(URL を知っていれば閲覧・申込可。一覧/検索/連合には出さない)
+     * public   = 公開(一覧・検索・連合に流通する)
+     */
+    visibility: text('visibility', { enum: ['draft', 'unlisted', 'public'] })
       .notNull()
       .default('draft'),
     /** 参加者一覧の公開(デフォルト公開 = Connpass 流) */

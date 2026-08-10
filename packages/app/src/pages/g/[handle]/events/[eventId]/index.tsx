@@ -1,3 +1,4 @@
+import { isViewable } from '../../../../../domain/visibility';
 import { Link } from 'waku';
 import { eq } from 'drizzle-orm';
 import {
@@ -8,6 +9,7 @@ import { ActorName } from '../../../../../components/actor-name';
 import { Avatar } from '../../../../../components/avatar';
 import { ActorKindMark } from '../../../../../components/actor-kind';
 import { HelpTip } from '../../../../../components/help-tip';
+import { CopyLink } from '../../../../../components/copy-link';
 import { Menu } from '../../../../../components/menu';
 import { ServiceIcon } from '../../../../../components/service-icon';
 import { googleCalendarUrl } from '../../../../../lib/ics';
@@ -93,7 +95,7 @@ export default async function EventPage({
     : false;
 
   // 下書きは編集権限を持つメンバーだけが見られる
-  if (detail.event.visibility !== 'public' && !canEdit) return notFound();
+  if (!isViewable(detail.event.visibility) && !canEdit) return notFound();
 
   const { event, groupActor, slots, slotStats, sessions, materials } = detail;
   const ownParticipations = user
@@ -212,7 +214,7 @@ export default async function EventPage({
         <div className="min-w-0 flex-1">
           <h1 className="display t-xl">{event.title}</h1>
           <div className="mt-3 flex flex-wrap gap-3">
-            {event.visibility === 'public' && (
+            {isViewable(event.visibility) && (
               <Menu label="カレンダーに追加">
                 <a
                   href={`/events/${eventId}/calendar.ics`}
@@ -234,6 +236,19 @@ export default async function EventPage({
                 >
                   Google カレンダー
                 </a>
+              </Menu>
+            )}
+            {isViewable(event.visibility) && (
+              <Menu label="共有">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-bold">短縮リンク</p>
+                  <p className="mt-1 text-sm text-neutral">
+                    SNS やチャットに貼りやすい短い URL です。
+                  </p>
+                  <div className="mt-2">
+                    <CopyLink url={`${url.origin}/e/${eventId}`} />
+                  </div>
+                </div>
               </Menu>
             )}
             {canEdit && (
@@ -329,12 +344,40 @@ export default async function EventPage({
             </form>
           )}
           {slots.length > 0 && (
-            <form method="post" action={`/events/${event.id}/publish`} className="mt-3">
-              <button type="submit" className="btn cursor-pointer">
-                {event.publishAt ? '予約を待たず今すぐ公開する' : '公開する'}
-              </button>
-            </form>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <form method="post" action={`/events/${event.id}/publish`}>
+                <button type="submit" className="btn cursor-pointer">
+                  {event.publishAt ? '予約を待たず今すぐ公開する' : '公開する'}
+                </button>
+              </form>
+              <form method="post" action={`/events/${event.id}/publish`}>
+                <input type="hidden" name="visibility" value="unlisted" />
+                <button type="submit" className="btn-quiet cursor-pointer">
+                  限定公開にする
+                </button>
+              </form>
+              <span className="text-sm text-neutral">
+                限定公開は URL を知っている人だけが閲覧・申込できます
+                (一覧・検索・Fediverse 告知には出ません)
+              </span>
+            </div>
           )}
+        </div>
+      )}
+
+      {/* ---- 限定公開の案内(主催メンバー向け)---- */}
+      {canEdit && event.visibility === 'unlisted' && (
+        <div className="mt-6 border-2 border-accent-2 bg-paper-2 p-4">
+          <p className="font-bold text-accent-2">これは限定公開です</p>
+          <p className="mt-1 text-sm text-neutral">
+            下の共有リンクを知っている人だけが閲覧・申込できます。一覧・検索・
+            Fediverse 告知には出ません。誰でも見つけられるようにするには公開してください。
+          </p>
+          <form method="post" action={`/events/${event.id}/publish`} className="mt-3">
+            <button type="submit" className="btn cursor-pointer">
+              公開に切り替える
+            </button>
+          </form>
         </div>
       )}
 
@@ -428,7 +471,7 @@ export default async function EventPage({
                           )}
                         </div>
                       </div>
-                      {event.visibility === 'public' && (
+                      {isViewable(event.visibility) && (
                         <div className="mt-3">
                           {own ? (
                             <div className="flex flex-wrap items-center gap-3">
@@ -511,7 +554,7 @@ export default async function EventPage({
                 })}
               </ul>
             )}
-            {event.visibility === 'public' &&
+            {isViewable(event.visibility) &&
               (event.remoteJoinMethods ?? []).includes('reply') &&
               slots.some((s) => s.allowRemote) && (
                 <p className="border-t border-rule p-3 text-sm text-neutral">

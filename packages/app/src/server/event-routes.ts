@@ -2,6 +2,7 @@
  * イベント作成・公開・枠追加・申込・キャンセルの HTTP エンドポイント。
  * フォーム POST(SameSite=Lax cookie + Origin 検証)で受ける。
  */
+import { isViewable } from '../domain/visibility';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
@@ -327,7 +328,7 @@ events.get('/events/:id/ogp.svg', async (c) => {
   const event = await db.query.events.findFirst({
     where: eq(schema.events.id, c.req.param('id')),
   });
-  if (!event || event.visibility !== 'public') return c.notFound();
+  if (!event || !isViewable(event.visibility)) return c.notFound();
   const group = await db.query.actors.findFirst({
     where: eq(schema.actors.id, event.groupActorId),
   });
@@ -361,7 +362,7 @@ events.get('/events/:id/ogp.png', async (c) => {
   const event = await db.query.events.findFirst({
     where: eq(schema.events.id, c.req.param('id')),
   });
-  if (!event || event.visibility !== 'public') return c.notFound();
+  if (!event || !isViewable(event.visibility)) return c.notFound();
 
   const group = await db.query.actors.findFirst({
     where: eq(schema.actors.id, event.groupActorId),
@@ -630,16 +631,23 @@ events.post('/events/:id/publish', async (c) => {
   const ctx = await canEditEvent(db, c.req.param('id'), actorId);
   if (!ctx) return c.text('権限がありません', 403);
 
-  await publishEvent(db, ctx.event.id);
+  // visibility=unlisted なら限定公開(URL を知る人だけ。一覧・連合には出さない)
+  const form = await c.req.parseBody();
+  const visibility = str(form.visibility) === 'unlisted' ? 'unlisted' : 'public';
+
+  await publishEvent(db, ctx.event.id, new Date(), visibility);
   await recordAudit(db, {
     actorId,
     action: 'event.publish',
     targetType: 'event',
     targetId: ctx.event.id,
     groupActorId: ctx.event.groupActorId,
+    metadata: { visibility },
   });
-  // フォロワーへの AP 告知は応答をブロックせず即時配信(失敗分は cron が再試行)
-  deferWork(c, announceEventNow(db, ctx.event.id));
+  // 公開のみフォロワーへ AP 告知(限定公開は流さない)
+  if (visibility === 'public') {
+    deferWork(c, announceEventNow(db, ctx.event.id));
+  }
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 

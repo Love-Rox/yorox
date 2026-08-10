@@ -103,17 +103,24 @@ export async function updateEvent(
     .where(eq(schema.events.id, eventId));
 }
 
-/** 下書きイベントを公開する */
+/**
+ * 下書きイベントを公開する。
+ * visibility='unlisted'(限定公開)は URL を知る人だけが閲覧・申込でき、
+ * 一覧・検索・連合告知には流さないため event.published は発行しない。
+ */
 export async function publishEvent(
   db: Db,
   eventId: string,
   now: Date = new Date(),
+  visibility: 'public' | 'unlisted' = 'public',
 ): Promise<void> {
   await db
     .update(schema.events)
-    .set({ visibility: 'public', publishedAt: now, publishAt: null, updatedAt: now })
+    .set({ visibility, publishedAt: now, publishAt: null, updatedAt: now })
     .where(eq(schema.events.id, eventId));
-  await emitDomainEvent(db, 'event.published', { eventId }, now);
+  if (visibility === 'public') {
+    await emitDomainEvent(db, 'event.published', { eventId }, now);
+  }
 }
 
 /**

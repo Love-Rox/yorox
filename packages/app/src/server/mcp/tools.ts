@@ -4,6 +4,7 @@
  * - 書き込み(要 PAT 認証): イベント作成・参加・キャンセル・自分の参加状況
  * 認証は ctx.actorId(Bearer PAT から解決)で判定する。
  */
+import { isViewable } from '../../domain/visibility';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { schema } from '../../db/client';
@@ -140,7 +141,7 @@ export const TOOLS: McpTool[] = [
     },
     async handler(ctx, args) {
       const detail = await getEventDetail(ctx.db, str(args.event_id));
-      if (!detail || detail.event.visibility !== 'public') {
+      if (!detail || !isViewable(detail.event.visibility)) {
         return { error: 'not_found', message: '公開イベントが見つかりません' };
       }
       const { event, groupActor, slots, slotStats, sessions } = detail;
