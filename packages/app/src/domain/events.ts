@@ -18,7 +18,8 @@ export type DomainEventType =
   | 'participation.reminder'
   | 'payment.paid'
   | 'lottery.completed'
-  | 'event.published';
+  | 'event.published'
+  | 'event.cancelled';
 
 export async function emitDomainEvent(
   db: Db,

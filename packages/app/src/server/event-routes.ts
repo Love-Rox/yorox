@@ -9,6 +9,7 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import {
   addSlot,
+  cancelEvent,
   createEvent,
   duplicateEvent,
   publishEvent,
@@ -18,6 +19,7 @@ import {
   AlreadyJoinedError,
   cancelParticipation,
   ConditionNotMetError,
+  EventCancelledError,
   joinSlot,
   SlotFullError,
 } from '../domain/participation';
@@ -662,6 +664,59 @@ events.post('/events/:id/publish', async (c) => {
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 
+/** イベントの中止(参加者に通知し、以後の申込を締め切る) */
+events.post('/events/:id/cancel', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
+  if (ctx.event.cancelledAt) return c.redirect(eventUrl, 302);
+
+  const form = await c.req.parseBody();
+  // 誤操作防止: 確認欄に「中止」と入力させる
+  if (str(form.confirm) !== '中止') {
+    return c.redirect(`${eventUrl}?error=cancel_confirm`, 302);
+  }
+  const reason = str(form.reason).slice(0, 500) || null;
+  const { notified } = await cancelEvent(db, ctx.event.id, reason);
+  await recordAudit(db, {
+    actorId,
+    action: 'event.cancel',
+    targetType: 'event',
+    targetId: ctx.event.id,
+    groupActorId: ctx.event.groupActorId,
+    metadata: { reason, notified },
+  });
+  return c.redirect(eventUrl, 302);
+});
+
+/** 中止の取り消し(再開) */
+events.post('/events/:id/uncancel', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  await db
+    .update(schema.events)
+    .set({ cancelledAt: null, cancelReason: null, updatedAt: new Date() })
+    .where(eq(schema.events.id, ctx.event.id));
+  await recordAudit(db, {
+    actorId,
+    action: 'event.uncancel',
+    targetType: 'event',
+    targetId: ctx.event.id,
+    groupActorId: ctx.event.groupActorId,
+  });
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
 /** 枠追加(枠ポリシー5要素) */
 events.post('/events/:id/slots', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
@@ -772,6 +827,8 @@ events.post('/slots/:id/join', async (c) => {
     if (err instanceof ConditionNotMetError)
       return c.redirect(`${eventUrl}?error=condition&reason=${encodeURIComponent(err.reason)}`, 302);
     if (err instanceof GroupBlockedError) return c.redirect(`${eventUrl}?error=blocked`, 302);
+    if (err instanceof EventCancelledError)
+      return c.redirect(`${eventUrl}?error=event_cancelled`, 302);
     throw err;
   }
 });

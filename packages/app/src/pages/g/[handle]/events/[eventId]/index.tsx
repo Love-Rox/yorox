@@ -73,6 +73,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   slot_invalid: '枠の入力内容を確認してください。',
   stripe: '決済処理を開始できませんでした。時間をおいて再度お試しください。',
   duplicate_failed: 'イベントを複製できませんでした。時間をおいて再度お試しください。',
+  event_cancelled: 'このイベントは中止されたため申し込めません。',
+  cancel_confirm: '中止するには確認欄に「中止」と入力してください。',
 };
 
 /** OGP description 用に Markdown 記法をざっくり落とす */
@@ -457,6 +459,64 @@ export default async function EventPage({
                 (一覧・検索・Fediverse 告知には出ません)
               </span>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- 主催者: イベントの中止 ---- */}
+      {canEdit && !event.cancelledAt && isViewable(event.visibility) && (
+        <details className="mt-6 border-2 border-rule">
+          <summary className="cursor-pointer p-3 text-sm font-bold text-neutral">
+            イベントを中止する
+          </summary>
+          <div className="border-t border-rule p-4">
+            <p className="text-sm text-neutral">
+              中止すると、申込済み・補欠の方全員にお知らせが届き、以後の新規申込を
+              締め切ります。支払い済みの参加者は管理コンソールに「要返金」として
+              表示されます。あとから取り消すこともできます。
+            </p>
+            <form method="post" action={`/events/${event.id}/cancel`} className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-sm font-bold">中止の理由(参加者に表示)</span>
+                <textarea
+                  name="reason"
+                  rows={3}
+                  maxLength={500}
+                  className="input mt-1 leading-relaxed"
+                  placeholder="例: 会場の都合により中止となりました。振替日は決まり次第お知らせします。"
+                />
+              </label>
+              <label className="block text-sm">
+                確認のため <span className="font-bold">中止</span> と入力してください
+                <input type="text" name="confirm" autoComplete="off" className="input mt-1 max-w-xs" />
+              </label>
+              <button
+                type="submit"
+                className="min-h-11 cursor-pointer border-2 border-accent px-4 font-bold text-accent hover:bg-accent hover:text-paper"
+              >
+                このイベントを中止する
+              </button>
+            </form>
+          </div>
+        </details>
+      )}
+
+      {event.cancelledAt && (
+        <div className="mt-6 border-2 border-accent bg-paper-2 p-4">
+          <p className="display t-md text-accent">このイベントは中止されました</p>
+          {event.cancelReason && (
+            <p className="mt-2 text-sm leading-relaxed">{event.cancelReason}</p>
+          )}
+          <p className="mt-2 text-sm text-neutral">
+            中止日時: {FULL_FMT.format(event.cancelledAt)}
+            {' '}· お支払い済みの場合の返金は主催者にお問い合わせください。
+          </p>
+          {canEdit && (
+            <form method="post" action={`/events/${event.id}/uncancel`} className="mt-3">
+              <button type="submit" className="btn-quiet cursor-pointer">
+                中止を取り消す(再開)
+              </button>
+            </form>
           )}
         </div>
       )}

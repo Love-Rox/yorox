@@ -29,6 +29,14 @@ export interface SlotCoordinatorLike {
   acceptJoin(input: AcceptJoinInput): Promise<AcceptJoinResult>;
 }
 
+/** 中止されたイベントには申し込めない */
+export class EventCancelledError extends Error {
+  constructor(message = 'このイベントは中止されました') {
+    super(message);
+    this.name = 'EventCancelledError';
+  }
+}
+
 export class SlotFullError extends Error {
   constructor() {
     super('この枠は満席です(補欠枠も含む)');
@@ -111,8 +119,11 @@ export async function joinSlot(
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, input.slotId) });
   if (!slot) throw new Error(`slot not found: ${input.slotId}`);
 
-  // グループのブロック対象は申込を受け付けない
+  // 中止されたイベントは新規申込を受け付けない
   const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
+  if (event?.cancelledAt) throw new EventCancelledError();
+
+  // グループのブロック対象は申込を受け付けない
   if (event && (await isActorBlocked(db, event.groupActorId, input.actorId))) {
     throw new GroupBlockedError();
   }

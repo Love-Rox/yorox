@@ -239,6 +239,13 @@
       "when": 1786340196414,
       "tag": "0033_clumsy_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1786342709755,
+      "tag": "0034_magenta_randall",
+      "breakpoints": true
     }
   ]
 }

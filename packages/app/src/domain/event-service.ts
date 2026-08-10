@@ -1,12 +1,13 @@
 /**
  * イベントの作成・公開・枠追加のドメインサービス。
  */
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import type { SlotConditions } from '../db/schema';
 import { ulid } from '../lib/ulid';
 import { emitDomainEvent } from './events';
+import { flagRefundIfPaid } from './payment';
 
 export interface CreateEventInput {
   groupActorId: string;
@@ -125,6 +126,59 @@ export async function publishEvent(
   if (visibility === 'public') {
     await emitDomainEvent(db, 'event.published', { eventId }, now);
   }
+}
+
+/**
+ * イベントを中止する。
+ * - events.cancelledAt / cancelReason を記録(以後は新規申込を締め切る)
+ * - 席を持っていた参加者に event.cancelled を通知
+ * - 支払い済みがあれば要返金フラグを立てる(実際の返金は主催が管理画面で対応)
+ * 参加レコードは履歴として残す(誰が申し込んでいたかを主催が追えるようにする)。
+ */
+export async function cancelEvent(
+  db: Db,
+  eventId: string,
+  reason: string | null,
+  now: Date = new Date(),
+): Promise<{ notified: number }> {
+  await db
+    .update(schema.events)
+    .set({ cancelledAt: now, cancelReason: reason, updatedAt: now })
+    .where(eq(schema.events.id, eventId));
+
+  // 席を持っている/待っている参加者(キャンセル済み・落選を除く)へ通知
+  const rows = await db
+    .select({
+      id: schema.participations.id,
+      slotId: schema.participations.slotId,
+      actorId: schema.participations.actorId,
+    })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .where(
+      and(
+        eq(schema.slots.eventId, eventId),
+        inArray(schema.participations.status, [
+          'applied',
+          'accepted',
+          'payment_pending',
+          'waitlisted',
+          'consent_pending',
+        ]),
+      ),
+    );
+
+  for (const r of rows) {
+    await emitDomainEvent(
+      db,
+      'event.cancelled',
+      { eventId, participationId: r.id, slotId: r.slotId, actorId: r.actorId },
+      now,
+    );
+    // 支払い済みなら要返金として主催の管理画面に出す
+    await flagRefundIfPaid(db, r.id);
+  }
+  return { notified: rows.length };
 }
 
 /**

@@ -7,7 +7,8 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
-import { parseHashtags } from '../lib/hashtags';
+import { formatHashtags, parseHashtags } from '../lib/hashtags';
+import { escapeHtml } from '../lib/html';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
@@ -334,12 +335,33 @@ groups.post('/g/:handle/posts', async (c) => {
     createdAt: new Date(),
   };
   await db.insert(schema.groupPosts).values(post);
+  await recordAudit(db, {
+    actorId,
+    action: 'post.create',
+    targetType: 'post',
+    targetId: post.id,
+    groupActorId: ctx.groupActorId,
+  });
+
+  // 連合先の投稿にはグループ既定のハッシュタグを添える(本文に既に含まれる分は足さない)
+  const groupRow = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, ctx.groupActorId),
+  });
+  const tags = (groupRow?.hashtags ?? []).filter(
+    (t) => !new RegExp(`[#＃]${t}(\\s|$)`, 'i').test(bodyMd),
+  );
+  const tagLine = formatHashtags(tags);
+  const outText = tagLine ? `${bodyMd}\n\n${tagLine}` : bodyMd;
+  const outHtml = tagLine
+    ? `${renderMarkdownToHtml(bodyMd)}<p>${escapeHtml(tagLine)}</p>`
+    : renderMarkdownToHtml(bodyMd);
+
   // フォロワーへの配信+Bluesky クロスポスト(応答をブロックしない)
-  deferWork(c, 
+  deferWork(c,
     announceGroupPostNow(db, ctx.groupActorId, {
       id: post.id,
-      bodyHtml: renderMarkdownToHtml(bodyMd),
-      bodyText: bodyMd,
+      bodyHtml: outHtml,
+      bodyText: outText,
       createdAt: post.createdAt,
     }),
   );
@@ -368,6 +390,13 @@ groups.post('/g/:handle/posts/:postId/delete', async (c) => {
   if (!allowed) return c.text('権限がありません', 403);
 
   await db.delete(schema.groupPosts).where(eq(schema.groupPosts.id, post.id));
+  await recordAudit(db, {
+    actorId,
+    action: 'post.delete',
+    targetType: 'post',
+    targetId: post.id,
+    groupActorId: post.groupActorId,
+  });
   // リモートに残った Note を Delete で消す
   deferWork(c, announceGroupPostDeleteNow(db, group, post.id));
   return c.redirect(`/g/${handle}#timeline`, 302);

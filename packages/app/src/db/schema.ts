@@ -516,6 +516,10 @@ export const events = sqliteTable(
      * 未設定ならグループの既定タグを使う。
      */
     hashtags: text('hashtags', { mode: 'json' }).$type<string[]>(),
+    /** 中止した日時(null = 開催予定)。中止すると新規申込を締め切る */
+    cancelledAt: integer('cancelled_at', { mode: 'timestamp_ms' }),
+    /** 中止の理由(イベントページと参加者への通知に表示) */
+    cancelReason: text('cancel_reason'),
     createdByActorId: text('created_by_actor_id')
       .notNull()
       .references(() => actors.id),
