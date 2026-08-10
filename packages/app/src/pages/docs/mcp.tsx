@@ -24,8 +24,9 @@ export default async function McpGuidePage() {
       <section className="mt-8">
         <h2 className="display border-b-2 border-ink pb-2 t-md">エンドポイント</h2>
         <p className="mt-3">
-          トランスポートは <strong>Streamable HTTP</strong>(MCP 仕様 2025-06-18)です。
-          MCP クライアントに「リモート MCP サーバー」として次の URL を登録してください:
+          トランスポートは <strong>Streamable HTTP</strong>(MCP 仕様 2026-07-28。
+          旧版クライアントとも相互運用)です。MCP クライアントに「リモート MCP
+          サーバー」として次の URL を登録してください:
         </p>
         <p className="meta-mono mt-3 rounded border border-rule bg-paper-2 p-3 break-all">
           {endpoint}
