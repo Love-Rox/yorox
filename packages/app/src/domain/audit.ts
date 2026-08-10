@@ -62,6 +62,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   'event.create': 'イベント作成',
   'event.publish': 'イベント公開',
   'event.duplicate': 'イベント複製',
+  'event.unlist': '限定公開に戻す',
   'event.cancel': 'イベント中止',
   'event.uncancel': 'イベント中止の取り消し',
   'post.create': 'お知らせ投稿',

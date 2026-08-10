@@ -377,6 +377,21 @@ export default async function EventPage({
                     複製して新規作成
                   </button>
                 </form>
+                {event.visibility === 'public' && !event.cancelledAt && (
+                  <form
+                    method="post"
+                    action={`/events/${eventId}/unlist`}
+                    className="border-t border-rule"
+                  >
+                    <button
+                      type="submit"
+                      className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                      title="一覧・検索から外し、URL を知る人だけが見られる状態に戻します"
+                    >
+                      限定公開に戻す
+                    </button>
+                  </form>
+                )}
               </Menu>
             )}
           </div>

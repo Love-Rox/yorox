@@ -273,6 +273,15 @@ export default async function ManagePage({
                         QR を再発行(旧 QR は無効化)
                       </button>
                     </form>
+                    <form method="post" action={`/events/${event.id}/checkin/disable`}>
+                      <button
+                        type="submit"
+                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                        title="チェックインを停止します。掲示済みの QR は使えなくなります"
+                      >
+                        チェックインを停止
+                      </button>
+                    </form>
                   </div>
                 </div>
               );

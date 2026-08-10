@@ -652,6 +652,30 @@ events.post('/events/:id/checkin/enable', async (c) => {
   return c.redirect(`/g/${group.handle}/events/${event.id}/manage`, 302);
 });
 
+/** QR チェックインの停止(トークンを破棄。掲示済みの QR は無効になる) */
+events.post('/events/:id/checkin/disable', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  const allowed = await hasEventPermission(db, event, actorId, 'attendance.manage');
+  if (!allowed || !group?.handle) return c.text('権限がありません', 403);
+
+  await db
+    .update(schema.events)
+    .set({ checkinToken: null, updatedAt: new Date() })
+    .where(eq(schema.events.id, event.id));
+  return c.redirect(`/g/${group.handle}/events/${event.id}/manage`, 302);
+});
+
 /** 公開 */
 events.post('/events/:id/publish', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
@@ -675,11 +699,42 @@ events.post('/events/:id/publish', async (c) => {
     groupActorId: ctx.event.groupActorId,
     metadata: { visibility },
   });
-  // 公開のみフォロワーへ AP 告知(限定公開は流さない)
-  if (visibility === 'public') {
+  // 公開のみフォロワーへ AP 告知(限定公開は流さない)。
+  // 限定公開 → 公開の切り替え(再公開)では再告知しない
+  if (visibility === 'public' && !ctx.event.publishedAt) {
     deferWork(c, announceEventNow(db, ctx.event.id));
   }
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
+/**
+ * 公開イベントを限定公開へ戻す(URL を知る人だけが見られる状態にする)。
+ * 一覧・検索・sitemap からは即座に消えるが、既に連合へ配信された告知や
+ * 外部サイトのキャッシュまでは取り消せない。参加済みの人はそのまま。
+ */
+events.post('/events/:id/unlist', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+  const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
+  if (ctx.event.visibility !== 'public') return c.redirect(eventUrl, 302);
+
+  await db
+    .update(schema.events)
+    .set({ visibility: 'unlisted', updatedAt: new Date() })
+    .where(eq(schema.events.id, ctx.event.id));
+  await recordAudit(db, {
+    actorId,
+    action: 'event.unlist',
+    targetType: 'event',
+    targetId: ctx.event.id,
+    groupActorId: ctx.event.groupActorId,
+  });
+  return c.redirect(eventUrl, 302);
 });
 
 /** イベントの中止(参加者に通知し、以後の申込を締め切る) */

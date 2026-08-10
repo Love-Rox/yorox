@@ -87,6 +87,14 @@ export default async function OrganizersGuidePage() {
           なお参加者は自分の判断で一覧から自分を隠せます。その設定は公開範囲より優先されます。
         </p>
 
+        <h3 className="display mt-6 t-sm">公開の取り下げ</h3>
+        <p className="mt-2">
+          公開したイベントは、主催者メニューの「限定公開に戻す」で URL を知る人だけが
+          見られる状態に戻せます。一覧・検索からは即座に消えますが、既に Fediverse へ
+          配信された告知や外部のキャッシュまでは取り消せません。参加済みの人はそのままです。
+          再公開しても告知やフォロワー通知は再送されません。
+        </p>
+
         <h3 className="display mt-6 t-sm">合計定員(会場キャパ)</h3>
         <p className="mt-2">
           イベントの編集画面で<strong>合計定員</strong>を設定すると、枠ごとの定員とは

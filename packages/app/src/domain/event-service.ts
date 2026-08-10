@@ -128,11 +128,21 @@ export async function publishEvent(
   now: Date = new Date(),
   visibility: 'public' | 'unlisted' = 'public',
 ): Promise<void> {
+  const existing = await db.query.events.findFirst({ where: eq(schema.events.id, eventId) });
+  const firstPublish = !existing?.publishedAt;
   await db
     .update(schema.events)
-    .set({ visibility, publishedAt: now, publishAt: null, updatedAt: now })
+    .set({
+      visibility,
+      // 限定公開 → 公開などの切り替えで公開日時を上書きしない(タイムラインの並びも保つ)
+      publishedAt: existing?.publishedAt ?? now,
+      publishAt: null,
+      updatedAt: now,
+    })
     .where(eq(schema.events.id, eventId));
-  if (visibility === 'public') {
+  // 告知(AP fan-out・フォロワー通知)は初回公開のときだけ。
+  // 限定公開に戻して再公開するたびに再告知しない
+  if (visibility === 'public' && firstPublish) {
     await emitDomainEvent(db, 'event.published', { eventId }, now);
   }
 }
