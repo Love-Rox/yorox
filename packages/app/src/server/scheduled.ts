@@ -150,7 +150,10 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
       const queued = await enqueueEventAnnouncement(hookDb, eventId);
       if (queued > 0) console.log(`[scheduled] queued ${queued} AP delivery(ies) for ${eventId}`);
     },
-  });
+  },
+  // 通知本文にイベント名・日時・URL を載せるために origin が要る
+  env.PUBLIC_ORIGIN ?? '',
+  );
   if (processed > 0) {
     console.log(`[scheduled] dispatched ${processed} domain event(s)`);
   }

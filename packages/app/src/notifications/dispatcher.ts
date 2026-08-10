@@ -6,7 +6,32 @@
 import { asc, eq, isNull } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
+import { buildNotificationBody, type NotificationContext } from './body';
 import type { Notification, NotificationDriver } from './driver';
+
+/**
+ * 枠 ID からイベントの詳細を引く(本文に載せる用)。
+ * 解決できなければ null(テンプレートの一文だけで送る)。
+ */
+async function loadEventContext(
+  db: Db,
+  slotId: string,
+  origin: string,
+): Promise<NotificationContext | null> {
+  const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
+  if (!slot) return null;
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
+  if (!event) return null;
+  return {
+    eventTitle: event.title,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
+    slotName: slot.name,
+    // 短縮 URL は正規 URL へ 301 するので、handle を引かずに済む
+    url: `${origin.replace(/\/$/, '')}/e/${event.id}`,
+  };
+}
 
 /** ドメインイベント種別ごとの文面テンプレート */
 const TEMPLATES: Record<
@@ -70,6 +95,7 @@ export async function dispatchPendingEvents(
   drivers: NotificationDriver[],
   limit = 50,
   hooks: Record<string, DomainEventHook | undefined> = {},
+  origin = '',
 ): Promise<number> {
   const pending = await db.query.domainEvents.findMany({
     where: isNull(schema.domainEvents.processedAt),
@@ -97,10 +123,13 @@ export async function dispatchPendingEvents(
         const user = await db.query.users.findFirst({
           where: eq(schema.users.actorId, actorId),
         });
+        // 「どのイベントの話か」が分かるよう、本文にイベント情報を添える
+        const ctx =
+          origin && payload.slotId ? await loadEventContext(db, payload.slotId, origin) : null;
         const notification: Notification = {
           actorId,
-          subject: `[Yorox] ${template.subject}`,
-          bodyText: template.body,
+          subject: ctx ? `[Yorox] ${template.subject} — ${ctx.eventTitle}` : `[Yorox] ${template.subject}`,
+          bodyText: buildNotificationBody(template.body, ctx),
           eventType: event.type,
         };
         // メール通知をオフにしているユーザーには email を渡さない(AP 通知等は届く)

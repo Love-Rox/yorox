@@ -3,6 +3,7 @@ import { evaluateConditions } from './conditions';
 import { resolveRequiredGuildId } from './discord-condition';
 import { isDiscordSnowflake } from '../lib/discord';
 import { describeSlotConditions } from '../components/slot-conditions';
+import { SlotEditBlockedError } from './event-service';
 import { attendanceWeight, drawRandom, drawWeighted } from './lottery';
 import { hasAllPermissions, PRESET_ROLES } from './permissions';
 import { validateHandle } from './groups';
@@ -235,5 +236,16 @@ describe('describeSlotConditions', () => {
     expect(describeSlotConditions({ requireDiscordGuild: true })).toEqual([
       '指定の Discord サーバーの参加者のみ',
     ]);
+  });
+});
+
+describe('抽選枠の抽選日時', () => {
+  // 抽選日時が無いと cron(isNotNull(lotteryAt) で絞る)が拾わず、
+  // 申込者が永久に applied のまま止まる。addSlot / updateSlot で弾く。
+  it('SlotEditBlockedError は理由をそのまま message に載せる', () => {
+    const err = new SlotEditBlockedError('抽選枠には抽選日時が必要です。');
+    expect(err.name).toBe('SlotEditBlockedError');
+    expect(err.message).toBe('抽選枠には抽選日時が必要です。');
+    expect(err instanceof Error).toBe(true);
   });
 });

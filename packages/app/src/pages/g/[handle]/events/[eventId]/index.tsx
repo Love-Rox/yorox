@@ -622,6 +622,17 @@ export default async function EventPage({
                             </div>
                           )}
                           <SlotConditionBadges conditions={slot.conditions} />
+                          {/* 抽選日時が無いと cron が拾わず、申込者が抽選待ちのまま止まる */}
+                          {canEdit && slot.method === 'lottery' && !slot.lotteryAt && (
+                            <p
+                              role="alert"
+                              className="mt-1 border-2 border-accent p-2 text-sm text-accent"
+                            >
+                              抽選日時が未設定です。このままでは自動抽選が実行されず、
+                              申込者は「抽選待ち」のままになります。枠を編集して抽選日時を設定するか、
+                              管理コンソールから手動で抽選を実行してください
+                            </p>
+                          )}
                           {canEdit && (
                             <Link
                               to={`/g/${handle}/events/${eventId}/slots/${slot.id}/edit`}

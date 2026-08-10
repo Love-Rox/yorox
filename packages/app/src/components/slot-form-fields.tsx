@@ -87,7 +87,7 @@ export function SlotFormFields({
         </select>
       </label>
       <label className="block">
-        <span className="text-sm font-bold">抽選日時(抽選時)</span>
+        <span className="text-sm font-bold">抽選日時(抽選枠では必須)<HelpTip text="この日時に自動で抽選が実行され、結果が申込者へ通知されます。設定しないと自動抽選が走らず、申込者が「抽選待ち」のまま止まります。" /></span>
         <input
           type="datetime-local"
           name="lottery_at"

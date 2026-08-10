@@ -281,6 +281,14 @@ export async function duplicateEvent(
   return { eventId: newEventId };
 }
 
+/** 枠の編集・削除を断る理由(呼び出し側がそのまま画面に出す) */
+export class SlotEditBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SlotEditBlockedError';
+  }
+}
+
 export interface AddSlotInput {
   eventId: string;
   name: string;
@@ -316,6 +324,12 @@ export async function addSlot(
   if (input.method === 'lottery' && !input.lotteryLogic) {
     throw new Error('抽選枠には抽選ロジックの指定が必要です');
   }
+  // 抽選日時が無いと cron が拾えず、申込者が永久に「抽選待ち」で止まる
+  if (input.method === 'lottery' && !input.lotteryAt) {
+    throw new SlotEditBlockedError(
+      '抽選枠には抽選日時が必要です。日時を決めずに募集したい場合は先着枠にしてください。',
+    );
+  }
 
   const existing = await db.query.slots.findMany({
     where: eq(schema.slots.eventId, input.eventId),
@@ -345,14 +359,6 @@ export async function addSlot(
     createdAt: now,
   });
   return { slotId };
-}
-
-/** 枠の編集・削除を断る理由(呼び出し側がそのまま画面に出す) */
-export class SlotEditBlockedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SlotEditBlockedError';
-  }
 }
 
 /** 枠に生きている申込(キャンセル以外)が何件あるか */
@@ -407,6 +413,11 @@ export async function updateSlot(
   }
   if (input.method === 'lottery' && !input.lotteryLogic) {
     throw new Error('抽選枠には抽選ロジックの指定が必要です');
+  }
+  if (input.method === 'lottery' && !input.lotteryAt) {
+    throw new SlotEditBlockedError(
+      '抽選枠には抽選日時が必要です。日時を決めずに募集したい場合は先着枠にしてください。',
+    );
   }
 
   const live = await countLiveParticipations(db, slotId);
