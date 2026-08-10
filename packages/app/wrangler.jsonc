@@ -50,7 +50,9 @@
     // Turnstile(bot 対策)の公開サイトキー。秘密鍵は wrangler secret で設定
     "TURNSTILE_SITE_KEY": "0x4AAAAAAELklZPlpq88vT0s",
     // サイト管理者(カンマ区切り)。/admin/audit で全体の監査ログを閲覧できる
-    "SITE_ADMIN_HANDLES": "sasapiyo"
+    "SITE_ADMIN_HANDLES": "sasapiyo",
+    // Discord Bot の招待リンク。DM を受け取るには Bot と共通のサーバーが必要
+    "DISCORD_INVITE_URL": "https://discord.com/oauth2/authorize?client_id=1536150373679497276&permissions=0&integration_type=0&scope=bot"
   },
   "r2_buckets": [
     {

@@ -379,15 +379,18 @@ export default async function ProfileSettingsPage() {
             <p className="font-bold">DM を受け取るには</p>
             <ol className="mt-1 list-inside list-decimal space-y-1 text-neutral">
               <li>
-                Bot と<strong>同じ Discord サーバーに参加</strong>する
+                Yorox の Bot と<strong>同じ Discord サーバーに居る</strong>状態にする
                 (Discord の仕様で Bot はフレンド登録できないため、共通のサーバーが必要です)
                 {discordInvite && (
                   <>
-                    {' '}
-                    —{' '}
+                    <br />
+                    自分のサーバーに Bot を招待すれば条件を満たせます —{' '}
                     <a href={discordInvite} className="link" target="_blank" rel="noreferrer">
-                      サーバーに参加する
+                      Bot を自分のサーバーに招待する
                     </a>
+                    <span className="block text-sm">
+                      (サーバーの管理権限が必要です。権限は付与しません。DM を送るためだけに使います)
+                    </span>
                   </>
                 )}
               </li>
