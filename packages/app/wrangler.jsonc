@@ -48,7 +48,9 @@
     // 設定すると /contact 問い合わせフォームが有効になり、この宛先へ届く
     "CONTACT_EMAIL": "yorox-admin@love-rox.cc",
     // Turnstile(bot 対策)の公開サイトキー。秘密鍵は wrangler secret で設定
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAELklZPlpq88vT0s"
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAELklZPlpq88vT0s",
+    // サイト管理者(カンマ区切り)。/admin/audit で全体の監査ログを閲覧できる
+    "SITE_ADMIN_HANDLES": "sasapiyo"
   },
   "r2_buckets": [
     {
