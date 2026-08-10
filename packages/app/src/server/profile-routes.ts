@@ -9,6 +9,7 @@ import { createDb, schema } from '../db/client';
 import { createAccessToken, revokeAccessToken } from '../domain/access-token';
 import { deleteAccount, exportUserData } from '../domain/account';
 import { escapeHtml } from '../lib/html';
+import { isDiscordWebhookUrl } from '../lib/discord';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
@@ -172,9 +173,15 @@ profile.post('/profile/notifications', async (c) => {
   const actorId = await getSessionActorId(db, c);
   if (!actorId) return c.redirect('/login', 302);
   const form = await c.req.parseBody();
+  // Discord Webhook は形式が正しいときだけ保存(SSRF 対策)
+  const webhook = str(form.discord_webhook_url);
   await db
     .update(schema.users)
-    .set({ emailNotifications: form.email_notifications !== undefined })
+    .set({
+      emailNotifications: form.email_notifications !== undefined,
+      discordDmNotifications: form.discord_dm_notifications !== undefined,
+      discordWebhookUrl: webhook && isDiscordWebhookUrl(webhook) ? webhook : null,
+    })
     .where(eq(schema.users.actorId, actorId));
   return c.redirect('/settings/profile?notify_saved=1#notifications', 302);
 });

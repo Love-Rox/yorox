@@ -12,6 +12,7 @@ import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
 import { ApNoteDriver } from '../notifications/ap-driver';
+import { DiscordDmDriver } from '../notifications/discord-driver';
 import { dispatchPendingEvents } from '../notifications/dispatcher';
 import { ConsoleDriver, QueueEmailDriver, type NotificationDriver } from '../notifications/driver';
 import {
@@ -28,6 +29,8 @@ function buildDrivers(env: Env, db: Db): NotificationDriver[] {
   }
   // リモート参加者(Fediverse エイリアス)にはダイレクト Note で通知
   drivers.push(new ApNoteDriver(db));
+  // Discord: Bot DM(トークン設定時)と個人 Webhook(本人設定時)
+  drivers.push(new DiscordDmDriver(db, env.DISCORD_BOT_TOKEN));
   return drivers;
 }
 

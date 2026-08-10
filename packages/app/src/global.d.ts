@@ -26,6 +26,11 @@ interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   DISCORD_CLIENT_ID?: string;
   DISCORD_CLIENT_SECRET?: string;
+  /**
+   * Discord Bot トークン(任意)。設定すると Discord 連携済みユーザーへ
+   * DM で通知を送る。Bot と共通のサーバーに居ないユーザーには届かない。
+   */
+  DISCORD_BOT_TOKEN?: string;
   /** Stripe Connect(グループ口座での決済)。未設定なら Stripe 機能は無効 */
   STRIPE_SECRET_KEY?: string;
   STRIPE_CONNECT_CLIENT_ID?: string;

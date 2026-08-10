@@ -1,0 +1,1 @@
+ALTER TABLE `groups` ADD `discord_webhook_url` text;

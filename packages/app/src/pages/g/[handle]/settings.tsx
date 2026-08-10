@@ -133,6 +133,23 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                 placeholder="#yorox #勉強会(空白区切り、最大5個)"
               />
             </label>
+            <label className="block">
+              <span className="text-sm font-bold">
+                Discord Webhook URL(任意)
+                <HelpTip text="設定すると、イベント公開とお知らせ投稿をその Discord チャンネルへ自動で告知します。参加者個人への通知(参加確定など)には使いません。" />
+              </span>
+              <input
+                type="url"
+                name="discord_webhook_url"
+                defaultValue={group.discordWebhookUrl ?? ''}
+                className="input meta-mono mt-1"
+                placeholder="https://discord.com/api/webhooks/…"
+              />
+              <span className="mt-1 block text-sm text-neutral">
+                Discord のチャンネル設定 → 連携サービス → ウェブフック から作成できます。
+                イベント公開・お知らせがこのチャンネルに投稿されます
+              </span>
+            </label>
             <button type="submit" className="btn cursor-pointer">
               保存
             </button>

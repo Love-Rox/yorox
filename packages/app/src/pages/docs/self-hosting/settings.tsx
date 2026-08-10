@@ -99,6 +99,7 @@ export default async function SelfHostingSettingsPage() {
                 ['GITHUB_CLIENT_ID / SECRET', 'GitHub ログイン'],
                 ['GOOGLE_CLIENT_ID / SECRET', 'Google ログイン'],
                 ['DISCORD_CLIENT_ID / SECRET', 'Discord ログイン'],
+                ['DISCORD_BOT_TOKEN', 'Discord Bot の DM 通知(共通サーバー所属が必要)'],
                 ['STRIPE_SECRET_KEY ほか', 'カード決済(Stripe Connect)を有効化'],
                 ['MAIL_TRANSPORT=cloudflare', 'Cloudflare Email Service で送信'],
                 ['PUBLIC_ORIGIN', '公開 URL(リバースプロキシ背後では必須)'],

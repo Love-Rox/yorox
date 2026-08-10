@@ -9,6 +9,7 @@ import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
 import { formatHashtags, parseHashtags } from '../lib/hashtags';
 import { escapeHtml } from '../lib/html';
+import { isDiscordWebhookUrl, sendDiscordWebhook } from '../lib/discord';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
@@ -153,6 +154,12 @@ groups.post('/g/:handle/settings', async (c) => {
     .set({
       descriptionMd: str(form.description_md) || null,
       hashtags: parseHashtags(str(form.hashtags)),
+      // 不正な URL は保存しない(SSRF 対策に Discord のドメインのみ許可)
+      discordWebhookUrl: (() => {
+        const v = str(form.discord_webhook_url);
+        if (!v) return null;
+        return isDiscordWebhookUrl(v) ? v : null;
+      })(),
     })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
   await recordAudit(db, {
@@ -355,6 +362,11 @@ groups.post('/g/:handle/posts', async (c) => {
   const outHtml = tagLine
     ? `${renderMarkdownToHtml(bodyMd)}<p>${escapeHtml(tagLine)}</p>`
     : renderMarkdownToHtml(bodyMd);
+
+  // Discord Webhook が設定されていればチャンネルにも投稿
+  if (groupRow?.discordWebhookUrl) {
+    deferWork(c, sendDiscordWebhook(groupRow.discordWebhookUrl, outText).then(() => undefined));
+  }
 
   // フォロワーへの配信+Bluesky クロスポスト(応答をブロックしない)
   deferWork(c,

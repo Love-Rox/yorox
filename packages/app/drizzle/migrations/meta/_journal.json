@@ -246,6 +246,20 @@
       "when": 1786342709755,
       "tag": "0034_magenta_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1786345208384,
+      "tag": "0035_deep_leo",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1786345375827,
+      "tag": "0036_brainy_blue_blade",
+      "breakpoints": true
     }
   ]
 }

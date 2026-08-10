@@ -203,6 +203,15 @@ export const users = sqliteTable('users', {
     .default(true),
   /** 参加予定カレンダー(ics)購読用の秘密トークン。null=未発行 */
   calendarToken: text('calendar_token'),
+  /** Discord 連携アカウントへ Bot から DM 通知を送るか(既定は有効) */
+  discordDmNotifications: integer('discord_dm_notifications', { mode: 'boolean' })
+    .notNull()
+    .default(true),
+  /**
+   * 個人用の Discord Webhook URL(任意)。設定すると自分の通知が
+   * そのチャンネルにも届く。チャンネルの閲覧者に内容が見える点に注意。
+   */
+  discordWebhookUrl: text('discord_webhook_url'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
@@ -378,6 +387,11 @@ export const groups = sqliteTable('groups', {
   stripeAccountId: text('stripe_account_id'),
   /** グループ既定のハッシュタグ(# なし)。イベント側で未設定ならこれを使う */
   hashtags: text('hashtags', { mode: 'json' }).$type<string[]>(),
+  /**
+   * Discord Webhook URL(任意)。設定すると新イベント公開・お知らせ投稿を
+   * そのチャンネルへ告知する。個人宛の通知(参加確定など)には使わない。
+   */
+  discordWebhookUrl: text('discord_webhook_url'),
   /** 特定商取引法に基づく表記(グループ=事業者ごと。null=未設定) */
   tokushoho: text('tokushoho', { mode: 'json' }).$type<
     import('./schema-types').TokushohoJson

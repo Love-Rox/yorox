@@ -361,7 +361,36 @@ export default async function ProfileSettingsPage() {
             />
             <span>参加状況のお知らせをメール({account?.email})で受け取る</span>
           </label>
-          <button type="submit" className="btn-quiet mt-2 cursor-pointer">
+          <label className="mt-3 flex min-h-11 items-center gap-2">
+            <input
+              type="checkbox"
+              name="discord_dm_notifications"
+              defaultChecked={account?.discordDmNotifications ?? true}
+            />
+            <span>Discord の DM でも受け取る(アカウント連携済みの場合)</span>
+          </label>
+          <p className="mt-1 text-sm text-neutral">
+            Discord でログイン連携していると、Bot から DM が届きます。
+            Bot と共通のサーバーに参加していない場合は届きません(メールは届きます)。
+          </p>
+
+          <label className="mt-4 block">
+            <span className="text-sm font-bold">Discord Webhook URL(任意)</span>
+            <input
+              type="url"
+              name="discord_webhook_url"
+              defaultValue={account?.discordWebhookUrl ?? ''}
+              className="input meta-mono mt-1"
+              placeholder="https://discord.com/api/webhooks/…"
+            />
+          </label>
+          <p className="mt-1 border-2 border-accent p-2 text-sm text-accent">
+            注意: Webhook を設定すると、あなた宛の通知(参加確定・抽選結果など)が
+            そのチャンネルに投稿されます。<strong>チャンネルを見られる人全員に内容が見えます</strong>。
+            自分だけのプライベートチャンネルを使うことを強くおすすめします。
+          </p>
+
+          <button type="submit" className="btn-quiet mt-3 cursor-pointer">
             保存
           </button>
         </form>

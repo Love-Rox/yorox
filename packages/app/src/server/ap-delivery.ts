@@ -10,6 +10,8 @@
  */
 import { activities, buildEventNote, type ApActivity, type ApObject } from '@yorox/ap';
 import { escapeHtml } from '../lib/html';
+import { sendDiscordWebhook } from '../lib/discord';
+import { formatHashtags, resolveHashtags } from '../lib/hashtags';
 import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
@@ -363,6 +365,47 @@ export async function announceEventNow(db: Db, eventId: string): Promise<void> {
   } catch (err) {
     console.error(`[bsky] crosspost failed (event=${eventId}):`, err);
   }
+  // Discord Webhook 告知(設定済みグループのみ)
+  try {
+    await announceEventToDiscord(db, eventId);
+  } catch (err) {
+    console.error(`[discord] webhook announce failed (event=${eventId}):`, err);
+  }
+}
+
+/** グループが Discord Webhook を設定していれば、公開イベントを告知する */
+async function announceEventToDiscord(db: Db, eventId: string): Promise<void> {
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, eventId) });
+  if (!event || event.visibility !== 'public' || event.cancelledAt) return;
+  const group = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, event.groupActorId),
+  });
+  if (!group?.discordWebhookUrl) return;
+  const actor = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!actor?.handle) return;
+
+  const origin = new URL(actor.uri).origin;
+  const shortUrl = `${origin}/e/${event.id}`;
+  const when = new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: event.timezone || 'Asia/Tokyo',
+  }).format(event.startsAt);
+  const venue = event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null);
+  const tags = resolveHashtags(event.hashtags, group.hashtags);
+  const lines = [
+    `📣 **${event.title}**`,
+    '',
+    `🗓 ${when}`,
+    ...(venue ? [`📍 ${venue}`] : []),
+    '',
+    shortUrl,
+    ...(tags.length > 0 ? ['', formatHashtags(tags)] : []),
+  ];
+  const ok = await sendDiscordWebhook(group.discordWebhookUrl, lines.join('\n'));
+  if (ok) console.log(`[discord] announced ${eventId}`);
 }
 
 /** グループが Bluesky 連携済みなら公開イベントの告知を投稿する */
