@@ -346,3 +346,150 @@ export async function addSlot(
   });
   return { slotId };
 }
+
+/** 枠の編集・削除を断る理由(呼び出し側がそのまま画面に出す) */
+export class SlotEditBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SlotEditBlockedError';
+  }
+}
+
+/** 枠に生きている申込(キャンセル以外)が何件あるか */
+async function countLiveParticipations(db: Db, slotId: string): Promise<number> {
+  const rows = await db.query.participations.findMany({
+    where: eq(schema.participations.slotId, slotId),
+  });
+  return rows.filter((r) => r.status !== 'cancelled').length;
+}
+
+export interface UpdateSlotInput {
+  name: string;
+  capacity: number;
+  method: 'fcfs' | 'lottery';
+  waitlistModel: 'connpass' | 'separate';
+  waitlistCapacity?: number | undefined;
+  promotionPolicy: 'auto' | 'auto_deadline' | 'consent';
+  promotionDeadlineHours?: number | undefined;
+  lotteryLogic?: 'random' | 'manual' | 'weighted' | undefined;
+  lotteryAt?: Date | undefined;
+  conditions?: SlotConditions | undefined;
+  price?: number | undefined;
+  paymentMethod?: 'onsite' | 'external' | 'stripe' | undefined;
+  paymentUrl?: string | undefined;
+  paymentConfirm?: 'independent' | 'required' | undefined;
+  allowRemote?: boolean | undefined;
+  isSpeakerSlot?: boolean | undefined;
+}
+
+/**
+ * 参加枠を更新する。
+ *
+ * 申込が入ったあとに変えると既存の参加者の扱いが壊れる項目は断る:
+ * - 方式(先着 ↔ 抽選): 状態機械が違うため、accepted と applied が混ざる
+ * - 補欠モデル: 繰上の順序・母数の意味が変わる
+ * - 金額 / 支払方法: 支払済みの人と新規で条件が食い違う
+ *
+ * 定員の増減は許す(減らしても既存の確定者は取り消さない。connpass と同じく
+ * 「これ以上受け付けない」という意味になる)。
+ */
+export async function updateSlot(
+  db: Db,
+  slotId: string,
+  input: UpdateSlotInput,
+): Promise<void> {
+  const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
+  if (!slot) throw new Error(`slot not found: ${slotId}`);
+
+  if (!input.name.trim()) throw new Error('枠名は必須です');
+  if (!Number.isInteger(input.capacity) || input.capacity < 1) {
+    throw new Error('定員は1以上の整数が必要です');
+  }
+  if (input.method === 'lottery' && !input.lotteryLogic) {
+    throw new Error('抽選枠には抽選ロジックの指定が必要です');
+  }
+
+  const live = await countLiveParticipations(db, slotId);
+  if (live > 0) {
+    if (input.method !== slot.method) {
+      throw new SlotEditBlockedError(
+        '申込が入っている枠では、先着と抽選を切り替えられません。新しい枠を作ってください。',
+      );
+    }
+    if (input.waitlistModel !== slot.waitlistModel) {
+      throw new SlotEditBlockedError(
+        '申込が入っている枠では、補欠モデルを変更できません。',
+      );
+    }
+    const nextPrice = input.price ?? null;
+    if (nextPrice !== slot.price) {
+      throw new SlotEditBlockedError(
+        '申込が入っている枠では、参加費を変更できません。新しい枠を作ってください。',
+      );
+    }
+    const nextPaymentMethod = nextPrice != null && nextPrice > 0 ? (input.paymentMethod ?? null) : null;
+    if (nextPaymentMethod !== slot.paymentMethod) {
+      throw new SlotEditBlockedError(
+        '申込が入っている枠では、支払方法を変更できません。',
+      );
+    }
+  }
+
+  // 抽選済みの枠で抽選日時を動かすと、cron が再抽選して当選席が二重に出る
+  const drawn = slot.method === 'lottery' && slot.lotteryAt != null && slot.lotteryAt <= new Date();
+  if (drawn && input.lotteryAt?.getTime() !== slot.lotteryAt?.getTime()) {
+    throw new SlotEditBlockedError('抽選が終わった枠では、抽選日時を変更できません。');
+  }
+
+  const price = input.price ?? null;
+  const paid = price != null && price > 0;
+  await db
+    .update(schema.slots)
+    .set({
+      name: input.name.trim(),
+      capacity: input.capacity,
+      method: input.method,
+      waitlistModel: input.waitlistModel,
+      waitlistCapacity: input.waitlistCapacity ?? null,
+      promotionPolicy: input.promotionPolicy,
+      promotionDeadlineHours: input.promotionDeadlineHours ?? null,
+      lotteryLogic: input.method === 'lottery' ? (input.lotteryLogic ?? 'random') : null,
+      lotteryAt: input.method === 'lottery' ? (input.lotteryAt ?? null) : null,
+      conditions: input.conditions ?? null,
+      price: price,
+      paymentMethod: paid ? (input.paymentMethod ?? null) : null,
+      paymentUrl: paid && input.paymentMethod === 'external' ? (input.paymentUrl ?? null) : null,
+      paymentConfirm: input.paymentConfirm ?? 'independent',
+      allowRemote: input.allowRemote ?? false,
+      isSpeakerSlot: input.isSpeakerSlot ?? false,
+    })
+    .where(eq(schema.slots.id, slotId));
+}
+
+/**
+ * 参加枠を削除する。
+ * 申込が一件でも生きているうちは消させない(参加者の記録を黙って失わせないため)。
+ * キャンセル済みの申込だけが残っている場合は、支払い・出欠の記録ごと片付ける。
+ */
+export async function deleteSlot(db: Db, slotId: string): Promise<void> {
+  const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
+  if (!slot) throw new Error(`slot not found: ${slotId}`);
+
+  const live = await countLiveParticipations(db, slotId);
+  if (live > 0) {
+    throw new SlotEditBlockedError(
+      '申込が入っている枠は削除できません。先に参加者の申込をキャンセルしてください。',
+    );
+  }
+
+  // 残っているのはキャンセル済みのみ。参照している行から順に片付ける
+  const stale = await db.query.participations.findMany({
+    where: eq(schema.participations.slotId, slotId),
+  });
+  for (const p of stale) {
+    await db.delete(schema.attendances).where(eq(schema.attendances.participationId, p.id));
+    await db.delete(schema.payments).where(eq(schema.payments.participationId, p.id));
+  }
+  await db.delete(schema.participations).where(eq(schema.participations.slotId, slotId));
+  await db.delete(schema.slots).where(eq(schema.slots.id, slotId));
+}

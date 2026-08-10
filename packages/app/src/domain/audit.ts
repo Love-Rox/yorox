@@ -70,6 +70,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   'participation.decide': '参加可否の決定',
   'attendance.record': '出欠の記録',
   'payment.mark': '支払い状態の更新',
+  'slot.update': '枠を編集',
+  'slot.delete': '枠を削除',
   'lottery.run': '抽選の実行',
   'account.delete': 'アカウント削除(退会)',
 };

@@ -11,9 +11,13 @@ import {
   addSlot,
   cancelEvent,
   createEvent,
+  deleteSlot,
   duplicateEvent,
   publishEvent,
+  SlotEditBlockedError,
   updateEvent,
+  updateSlot,
+  type AddSlotInput,
 } from '../domain/event-service';
 import {
   AlreadyJoinedError,
@@ -725,19 +729,19 @@ events.post('/events/:id/uncancel', async (c) => {
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 
-/** 枠追加(枠ポリシー5要素) */
-events.post('/events/:id/slots', async (c) => {
-  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
-  const db = createDb((await getEnv()).DB);
-  const actorId = await getSessionActorId(db, c);
-  if (!actorId) return c.redirect('/login', 302);
+/**
+ * 枠フォーム(追加・編集で共通)の解析。
+ * 入力が不正なら reason を返し、呼び出し側がリダイレクト先を決める。
+ */
+type SlotFormResult =
+  | { ok: true; value: Omit<AddSlotInput, 'eventId'> }
+  | { ok: false; reason: 'slot_invalid' | 'discord_guild_invalid' | 'discord_guild_missing' };
 
-  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
-  if (!ctx) return c.text('権限がありません', 403);
-
-  const form = await c.req.parseBody();
-  const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
-
+async function parseSlotForm(
+  db: ReturnType<typeof createDb>,
+  form: Record<string, unknown>,
+  groupActorId: string,
+): Promise<SlotFormResult> {
   const method = str(form.method) === 'lottery' ? 'lottery' : 'fcfs';
 
   // 決済設定の検証
@@ -747,11 +751,9 @@ events.post('/events/:id/slots', async (c) => {
     pm === 'onsite' ? 'onsite' : pm === 'external' ? 'external' : pm === 'stripe' ? 'stripe' : null;
   const paymentUrl = str(form.payment_url);
   if (price && price > 0) {
-    if (!paymentMethod) {
-      return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
-    }
+    if (!paymentMethod) return { ok: false, reason: 'slot_invalid' };
     if (paymentMethod === 'external' && !/^https?:\/\//.test(paymentUrl)) {
-      return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
+      return { ok: false, reason: 'slot_invalid' };
     }
   }
 
@@ -764,25 +766,22 @@ events.post('/events/:id/slots', async (c) => {
   if (form.require_discord_guild === 'on') {
     const guildId = str(form.discord_guild_id);
     if (guildId && !isDiscordSnowflake(guildId)) {
-      return c.text('Discord サーバー ID は 17〜20 桁の数字です', 400);
+      return { ok: false, reason: 'discord_guild_invalid' };
     }
     // 枠にも指定が無く、グループ既定も無いなら条件が成立しない(全員弾いてしまう)
     const group = await db.query.groups.findFirst({
-      where: eq(schema.groups.actorId, ctx.event.groupActorId),
+      where: eq(schema.groups.actorId, groupActorId),
     });
     if (!guildId && !group?.discordGuildId) {
-      return c.text(
-        'Discord サーバーの条件を使うには、この枠かグループ設定でサーバー ID を指定してください',
-        400,
-      );
+      return { ok: false, reason: 'discord_guild_missing' };
     }
     conditions.requireDiscordGuild = true;
     if (guildId) conditions.discordGuildId = guildId;
   }
 
-  try {
-    await addSlot(db, {
-      eventId: ctx.event.id,
+  return {
+    ok: true,
+    value: {
       name: str(form.name),
       capacity: optionalInt(form.capacity) ?? 0,
       method,
@@ -811,11 +810,118 @@ events.post('/events/:id/slots', async (c) => {
       paymentMethod: price && price > 0 ? (paymentMethod ?? undefined) : undefined,
       paymentUrl: paymentMethod === 'external' ? paymentUrl : undefined,
       paymentConfirm: str(form.payment_confirm) === 'required' ? 'required' : 'independent',
-    });
+    },
+  };
+}
+
+const SLOT_FORM_ERROR: Record<string, string> = {
+  slot_invalid: '枠の入力内容を確認してください。',
+  discord_guild_invalid: 'Discord サーバー ID は 17〜20 桁の数字です。',
+  discord_guild_missing:
+    'Discord サーバーの条件を使うには、この枠かグループ設定でサーバー ID を指定してください。',
+};
+
+/** 枠追加(枠ポリシー5要素) */
+events.post('/events/:id/slots', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditEvent(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const eventUrl = `/g/${ctx.handle}/events/${ctx.event.id}`;
+
+  const parsed = await parseSlotForm(db, form, ctx.event.groupActorId);
+  if (!parsed.ok) return c.redirect(`${eventUrl}?error=${parsed.reason}`, 302);
+
+  try {
+    await addSlot(db, { eventId: ctx.event.id, ...parsed.value });
     return c.redirect(eventUrl, 302);
   } catch {
     return c.redirect(`${eventUrl}?error=slot_invalid`, 302);
   }
+});
+
+/** 枠の編集権限チェック(枠 → イベント → グループ) */
+async function canEditSlot(
+  db: ReturnType<typeof createDb>,
+  slotId: string,
+  actorId: string,
+) {
+  const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
+  if (!slot) return null;
+  const ctx = await canEditEvent(db, slot.eventId, actorId);
+  return ctx ? { slot, ...ctx } : null;
+}
+
+/** 枠の更新 */
+events.post('/slots/:id/update', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditSlot(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const editUrl = `/g/${ctx.handle}/events/${ctx.event.id}/slots/${ctx.slot.id}/edit`;
+  const form = await c.req.parseBody();
+  const parsed = await parseSlotForm(db, form, ctx.event.groupActorId);
+  if (!parsed.ok) {
+    return c.redirect(
+      `${editUrl}?error=${encodeURIComponent(SLOT_FORM_ERROR[parsed.reason] ?? '入力内容を確認してください。')}`,
+      302,
+    );
+  }
+
+  try {
+    await updateSlot(db, ctx.slot.id, parsed.value);
+    await recordAudit(db, {
+      actorId,
+      action: 'slot.update',
+      targetType: 'slot',
+      targetId: ctx.slot.id,
+      groupActorId: ctx.event.groupActorId,
+      metadata: { eventId: ctx.event.id, name: parsed.value.name },
+    });
+  } catch (err) {
+    const message =
+      err instanceof SlotEditBlockedError ? err.message : '枠の入力内容を確認してください。';
+    return c.redirect(`${editUrl}?error=${encodeURIComponent(message)}`, 302);
+  }
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
+});
+
+/** 枠の削除(申込が残っている枠は削除できない) */
+events.post('/slots/:id/delete', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const ctx = await canEditSlot(db, c.req.param('id'), actorId);
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const editUrl = `/g/${ctx.handle}/events/${ctx.event.id}/slots/${ctx.slot.id}/edit`;
+  try {
+    await deleteSlot(db, ctx.slot.id);
+    await recordAudit(db, {
+      actorId,
+      action: 'slot.delete',
+      targetType: 'slot',
+      targetId: ctx.slot.id,
+      groupActorId: ctx.event.groupActorId,
+      metadata: { eventId: ctx.event.id, name: ctx.slot.name },
+    });
+  } catch (err) {
+    const message =
+      err instanceof SlotEditBlockedError ? err.message : '枠を削除できませんでした。';
+    return c.redirect(`${editUrl}?error=${encodeURIComponent(message)}`, 302);
+  }
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
 });
 
 /** 申込 */

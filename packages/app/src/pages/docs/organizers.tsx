@@ -65,6 +65,27 @@ export default async function OrganizersGuidePage() {
           </li>
         </ol>
 
+        <h3 className="display mt-6 t-sm">枠をあとから編集する</h3>
+        <p className="mt-2">
+          イベントページの各枠にある「この枠を編集」から、枠名・定員・参加条件などを
+          変更できます。申込がまだ無い枠は削除もできます。
+        </p>
+        <p className="mt-2">
+          ただし、<strong>申込が入っている枠</strong>では、既存の参加者の扱いが壊れる
+          次の項目を変更できません:
+        </p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>方式(先着 ↔ 抽選) — 状態の持ち方が違うため</li>
+          <li>補欠モデル — 繰上の順序と母数の意味が変わるため</li>
+          <li>参加費・支払方法 — 支払済みの人と条件が食い違うため</li>
+        </ul>
+        <p className="mt-2">
+          これらを変えたいときは、新しい枠を作ってください。
+          定員は申込後でも変更できます(減らしても確定済みの参加者は取り消されません。
+          「これ以上受け付けない」という意味になります)。
+          抽選が終わった枠では、抽選日時を動かせません。
+        </p>
+
         <h3 className="display mt-6 t-sm">Discord サーバーの参加者だけに限定する</h3>
         <p className="mt-2">
           「指定の Discord サーバーの参加者のみ」を有効にすると、申込時に対象サーバーへの
