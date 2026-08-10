@@ -67,6 +67,22 @@ export class ReJoinBlockedError extends Error {
   }
 }
 
+
+/** イベント全体で席を持つ人数(確定・支払い待ち・繰上承諾待ち)。合計定員の判定用 */
+async function countEventHeldSeats(db: Db, eventId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.participations)
+    .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
+    .where(
+      and(
+        eq(schema.slots.eventId, eventId),
+        sql`${schema.participations.status} IN ('accepted', 'payment_pending', 'consent_pending')`,
+      ),
+    );
+  return row?.count ?? 0;
+}
+
 async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo> {
   const actor = await db.query.actors.findFirst({
     where: eq(schema.actors.id, actorId),
@@ -201,8 +217,10 @@ export async function joinSlot(
   // 先着の確定ステータス(支払い確認で確定の有料枠は payment_pending で定員保持)
   const target = confirmedStatus(slot);
 
-  // 先着: slot-coordinator(DO)があれば slot 単位で直列化して確定する
-  if (deps.slotCoordinator) {
+  // 先着: slot-coordinator(DO)があれば slot 単位で直列化して確定する。
+  // ただし合計定員があるイベントは枠をまたいだ判定が要るため、DO(枠単位の
+  // 直列化)では守れない。D1 の条件付き INSERT(単一書き込み)経路に落とす
+  if (deps.slotCoordinator && event?.totalCapacity == null) {
     const result = await deps.slotCoordinator.acceptJoin({
       participationId,
       slotId: input.slotId,
@@ -231,6 +249,8 @@ export async function joinSlot(
 
   // フォールバック: 単一ステートメントの条件付き INSERT で定員を原子的に守る
   // (payment_pending も席を保持するため定員カウントに含める)
+  // 合計定員(会場キャパ)があれば、枠の定員と AND で守る
+  const totalCap = event?.totalCapacity ?? Number.MAX_SAFE_INTEGER;
   const acceptedInsert = await db.run(sql`
     INSERT INTO participations (id, slot_id, actor_id, status, hidden_from_list, applied_at, decided_at)
     SELECT ${participationId}, ${input.slotId}, ${input.actorId}, ${target}, 0, ${now.getTime()}, ${now.getTime()}
@@ -238,6 +258,12 @@ export async function joinSlot(
       SELECT COUNT(*) FROM participations
       WHERE slot_id = ${input.slotId} AND status IN ('accepted', 'payment_pending', 'consent_pending')
     ) < ${slot.capacity}
+    AND (
+      SELECT COUNT(*) FROM participations p
+      INNER JOIN slots s ON s.id = p.slot_id
+      WHERE s.event_id = ${slot.eventId}
+        AND p.status IN ('accepted', 'payment_pending', 'consent_pending')
+    ) < ${totalCap}
   `);
   if ((acceptedInsert.meta?.changes ?? 0) > 0) {
     await ensurePayment(db, participationId, slot, now);
@@ -324,14 +350,17 @@ export async function promoteFromWaitlist(
 ): Promise<void> {
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
   if (!slot) return;
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
 
-  if (slot.promotionPolicy === 'auto_deadline') {
-    const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
-    if (event) {
-      const deadlineMs =
-        event.startsAt.getTime() - (slot.promotionDeadlineHours ?? 0) * 60 * 60 * 1000;
-      if (now.getTime() >= deadlineMs) return; // 締切超過: 繰上停止
-    }
+  if (slot.promotionPolicy === 'auto_deadline' && event) {
+    const deadlineMs =
+      event.startsAt.getTime() - (slot.promotionDeadlineHours ?? 0) * 60 * 60 * 1000;
+    if (now.getTime() >= deadlineMs) return; // 締切超過: 繰上停止
+  }
+
+  // 合計定員(会場キャパ)が埋まっていたら、枠に空きがあっても繰り上げない
+  if (event?.totalCapacity != null) {
+    if ((await countEventHeldSeats(db, event.id)) >= event.totalCapacity) return;
   }
 
   // 空き定員の確認(payment_pending も席を保持)
@@ -610,7 +639,19 @@ export async function runLottery(
         sql`${schema.participations.status} IN ('accepted', 'payment_pending', 'consent_pending')`,
       ),
     );
-  const seats = Math.max(0, slot.capacity - (heldRow?.count ?? 0));
+  let seats = Math.max(0, slot.capacity - (heldRow?.count ?? 0));
+
+  // 合計定員(会場キャパ)があるイベントは、残り席数を上限に当選数を絞る
+  const lotteryEvent = await db.query.events.findFirst({
+    where: eq(schema.events.id, slot.eventId),
+  });
+  if (lotteryEvent?.totalCapacity != null) {
+    const remaining = Math.max(
+      0,
+      lotteryEvent.totalCapacity - (await countEventHeldSeats(db, lotteryEvent.id)),
+    );
+    seats = Math.min(seats, remaining);
+  }
 
   const winners =
     slot.lotteryLogic === 'weighted'

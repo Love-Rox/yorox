@@ -580,6 +580,19 @@ export default async function EventPage({
         <aside className="order-1 space-y-8 lg:order-2">
           <section id="slots" className="scroll-mt-4 border-2 border-ink">
             <h2 className="display border-b-2 border-ink p-3 t-md">参加枠</h2>
+            {event.totalCapacity != null && (
+              <p className="border-b border-rule p-3 text-sm text-neutral">
+                合計定員 {event.totalCapacity} 名
+                {(() => {
+                  const held = [...slotStats.values()].reduce((n, s) => n + s.accepted, 0);
+                  return held >= event.totalCapacity! ? (
+                    <span className="ml-2 font-bold text-accent">— 満員(以降は補欠)</span>
+                  ) : (
+                    <span className="ml-1">(現在 {held} 名)</span>
+                  );
+                })()}
+              </p>
+            )}
             {slots.length === 0 ? (
               <p className="p-3 text-sm text-neutral">参加枠は未設定です。</p>
             ) : (

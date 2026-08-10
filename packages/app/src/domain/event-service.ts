@@ -76,6 +76,8 @@ export interface UpdateEventInput {
   onlineUrl?: string | undefined;
   sessionsLabel?: 'sessions' | 'timetable' | undefined;
   remoteJoinMethods?: ('reply' | 'join')[] | undefined;
+  /** イベント全体の合計定員(会場キャパ)。undefined/null = 制限なし */
+  totalCapacity?: number | undefined;
   /** 参加者一覧を公開するか */
   participantListPublic?: boolean | undefined;
   /** 参加未確定(抽選待ち・補欠)の申込者も一覧に載せるか */
@@ -107,6 +109,7 @@ export async function updateEvent(
       onlineUrl: input.onlineUrl ?? null,
       sessionsLabel: input.sessionsLabel ?? 'sessions',
       remoteJoinMethods: input.remoteJoinMethods ?? ['reply', 'join'],
+      totalCapacity: input.totalCapacity ?? null,
       participantListPublic: input.participantListPublic ?? true,
       applicantListPublic: input.applicantListPublic ?? false,
       updatedAt: now,
@@ -225,6 +228,7 @@ export async function duplicateEvent(
     remoteJoinMethods: src.remoteJoinMethods,
     // 「その回限り」の状態はリセット
     visibility: 'draft',
+    totalCapacity: src.totalCapacity,
     participantListPublic: src.participantListPublic,
     applicantListPublic: src.applicantListPublic,
     checkinToken: null,

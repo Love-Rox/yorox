@@ -533,6 +533,13 @@ export const events = sqliteTable(
     visibility: text('visibility', { enum: ['draft', 'unlisted', 'public'] })
       .notNull()
       .default('draft'),
+    /**
+     * イベント全体の合計定員(任意)。会場キャパなど、枠の定員とは別に
+     * 「全枠あわせて◯名まで」を守りたいときに設定する。
+     * null = 制限なし(枠ごとの定員のみ)。席を持つ人(確定・支払い待ち・
+     * 繰上承諾待ち)で数え、補欠・抽選待ちは含めない。
+     */
+    totalCapacity: integer('total_capacity'),
     /** 参加者一覧の公開(デフォルト公開 = Connpass 流) */
     participantListPublic: integer('participant_list_public', { mode: 'boolean' })
       .notNull()

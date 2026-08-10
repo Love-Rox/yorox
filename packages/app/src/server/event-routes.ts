@@ -230,6 +230,10 @@ events.post('/events/:id/update', async (c) => {
       onlineUrl: str(form.online_url) || undefined,
       sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
       remoteJoinMethods: parseRemoteJoinMethods(form),
+      totalCapacity: (() => {
+        const n = optionalInt(form.total_capacity);
+        return n !== undefined && n > 0 ? n : undefined;
+      })(),
       participantListPublic: form.participant_list_public !== undefined,
       applicantListPublic: form.applicant_list_public !== undefined,
     });
