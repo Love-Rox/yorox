@@ -13,6 +13,7 @@ import { listAccessTokens } from '../../domain/access-token';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
 import { SectionNavLayout, type SectionNavItem } from '../../components/section-nav';
+import { SubmitButton } from '../../components/submit-button';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: '表示名は必須です。',
@@ -402,9 +403,7 @@ export default async function ProfileSettingsPage() {
           </p>
         )}
         <form method="post" action="/profile/discord/test" className="mt-3">
-          <button type="submit" className="btn-quiet cursor-pointer text-sm">
-            Discord にテスト送信
-          </button>
+          <SubmitButton pendingLabel="Discord に送信中…">Discord にテスト送信</SubmitButton>
           <span className="ml-2 text-sm text-neutral">
             設定を保存してから試すと、DM と Webhook の到達を確認できます
           </span>

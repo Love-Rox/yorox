@@ -18,7 +18,13 @@ async function openDmChannel(botToken: string, userId: string): Promise<string |
     },
     body: JSON.stringify({ recipient_id: userId }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // 原因の切り分けのため Discord の応答をそのまま残す
+    // 401=トークン不正 / 403=権限 or 共通サーバー無し / 50007=DM 拒否
+    const detail = await res.text().catch(() => '');
+    console.error(`[discord] DM チャンネルを開けません status=${res.status} body=${detail.slice(0, 300)}`);
+    return null;
+  }
   const data = (await res.json()) as { id?: string };
   return data.id ?? null;
 }
@@ -40,6 +46,10 @@ export async function sendDiscordDm(
       },
       body: JSON.stringify({ content: content.slice(0, 2000) }),
     });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error(`[discord] DM 送信に失敗 status=${res.status} body=${detail.slice(0, 300)}`);
+    }
     return res.ok;
   } catch (err) {
     console.error('[discord] DM 送信に失敗:', err);
