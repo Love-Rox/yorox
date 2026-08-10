@@ -12,8 +12,11 @@ import { getDb } from '../server/data';
 export const Header = async () => {
   const user = await getCurrentUser();
   let pendingRequests = 0;
+  let siteAdmin = false;
   if (user) {
     const db = await getDb();
+    const { isSiteAdmin } = await import('../domain/audit');
+    siteAdmin = await isSiteAdmin(db, user.actorId);
     const [row] = await db
       .select({ count: sql<number>`count(*)` })
       .from(schema.actionRequests)
@@ -48,6 +51,11 @@ export const Header = async () => {
                     className="border-2 border-accent px-2 py-1 font-bold text-accent"
                   >
                     要確認 {pendingRequests}
+                  </Link>
+                )}
+                {siteAdmin && (
+                  <Link to="/admin/audit" className="link">
+                    監査ログ
                   </Link>
                 )}
                 {user.handle && (

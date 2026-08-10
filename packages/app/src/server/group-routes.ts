@@ -25,6 +25,7 @@ import {
   RoleInUseError,
 } from '../domain/groups';
 import { blockActor, unblockActor } from '../domain/blocks';
+import { recordAudit } from '../domain/audit';
 import { PERMISSIONS, type Permission } from '../domain/permissions';
 import { getSessionActorId, hasGroupPermission } from './route-auth';
 
@@ -261,6 +262,14 @@ groups.post('/g/:handle/blocks', async (c) => {
     createdByActorId: actorId,
     reason: str(form.reason) || undefined,
   });
+  await recordAudit(db, {
+    actorId,
+    action: 'block.add',
+    targetType: 'actor',
+    targetId: targetActorId,
+    groupActorId: ctx.groupActorId,
+    metadata: { reason: str(form.reason) || null },
+  });
   return c.redirect(returnTo, 302);
 });
 
@@ -279,6 +288,13 @@ groups.post('/g/:handle/blocks/remove', async (c) => {
   const blockedActorId = str(form.blocked_actor_id);
   if (blockedActorId) {
     await unblockActor(db, ctx.groupActorId, blockedActorId);
+    await recordAudit(db, {
+      actorId,
+      action: 'block.remove',
+      targetType: 'actor',
+      targetId: blockedActorId,
+      groupActorId: ctx.groupActorId,
+    });
   }
   return c.redirect(safeReturnTo(form.return_to, `/g/${handle}/settings#blocks`), 302);
 });
@@ -391,6 +407,13 @@ groups.post('/g/:handle/members', async (c) => {
       str(form.member_handle).replace(/^@/, '').toLowerCase(),
       str(form.role_id),
     );
+    await recordAudit(db, {
+      actorId,
+      action: 'member.add',
+      targetType: 'user',
+      groupActorId: ctx.groupActorId,
+      metadata: { handle: str(form.member_handle), roleId: str(form.role_id) },
+    });
     return c.redirect(`/g/${handle}/settings`, 302);
   } catch (err) {
     return redirectWithError(c, `/g/${handle}/settings`, err);
@@ -411,6 +434,14 @@ groups.post('/g/:handle/members/:actorId/role', async (c) => {
   const form = await c.req.parseBody();
   try {
     await changeMemberRole(db, ctx.groupActorId, c.req.param('actorId'), str(form.role_id));
+    await recordAudit(db, {
+      actorId,
+      action: 'member.role',
+      targetType: 'user',
+      targetId: c.req.param('actorId'),
+      groupActorId: ctx.groupActorId,
+      metadata: { roleId: str(form.role_id) },
+    });
     return c.redirect(`/g/${handle}/settings`, 302);
   } catch (err) {
     return redirectWithError(c, `/g/${handle}/settings`, err);
@@ -430,6 +461,13 @@ groups.post('/g/:handle/members/:actorId/remove', async (c) => {
 
   try {
     await removeMember(db, ctx.groupActorId, c.req.param('actorId'));
+    await recordAudit(db, {
+      actorId,
+      action: 'member.remove',
+      targetType: 'user',
+      targetId: c.req.param('actorId'),
+      groupActorId: ctx.groupActorId,
+    });
     return c.redirect(`/g/${handle}/settings`, 302);
   } catch (err) {
     return redirectWithError(c, `/g/${handle}/settings`, err);
@@ -451,6 +489,13 @@ groups.post('/g/:handle/roles', async (c) => {
   const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
   try {
     await createRole(db, ctx.groupActorId, str(form.name), permissions);
+    await recordAudit(db, {
+      actorId,
+      action: 'role.create',
+      targetType: 'role',
+      groupActorId: ctx.groupActorId,
+      metadata: { name: str(form.name), permissions },
+    });
     return c.redirect(`/g/${handle}/settings`, 302);
   } catch (err) {
     return redirectWithError(c, `/g/${handle}/settings`, err);
@@ -470,6 +515,13 @@ groups.post('/g/:handle/roles/:roleId/delete', async (c) => {
 
   try {
     await deleteRole(db, ctx.groupActorId, c.req.param('roleId'));
+    await recordAudit(db, {
+      actorId,
+      action: 'role.delete',
+      targetType: 'role',
+      targetId: c.req.param('roleId'),
+      groupActorId: ctx.groupActorId,
+    });
     return c.redirect(`/g/${handle}/settings`, 302);
   } catch (err) {
     return redirectWithError(c, `/g/${handle}/settings`, err);

@@ -327,6 +327,35 @@ export const accessTokens = sqliteTable(
   ],
 );
 
+/**
+ * 監査ログ。管理・モデレーション操作の証跡を残す。
+ * groupActorId があればグループ単位の監査ログ、null はインスタンス全体の操作。
+ * サイト管理者は全件、グループ管理者は自グループ分を閲覧できる。
+ */
+export const auditLogs = sqliteTable(
+  'audit_logs',
+  {
+    id: text('id').primaryKey(), // ULID
+    /** 操作者(未ログインの自動処理は null) */
+    actorId: text('actor_id').references(() => actors.id),
+    /** 例: 'member.add' / 'block.add' / 'payment.refund' / 'event.publish' */
+    action: text('action').notNull(),
+    /** 対象の種別(event / group / participation / payment / user 等) */
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    /** グループ単位のスコープ(null = インスタンス全体) */
+    groupActorId: text('group_actor_id'),
+    /** 補足情報(変更内容など) */
+    metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [
+    index('audit_logs_group_idx').on(t.groupActorId, t.createdAt),
+    index('audit_logs_created_idx').on(t.createdAt),
+    index('audit_logs_actor_idx').on(t.actorId),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // グループ
 // ---------------------------------------------------------------------------

@@ -106,6 +106,8 @@ export default async function SelfHostingSettingsPage() {
                 ['LEGAL_OPERATOR', '運営者名(利用規約・特商法に表示)'],
                 ['LEGAL_CONTACT', '連絡先(問い合わせフォーム未使用時に表示)'],
                 ['CONTACT_EMAIL', '設定すると /contact 問い合わせフォームが有効・宛先'],
+                ['SITE_ADMIN_HANDLES', 'サイト管理者の handle(カンマ区切り)。全体の監査ログを閲覧可'],
+                ['TURNSTILE_SITE_KEY / SECRET_KEY', '問い合わせフォームの bot 対策'],
                 ['DATA_DIR', 'データ保存先(既定 /data)'],
                 ['PORT', '待受ポート(既定 8080)'],
               ].map(([k, v]) => (

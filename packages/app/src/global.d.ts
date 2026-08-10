@@ -39,6 +39,8 @@ interface Env {
   /** Cloudflare Turnstile。両方設定すると問い合わせフォームに bot 対策が付く */
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
+  /** サイト管理者のローカル handle(カンマ区切り)。全体の監査ログを閲覧できる */
+  SITE_ADMIN_HANDLES?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USERNAME?: string;

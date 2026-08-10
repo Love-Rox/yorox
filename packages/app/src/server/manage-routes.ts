@@ -12,6 +12,7 @@ import {
   runLottery,
 } from '../domain/participation';
 import { markPayment } from '../domain/payment';
+import { recordAudit } from '../domain/audit';
 import { ulid } from '../lib/ulid';
 import type { Permission } from '../domain/permissions';
 import { getSessionActorId, hasEventPermission } from './route-auth';
@@ -93,6 +94,13 @@ manage.post('/slots/:id/lottery/run', async (c) => {
 
   try {
     await runLottery(db, slot.id);
+    await recordAudit(db, {
+      actorId,
+      action: 'lottery.run',
+      targetType: 'slot',
+      targetId: slot.id,
+      groupActorId: ctx.groupActorId,
+    });
   } catch (err) {
     return c.redirect(
       `/g/${ctx.handle}/events/${ctx.eventId}/manage?error=${encodeURIComponent(String(err instanceof Error ? err.message : err))}`,
@@ -118,6 +126,14 @@ manage.post('/participations/:id/decide', async (c) => {
     return c.text('invalid decision', 400);
   }
   await decideParticipation(db, c.req.param('id'), decision);
+  await recordAudit(db, {
+    actorId,
+    action: 'participation.decide',
+    targetType: 'participation',
+    targetId: c.req.param('id'),
+    groupActorId: ctx.groupActorId,
+    metadata: { decision },
+  });
   return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
 });
 
@@ -235,6 +251,14 @@ manage.post('/payments/:id/mark', async (c) => {
   }
 
   await markPayment(db, payment.id, status, actorId);
+  await recordAudit(db, {
+    actorId,
+    action: 'payment.mark',
+    targetType: 'payment',
+    targetId: payment.id,
+    groupActorId: ctx.groupActorId,
+    metadata: { status },
+  });
   return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
 });
 

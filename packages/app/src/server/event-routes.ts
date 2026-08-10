@@ -21,6 +21,7 @@ import {
   SlotFullError,
 } from '../domain/participation';
 import { GroupBlockedError } from '../domain/blocks';
+import { recordAudit } from '../domain/audit';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
@@ -437,6 +438,14 @@ events.post('/events/:id/duplicate', async (c) => {
 
   try {
     const { eventId } = await duplicateEvent(db, ctx.event.id, actorId);
+    await recordAudit(db, {
+      actorId,
+      action: 'event.duplicate',
+      targetType: 'event',
+      targetId: eventId,
+      groupActorId: ctx.event.groupActorId,
+      metadata: { sourceEventId: ctx.event.id },
+    });
     // 複製直後は下書き。編集画面へ誘導する
     return c.redirect(`/g/${ctx.handle}/events/${eventId}/edit`, 302);
   } catch {
@@ -622,6 +631,13 @@ events.post('/events/:id/publish', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   await publishEvent(db, ctx.event.id);
+  await recordAudit(db, {
+    actorId,
+    action: 'event.publish',
+    targetType: 'event',
+    targetId: ctx.event.id,
+    groupActorId: ctx.event.groupActorId,
+  });
   // フォロワーへの AP 告知は応答をブロックせず即時配信(失敗分は cron が再試行)
   deferWork(c, announceEventNow(db, ctx.event.id));
   return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);

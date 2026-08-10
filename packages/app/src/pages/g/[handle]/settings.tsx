@@ -55,6 +55,9 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
   const { listBlocks } = await import('../../../domain/blocks');
   const blocks = canMembers ? await listBlocks(db, actor.id) : [];
 
+  const { auditLabel, listGroupAudit } = await import('../../../domain/audit');
+  const auditRows = canMembers ? await listGroupAudit(db, actor.id, 50) : [];
+
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
   const blockError = url.searchParams.get('block_error');
@@ -67,6 +70,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
     ...(canMembers ? [{ id: 'members', label: 'メンバー' }] : []),
     ...(canMembers ? [{ id: 'blocks', label: '参加者ブロック' }] : []),
     ...(canSettings ? [{ id: 'roles', label: 'ロール' }] : []),
+    ...(canMembers ? [{ id: 'audit', label: '監査ログ' }] : []),
   ];
 
   return (
@@ -560,6 +564,49 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               </button>
             </form>
           </details>
+        </section>
+      )}
+
+      {/* ---- 監査ログ ---- */}
+      {canMembers && (
+        <section id="audit" className="mt-10 scroll-mt-4">
+          <h2 className="display border-b-2 border-ink pb-2 t-md">
+            監査ログ
+            <HelpTip text="このグループで行われた管理操作(メンバー・ロール・ブロック・イベント公開・支払いなど)の履歴です。直近50件を表示します。" />
+          </h2>
+          {auditRows.length > 0 ? (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-ink text-left">
+                    <th className="py-1.5 pr-3">日時</th>
+                    <th className="py-1.5 pr-3">操作</th>
+                    <th className="py-1.5 pr-3">操作者</th>
+                    <th className="py-1.5">対象</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditRows.map((r) => (
+                    <tr key={r.id} className="border-b border-rule align-top">
+                      <td className="meta-mono py-1.5 pr-3 whitespace-nowrap">
+                        {r.createdAt.toLocaleString('ja-JP')}
+                      </td>
+                      <td className="py-1.5 pr-3">{auditLabel(r.action)}</td>
+                      <td className="py-1.5 pr-3">
+                        {r.actorHandle ? `@${r.actorHandle}` : (r.actorName ?? 'システム')}
+                      </td>
+                      <td className="meta-mono py-1.5 text-neutral">
+                        {r.targetType ?? ''}
+                        {r.targetId ? ` ${r.targetId.slice(0, 8)}…` : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-neutral">まだ記録がありません。</p>
+          )}
         </section>
       )}
         </SectionNavLayout>
