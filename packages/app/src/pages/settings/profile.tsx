@@ -38,6 +38,7 @@ export default async function ProfileSettingsPage() {
 
   const { env } = await import('cloudflare:workers');
   const uploads = getUploadConfig(env);
+  const discordInvite = (env as Env).DISCORD_INVITE_URL ?? null;
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
@@ -373,8 +374,33 @@ export default async function ProfileSettingsPage() {
           </label>
           <p className="mt-1 text-sm text-neutral">
             Discord でログイン連携していると、Bot から DM が届きます。
-            Bot と共通のサーバーに参加していない場合は届きません(メールは届きます)。
           </p>
+          <div className="mt-2 border border-rule bg-paper-2 p-3 text-sm">
+            <p className="font-bold">DM を受け取るには</p>
+            <ol className="mt-1 list-inside list-decimal space-y-1 text-neutral">
+              <li>
+                Bot と<strong>同じ Discord サーバーに参加</strong>する
+                (Discord の仕様で Bot はフレンド登録できないため、共通のサーバーが必要です)
+                {discordInvite && (
+                  <>
+                    {' '}
+                    —{' '}
+                    <a href={discordInvite} className="link" target="_blank" rel="noreferrer">
+                      サーバーに参加する
+                    </a>
+                  </>
+                )}
+              </li>
+              <li>
+                Discord の<strong>プライバシー設定</strong>で
+                「サーバーにいるメンバーからのダイレクトメッセージを許可する」をオンにする
+                (サーバーごとの設定もあります)
+              </li>
+            </ol>
+            <p className="mt-2 text-neutral">
+              条件を満たさない場合でもメールでは届きます。
+            </p>
+          </div>
 
           <label className="mt-4 block">
             <span className="text-sm font-bold">Discord Webhook URL(任意)</span>

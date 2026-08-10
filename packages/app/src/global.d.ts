@@ -31,6 +31,12 @@ interface Env {
    * DM で通知を送る。Bot と共通のサーバーに居ないユーザーには届かない。
    */
   DISCORD_BOT_TOKEN?: string;
+  /**
+   * Bot と同じサーバーに参加してもらうための招待リンク(任意)。
+   * Discord は Bot をフレンド登録できないため、DM を受け取るには
+   * ユーザーと Bot が同じサーバーに居る必要がある。
+   */
+  DISCORD_INVITE_URL?: string;
   /** Stripe Connect(グループ口座での決済)。未設定なら Stripe 機能は無効 */
   STRIPE_SECRET_KEY?: string;
   STRIPE_CONNECT_CLIENT_ID?: string;
