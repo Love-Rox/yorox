@@ -26,7 +26,7 @@ import { recordAudit } from '../domain/audit';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
-import { parseHashtags } from '../lib/hashtags';
+import { parseHashtags, resolveHashtags } from '../lib/hashtags';
 import { buildEventOgSvg } from '../lib/ogp';
 import { renderOgPngResponse } from './og';
 import { saveImageUpload } from '../storage/driver';
@@ -342,11 +342,15 @@ events.get('/events/:id/ogp.svg', async (c) => {
     timeZone: event.timezone || 'Asia/Tokyo',
   });
   const venue = event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null);
+  const svgGroupRow = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, event.groupActorId),
+  });
   const svg = buildEventOgSvg({
     title: event.title,
     dateText: fmt.format(event.startsAt),
     groupName: group?.displayName ?? '',
     venue,
+    hashtags: resolveHashtags(event.hashtags, svgGroupRow?.hashtags),
   });
   return c.body(svg, 200, {
     'content-type': 'image/svg+xml; charset=utf-8',
@@ -375,11 +379,15 @@ events.get('/events/:id/ogp.png', async (c) => {
     timeStyle: 'short',
     timeZone: event.timezone || 'Asia/Tokyo',
   });
+  const groupRow = await db.query.groups.findFirst({
+    where: eq(schema.groups.actorId, event.groupActorId),
+  });
   const svg = buildEventOgSvg({
     title: event.title,
     dateText: fmt.format(event.startsAt),
     groupName: group?.displayName ?? '',
     venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
+    hashtags: resolveHashtags(event.hashtags, groupRow?.hashtags),
   });
 
   const cacheKey = `og-cache/${event.id}-${event.updatedAt.getTime()}.png`;

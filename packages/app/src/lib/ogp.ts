@@ -80,6 +80,8 @@ export interface EventOgInput {
   dateText: string;
   groupName: string;
   venue?: string | null;
+  /** カード下部に表示するハッシュタグ(# なし) */
+  hashtags?: string[] | null;
   siteName?: string;
 }
 
@@ -167,6 +169,16 @@ export function buildEventOgSvg(input: EventOgInput): string {
     ? `<text x="${pad}" y="${dateY + 50}" font-family="sans-serif" font-size="30" fill="${INK}" opacity="0.8">${escapeXml(input.venue)}</text>`
     : '';
 
+  // ハッシュタグはカード下部(フッター帯の上)に1行で。長すぎる分は省略
+  const tags = (input.hashtags ?? []).filter(Boolean);
+  const tagText = tags.map((t) => `#${t}`).join('  ');
+  const tagSize = 28;
+  const tagLine = tagText
+    ? `<text x="${pad}" y="${HEIGHT - 52}" font-family="sans-serif" font-size="${tagSize}" font-weight="700" fill="${ACCENT}">${escapeXml(
+        wrapText(tagText, tagSize, contentW, 1)[0] ?? '',
+      )}</text>`
+    : '';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <rect width="${WIDTH}" height="${HEIGHT}" fill="${PAPER}"/>
   <rect x="0" y="0" width="${WIDTH}" height="16" fill="${ACCENT}"/>
@@ -178,6 +190,7 @@ export function buildEventOgSvg(input: EventOgInput): string {
   <text font-family="sans-serif" font-size="${titleSize}" font-weight="700" fill="${INK}">${titleTspans}</text>
   <text x="${pad}" y="${dateY}" font-family="sans-serif" font-size="36" font-weight="700" fill="${ACCENT2}">${escapeXml(input.dateText)}</text>
   ${venueLine}
+  ${tagLine}
   <rect x="0" y="${HEIGHT - 14}" width="${WIDTH}" height="14" fill="${ACCENT2}"/>
 </svg>`;
 }

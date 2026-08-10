@@ -48,3 +48,27 @@ export function shareText(title: string, tags: string[]): string {
   const tagLine = formatHashtags(tags);
   return tagLine ? `${title} ${tagLine}` : title;
 }
+
+export interface AnnounceInput {
+  title: string;
+  dateText: string;
+  venue?: string | null;
+  groupName?: string | null;
+  url: string;
+  tags: string[];
+}
+
+/**
+ * SNS やチャットにそのまま貼れる告知文を組み立てる。
+ * 「タイトル / 日時 / 会場 / 主催 / URL / タグ」の順で、空の項目は省く。
+ */
+export function announceText(input: AnnounceInput): string {
+  const lines: string[] = [`📣 ${input.title}`, ''];
+  lines.push(`🗓 ${input.dateText}`);
+  if (input.venue) lines.push(`📍 ${input.venue}`);
+  if (input.groupName) lines.push(`👥 主催: ${input.groupName}`);
+  lines.push('', `▼ 詳細・申込はこちら`, input.url);
+  const tagLine = formatHashtags(input.tags);
+  if (tagLine) lines.push('', tagLine);
+  return lines.join('\n');
+}

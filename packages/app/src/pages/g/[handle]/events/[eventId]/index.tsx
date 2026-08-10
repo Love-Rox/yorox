@@ -10,10 +10,16 @@ import { Avatar } from '../../../../../components/avatar';
 import { ActorKindMark } from '../../../../../components/actor-kind';
 import { HelpTip } from '../../../../../components/help-tip';
 import { CopyLink } from '../../../../../components/copy-link';
+import { CopyText } from '../../../../../components/copy-text';
 import { ShareNative } from '../../../../../components/share-native';
 import { Menu } from '../../../../../components/menu';
 import { ServiceIcon } from '../../../../../components/service-icon';
-import { formatHashtags, resolveHashtags, shareText } from '../../../../../lib/hashtags';
+import {
+  announceText,
+  formatHashtags,
+  resolveHashtags,
+  shareText,
+} from '../../../../../lib/hashtags';
 import { googleCalendarUrl } from '../../../../../lib/ics';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
@@ -157,6 +163,14 @@ export default async function EventPage({
   // イベント側のタグが無ければグループ既定を使う
   const hashtags = resolveHashtags(event.hashtags, groupRow?.hashtags);
   const shareTextValue = shareText(event.title, hashtags);
+  const announceTemplate = announceText({
+    title: event.title,
+    dateText: FULL_FMT.format(event.startsAt),
+    venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
+    groupName: groupActor?.displayName ?? null,
+    url: shortUrl,
+    tags: hashtags,
+  });
   // 自ホスティング(/files/…)の相対 URL は OGP 用に絶対化する。
   // サムネイル未設定なら SVG で動的生成した OGP カードを使う
   const ogImage = event.thumbnailUrl
@@ -278,6 +292,38 @@ export default async function EventPage({
                 >
                   Bluesky に投稿
                 </a>
+                <a
+                  href={`https://social-plugins.line.me/lineit/share?${new URLSearchParams({
+                    url: shortUrl,
+                    text: shareTextValue,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  LINE で送る
+                </a>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?${new URLSearchParams({
+                    u: shortUrl,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  Facebook でシェア
+                </a>
+                <a
+                  href={`https://b.hatena.ne.jp/entry/panel/?${new URLSearchParams({
+                    url: shortUrl,
+                    title: event.title,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  はてなブックマーク
+                </a>
                 <ShareNative title={event.title} url={shortUrl} />
                 <div className="border-t border-rule px-3 py-2">
                   <p className="text-sm font-bold">短縮リンク</p>
@@ -289,6 +335,15 @@ export default async function EventPage({
                       {formatHashtags(hashtags)}
                     </p>
                   )}
+                </div>
+                <div className="border-t border-rule px-3 py-2">
+                  <p className="text-sm font-bold">告知文テンプレート</p>
+                  <p className="mt-1 text-sm text-neutral">
+                    そのままコピーして SNS やチャットに貼れます。
+                  </p>
+                  <div className="mt-2">
+                    <CopyText text={announceTemplate} label="告知文" />
+                  </div>
                 </div>
               </Menu>
             )}
