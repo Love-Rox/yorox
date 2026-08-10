@@ -73,6 +73,9 @@ export default async function HomePage() {
       {/* サービスの名称と目的(トップに明示) */}
       <section className="mb-10">
         <h1 className="display t-xl">Yorox</h1>
+        <p className="mt-2 text-neutral">
+          コミュニティのための、分散型イベント管理プラットフォーム
+        </p>
         <p className="mt-3 leading-relaxed text-neutral">
           <strong className="text-ink">Yorox</strong>{' '}
           は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
@@ -90,6 +93,26 @@ export default async function HomePage() {
             ガイド
           </Link>
           をご覧ください。
+        </p>
+        {/*
+          英語の要約。日本語だけだと目的が伝わらない読み手(海外からの利用者や
+          OAuth 審査の担当者)に向けて、名称と目的・Google ログインの用途を示す。
+        */}
+        <p lang="en" className="mt-4 border-t border-rule pt-3 text-sm leading-relaxed text-neutral">
+          <strong className="text-ink">Yorox</strong> is a decentralized event management
+          platform for communities. Organizers can publish events, manage registration
+          (first-come, lottery, and waitlist promotion), collect payments, and check
+          attendees in with a QR code. Sign-in with Google is used only to authenticate
+          you and create your Yorox account — we never access your Gmail, Calendar, or
+          Drive. See our{' '}
+          <Link to="/legal/privacy" className="link">
+            Privacy Policy
+          </Link>{' '}
+          and{' '}
+          <Link to="/legal/terms" className="link">
+            Terms of Service
+          </Link>
+          .
         </p>
       </section>
 
