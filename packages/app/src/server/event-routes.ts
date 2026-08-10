@@ -1006,7 +1006,9 @@ events.post('/slots/:id/join', async (c) => {
 
   const eventUrl = `/g/${groupActor.handle}/events/${event.id}`;
   try {
-    await joinSlot(db, { slotId: slot.id, actorId }, await buildJoinDeps());
+    const joinForm = await c.req.parseBody();
+    const fallbackSlotId = str(joinForm.fallback_slot_id) || undefined;
+    await joinSlot(db, { slotId: slot.id, actorId, fallbackSlotId }, await buildJoinDeps());
     return c.redirect(eventUrl, 302);
   } catch (err) {
     if (err instanceof SlotFullError) return c.redirect(`${eventUrl}?error=full`, 302);

@@ -9,6 +9,7 @@ import { createDb, schema, type Db } from '../db/client';
 import { publishEvent } from '../domain/event-service';
 import { emitDomainEvent } from '../domain/events';
 import { notifyLocalFollowersOfPublish } from '../domain/follow';
+import { buildJoinDeps } from './join-deps';
 import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
@@ -67,7 +68,7 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
 
   for (const slot of dueSlots) {
     try {
-      const result = await runLottery(db, slot.id, now);
+      const result = await runLottery(db, slot.id, now, await buildJoinDeps());
       console.log(`[scheduled] lottery slot=${slot.id}`, result);
     } catch (err) {
       console.error(`[scheduled] lottery slot=${slot.id} failed:`, err);

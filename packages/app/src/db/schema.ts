@@ -746,6 +746,11 @@ export const participations = sqliteTable(
     hiddenFromList: integer('hidden_from_list', { mode: 'boolean' })
       .notNull()
       .default(false),
+    /**
+     * 抽選落選時の第2希望の枠(同一イベント内)。落選したら補欠に残らず
+     * この枠へ自動で申し込む。null = 通常どおり補欠/落選
+     */
+    fallbackSlotId: text('fallback_slot_id'),
     appliedAt: integer('applied_at', { mode: 'timestamp_ms' }).notNull(),
     decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
     cancelledAt: integer('cancelled_at', { mode: 'timestamp_ms' }),

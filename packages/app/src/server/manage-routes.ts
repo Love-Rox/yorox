@@ -17,6 +17,7 @@ import { recordAudit } from '../domain/audit';
 import { ulid } from '../lib/ulid';
 import type { Permission } from '../domain/permissions';
 import { getSessionActorId, hasEventPermission } from './route-auth';
+import { buildJoinDeps } from './join-deps';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -94,7 +95,7 @@ manage.post('/slots/:id/lottery/run', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   try {
-    await runLottery(db, slot.id);
+    await runLottery(db, slot.id, new Date(), await buildJoinDeps());
     await recordAudit(db, {
       actorId,
       action: 'lottery.run',

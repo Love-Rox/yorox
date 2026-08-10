@@ -129,7 +129,7 @@ async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo>
  */
 export async function joinSlot(
   db: Db,
-  input: { slotId: string; actorId: string; now?: Date },
+  input: { slotId: string; actorId: string; fallbackSlotId?: string | undefined; now?: Date },
   deps: { slotCoordinator?: SlotCoordinatorLike; discordBotToken?: string } = {},
 ): Promise<{ participationId: string; status: 'accepted' | 'waitlisted' | 'applied' }> {
   const now = input.now ?? new Date();
@@ -143,6 +143,21 @@ export async function joinSlot(
   // グループのブロック対象は申込を受け付けない
   if (event && (await isActorBlocked(db, event.groupActorId, input.actorId))) {
     throw new GroupBlockedError();
+  }
+
+  // 第2希望(抽選落選時の自動エントリー先)は同一イベント内の別の枠のみ
+  let fallbackSlotId: string | null = null;
+  if (input.fallbackSlotId && slot.method === 'lottery') {
+    if (input.fallbackSlotId === input.slotId) {
+      throw new Error('第2希望に同じ枠は指定できません');
+    }
+    const fallback = await db.query.slots.findFirst({
+      where: eq(schema.slots.id, input.fallbackSlotId),
+    });
+    if (!fallback || fallback.eventId !== slot.eventId) {
+      throw new Error('第2希望の枠が見つかりません');
+    }
+    fallbackSlotId = fallback.id;
   }
 
   const applicant = await getApplicantInfo(db, input.actorId);
@@ -203,6 +218,7 @@ export async function joinSlot(
       slotId: input.slotId,
       actorId: input.actorId,
       status,
+      fallbackSlotId,
       appliedAt: now,
     });
     await emitDomainEvent(
@@ -221,17 +237,26 @@ export async function joinSlot(
   // ただし合計定員があるイベントは枠をまたいだ判定が要るため、DO(枠単位の
   // 直列化)では守れない。D1 の条件付き INSERT(単一書き込み)経路に落とす
   if (deps.slotCoordinator && event?.totalCapacity == null) {
-    const result = await deps.slotCoordinator.acceptJoin({
-      participationId,
-      slotId: input.slotId,
-      actorId: input.actorId,
-      capacity: slot.capacity,
-      waitlistModel: slot.waitlistModel,
-      waitlistCapacity: slot.waitlistCapacity,
-      appliedAtMs: now.getTime(),
-      confirmStatus: target,
-    });
+    let result: AcceptJoinResult | null = null;
+    try {
+      result = await deps.slotCoordinator.acceptJoin({
+        participationId,
+        slotId: input.slotId,
+        actorId: input.actorId,
+        capacity: slot.capacity,
+        waitlistModel: slot.waitlistModel,
+        waitlistCapacity: slot.waitlistCapacity,
+        appliedAtMs: now.getTime(),
+        confirmStatus: target,
+      });
+    } catch (err) {
+      // DO が落ちていても申込を止めない。下の D1 条件付き INSERT(それ自体が
+      // 原子的)へフォールバックする
+      console.error('[join] slot-coordinator unavailable, falling back to D1:', err);
+      result = null;
+    }
     if (result === 'full') throw new SlotFullError();
+    if (result !== null) {
     const status = result === 'accepted' ? target : 'waitlisted';
     if (status !== 'waitlisted') await ensurePayment(db, participationId, slot, now);
     await emitDomainEvent(
@@ -245,6 +270,7 @@ export async function joinSlot(
       now,
     );
     return { participationId, status: status === 'waitlisted' ? 'waitlisted' : 'accepted' };
+    }
   }
 
   // フォールバック: 単一ステートメントの条件付き INSERT で定員を原子的に守る
@@ -587,6 +613,7 @@ export async function runLottery(
   db: Db,
   slotId: string,
   now: Date = new Date(),
+  deps: { slotCoordinator?: SlotCoordinatorLike; discordBotToken?: string } = {},
 ): Promise<{ accepted: number; waitlisted: number; rejected: number }> {
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
   if (!slot) throw new Error(`slot not found: ${slotId}`);
@@ -684,6 +711,45 @@ export async function runLottery(
         now,
       );
       acceptedCount++;
+    } else if (p.fallbackSlotId) {
+      // 第2希望あり: 補欠に残らず、選んでおいた枠へ自動エントリーする。
+      // まず落選として記録してから申し込む(slotId+actorId 一意のため順序が重要)
+      await db
+        .update(schema.participations)
+        .set({ status: 'rejected', decidedAt: now })
+        .where(eq(schema.participations.id, p.id));
+      try {
+        await joinSlot(
+          db,
+          { slotId: p.fallbackSlotId, actorId: p.actorId, now },
+          deps,
+        );
+        // 結果(確定/補欠/抽選待ち)の通知は joinSlot が発行する
+        rejectedCount++;
+      } catch (err) {
+        // 第2希望が満席・条件不一致・申込済みなどで入れなかったときは、
+        // 第2希望なしの場合と同じ扱い(補欠 or 落選)に戻す
+        console.error(`[lottery] fallback join failed (participation=${p.id}):`, err);
+        if (waitlistedCount < waitlistLimit) {
+          await db
+            .update(schema.participations)
+            .set({ status: 'waitlisted', decidedAt: now })
+            .where(eq(schema.participations.id, p.id));
+          await emitDomainEvent(db, 'participation.waitlisted', {
+            participationId: p.id,
+            slotId,
+            actorId: p.actorId,
+          }, now);
+          waitlistedCount++;
+        } else {
+          await emitDomainEvent(db, 'participation.rejected', {
+            participationId: p.id,
+            slotId,
+            actorId: p.actorId,
+          }, now);
+          rejectedCount++;
+        }
+      }
     } else if (waitlistedCount < waitlistLimit) {
       // 落選 → 補欠(connpass モデルは無制限、separate は定員まで)
       await db

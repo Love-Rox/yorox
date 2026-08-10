@@ -1,0 +1,1 @@
+ALTER TABLE `participations` ADD `fallback_slot_id` text;

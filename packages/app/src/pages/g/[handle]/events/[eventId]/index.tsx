@@ -748,6 +748,29 @@ export default async function EventPage({
                             </div>
                           ) : user ? (
                             <form method="post" action={`/slots/${slot.id}/join`}>
+                              {/* 抽選枠で他に枠があるときだけ第2希望を選べる */}
+                              {slot.method === 'lottery' && slots.length > 1 && (
+                                <label className="mb-2 block">
+                                  <span className="text-sm text-neutral">
+                                    落選した場合
+                                    <HelpTip text="第2希望を選ぶと、抽選に落ちたとき補欠には残らず、選んだ枠へ自動で申し込みます(先着なら空きがあれば即確定)。「補欠として待つ」ならこの枠の繰上を待ちます。" />
+                                  </span>
+                                  <select
+                                    name="fallback_slot_id"
+                                    className="input mt-1 text-sm"
+                                    defaultValue=""
+                                  >
+                                    <option value="">この枠の補欠として待つ</option>
+                                    {slots
+                                      .filter((s) => s.id !== slot.id)
+                                      .map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                          第2希望: {s.name}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </label>
+                              )}
                               <button type="submit" className="btn w-full cursor-pointer">
                                 申し込む
                               </button>
