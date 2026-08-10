@@ -312,12 +312,24 @@ export function ManageParticipants({
                           </span>
                         )}
                         {canAttendance && p.paymentId && p.paymentStatus === 'pending' && (
-                          <form method="post" action={`/payments/${p.paymentId}/mark`}>
-                            <input type="hidden" name="status" value="paid" />
-                            <button type="submit" className="btn-quiet cursor-pointer text-sm">
-                              支払済みにする
-                            </button>
-                          </form>
+                          <span className="flex flex-wrap gap-2">
+                            <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                              <input type="hidden" name="status" value="paid" />
+                              <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                                支払済みにする
+                              </button>
+                            </form>
+                            {/* 招待者・登壇者など、支払いを求めない参加者用 */}
+                            <form method="post" action={`/payments/${p.paymentId}/mark`}>
+                              <input type="hidden" name="status" value="waived" />
+                              <button
+                                type="submit"
+                                className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                              >
+                                免除にする
+                              </button>
+                            </form>
+                          </span>
                         )}
                         {canAttendance &&
                           p.paymentId &&

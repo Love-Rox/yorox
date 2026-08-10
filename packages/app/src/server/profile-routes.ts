@@ -13,7 +13,9 @@ import { isDiscordWebhookUrl, sendDiscordDm, sendDiscordWebhook } from '../lib/d
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
+import { confirmEmailChange, requestEmailChange } from '../auth/email-change';
 import { clearSessionCookieHeader } from '../auth/session';
+import { createDirectSender } from '../mail/send';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
 import { claimBluesky, claimByRelMe, generateClaimCode, unlinkRemoteAlias } from './claim';
 import { isSecureRequest } from './http';
@@ -164,6 +166,71 @@ profile.post('/profile/delete', async (c) => {
   // セッション cookie を破棄してトップへ
   c.header('set-cookie', clearSessionCookieHeader(await isSecureRequest(c)));
   return c.redirect('/?goodbye=1', 302);
+});
+
+/** メールアドレス変更の確認ページ(GET でトークンを消費しないための緩衝) */
+function confirmEmailChangePage(token: string): string {
+  const safe = token.replace(/[^A-Za-z0-9_-]/g, '');
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>メールアドレスの変更 - Yorox</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4efde;color:#1b2240;font-family:system-ui,sans-serif;padding:2rem}
+@media(prefers-color-scheme:dark){body{background:#12162b;color:#efe9d6}}
+.card{text-align:center;max-width:22rem}button{margin-top:1rem;padding:.7rem 2rem;font-weight:700;font-size:1rem;cursor:pointer;background:#1b2240;color:#f4efde;border:none}
+p{font-size:.9rem;opacity:.75}</style></head>
+<body><form class="card" method="post" action="/profile/email/confirm">
+<input type="hidden" name="token" value="${safe}">
+<h1>メールアドレスの変更</h1>
+<p>下のボタンを押すと、ログイン用メールアドレスがこのメールの届いたアドレスに変わります。</p>
+<button type="submit">変更を確定する</button>
+</form></body></html>`;
+}
+
+/** メールアドレスの変更申請(新アドレスへ確認リンクを送る) */
+profile.post('/profile/email/change', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const form = await c.req.parseBody();
+  const result = await requestEmailChange(db, createDirectSender(env), {
+    actorId,
+    newEmail: str(form.new_email),
+    origin: new URL(c.req.url).origin,
+  });
+  if (!result.ok) {
+    const message =
+      result.reason === 'taken'
+        ? 'そのメールアドレスは既に使われています'
+        : result.reason === 'same'
+          ? '現在のメールアドレスと同じです'
+          : 'メールアドレスの形式を確認してください';
+    return c.redirect(`/settings/profile?email_error=${encodeURIComponent(message)}#oauth`, 302);
+  }
+  return c.redirect('/settings/profile?email_sent=1#oauth', 302);
+});
+
+/** メールアドレス変更の確認(メール内リンク) */
+profile.get('/profile/email/confirm', async (c) => {
+  const token = c.req.query('token');
+  if (!token) return c.redirect('/settings/profile?email_error=invalid#oauth', 302);
+  return c.html(confirmEmailChangePage(token));
+});
+
+profile.post('/profile/email/confirm', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const form = await c.req.parseBody();
+  const token = typeof form.token === 'string' ? form.token : '';
+  const applied = token ? await confirmEmailChange(db, token) : null;
+  if (!applied) {
+    return c.redirect(
+      `/settings/profile?email_error=${encodeURIComponent('リンクが無効か期限切れです。もう一度お試しください')}#oauth`,
+      302,
+    );
+  }
+  return c.redirect('/settings/profile?email_changed=1#oauth', 302);
 });
 
 /** お知らせ受け取り設定 */

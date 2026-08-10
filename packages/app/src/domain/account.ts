@@ -272,6 +272,9 @@ export async function deleteAccount(
 
   // 2. 認証・連絡先の物理削除
   await db.delete(schema.authSessions).where(eq(schema.authSessions.userActorId, userActorId));
+  await db
+    .delete(schema.emailChangeTokens)
+    .where(eq(schema.emailChangeTokens.userActorId, userActorId));
   await db.delete(schema.passkeys).where(eq(schema.passkeys.userActorId, userActorId));
   await db.delete(schema.oauthAccounts).where(eq(schema.oauthAccounts.userActorId, userActorId));
   const user = await db.query.users.findFirst({

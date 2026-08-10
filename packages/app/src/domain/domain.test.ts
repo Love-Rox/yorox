@@ -4,6 +4,7 @@ import { resolveRequiredGuildId } from './discord-condition';
 import { isDiscordSnowflake } from '../lib/discord';
 import { describeSlotConditions } from '../components/slot-conditions';
 import { SlotEditBlockedError } from './event-service';
+import { looksLikeEmail } from '../auth/email-change';
 import { attendanceWeight, drawRandom, drawWeighted } from './lottery';
 import { hasAllPermissions, PRESET_ROLES } from './permissions';
 import { validateHandle } from './groups';
@@ -247,5 +248,19 @@ describe('抽選枠の抽選日時', () => {
     expect(err.name).toBe('SlotEditBlockedError');
     expect(err.message).toBe('抽選枠には抽選日時が必要です。');
     expect(err instanceof Error).toBe(true);
+  });
+});
+
+describe('looksLikeEmail', () => {
+  it('通常のアドレスを受け付ける', () => {
+    expect(looksLikeEmail('a@example.com')).toBe(true);
+    expect(looksLikeEmail('a+tag@sub.example.co.jp')).toBe(true);
+  });
+
+  it('形式外・過長を弾く', () => {
+    expect(looksLikeEmail('')).toBe(false);
+    expect(looksLikeEmail('a@b')).toBe(false); // TLD なし
+    expect(looksLikeEmail('a b@example.com')).toBe(false);
+    expect(looksLikeEmail(`${'a'.repeat(250)}@example.com`)).toBe(false);
   });
 });

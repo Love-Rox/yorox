@@ -265,6 +265,28 @@ export const loginTokens = sqliteTable(
   (t) => [uniqueIndex('login_tokens_token_hash_unique').on(t.tokenHash)],
 );
 
+/**
+ * メールアドレス変更の確認トークン。
+ * 新しいアドレス宛のリンクを踏んだときだけ変更を適用する
+ * (打ち間違い・他人のアドレスへの変更を防ぐ)。
+ */
+export const emailChangeTokens = sqliteTable(
+  'email_change_tokens',
+  {
+    id: text('id').primaryKey(),
+    /** トークンの SHA-256(hex) */
+    tokenHash: text('token_hash').notNull(),
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => users.actorId),
+    newEmail: text('new_email').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [uniqueIndex('email_change_tokens_token_hash_unique').on(t.tokenHash)],
+);
+
 /** パスキー(WebAuthn クレデンシャル)。1ユーザーが複数登録できる */
 export const passkeys = sqliteTable(
   'passkeys',

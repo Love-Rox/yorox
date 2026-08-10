@@ -51,6 +51,9 @@ export default async function ProfileSettingsPage() {
   const discordTest = url.searchParams.get('discord_test');
   const calSaved = url.searchParams.get('cal_saved');
   const oauthOk = url.searchParams.get('oauth_ok');
+  const emailSent = url.searchParams.get('email_sent');
+  const emailChanged = url.searchParams.get('email_changed');
+  const emailError = url.searchParams.get('email_error');
   const oauthError = url.searchParams.get('oauth_error');
   const aliases = await listClaimedAliases(db, user.actorId);
   const account = await db.query.users.findFirst({
@@ -195,6 +198,51 @@ export default async function ProfileSettingsPage() {
         <p className="mt-3 text-sm">
           メール({account?.email})でのログイン: <strong>常に有効</strong>
         </p>
+
+        {emailSent && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            新しいアドレスへ確認メールを送りました。メール内のリンクを開くと変更が確定します
+            (30分間有効)。
+          </p>
+        )}
+        {emailChanged && (
+          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            メールアドレスを変更しました。
+          </p>
+        )}
+        {emailError && (
+          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+            {decodeURIComponent(emailError)}
+          </p>
+        )}
+        <details className="mt-2">
+          <summary className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink">
+            メールアドレスを変更する
+          </summary>
+          <form
+            method="post"
+            action="/profile/email/change"
+            className="mt-2 flex flex-wrap items-end gap-3 border border-rule p-4"
+          >
+            <label className="block min-w-64 grow">
+              <span className="text-sm font-bold">新しいメールアドレス</span>
+              <input
+                type="email"
+                name="new_email"
+                required
+                className="input meta-mono mt-1"
+                placeholder="new@example.com"
+              />
+            </label>
+            <button type="submit" className="btn-quiet cursor-pointer text-sm">
+              確認メールを送る
+            </button>
+            <span className="w-full text-sm text-neutral">
+              新しいアドレスに届く確認リンクを開くまで、変更は適用されません。
+              現在のアドレスにも申請があった旨をお知らせします
+            </span>
+          </form>
+        </details>
 
         <div className="mt-4 border-t border-rule pt-4">
           <h3 className="text-sm font-bold">パスキー</h3>

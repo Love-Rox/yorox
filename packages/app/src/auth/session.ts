@@ -54,6 +54,7 @@ export async function destroySession(db: Db, token: string | undefined): Promise
 export async function purgeExpiredSessions(db: Db, now: Date = new Date()): Promise<void> {
   await db.delete(schema.authSessions).where(lt(schema.authSessions.expiresAt, now));
   await db.delete(schema.loginTokens).where(lt(schema.loginTokens.expiresAt, now));
+  await db.delete(schema.emailChangeTokens).where(lt(schema.emailChangeTokens.expiresAt, now));
 }
 
 export function sessionCookieHeader(token: string, expiresAt: Date, secure: boolean): string {

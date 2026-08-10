@@ -17,6 +17,95 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { Avatar } from '../../../../../components/avatar';
 import { schema } from '../../../../../db/client';
 
+const SESSION_TIME_FMT = new Intl.DateTimeFormat('ja-JP', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Asia/Tokyo',
+});
+
+/** Date → datetime-local 値(JST)。MVP は Asia/Tokyo 固定 */
+function toLocalInput(d: Date | null): string | undefined {
+  if (!d) return undefined;
+  return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
+/**
+ * セッションフォームの入力欄(追加・編集で共有)。
+ * 項目がずれると編集した瞬間に値が消えるため一箇所にまとめる。
+ */
+function SessionFormFields({
+  session,
+}: {
+  session?: typeof schema.eventSessions.$inferSelect | undefined;
+}) {
+  return (
+    <>
+      <label className="block">
+        <span className="text-sm font-bold">タイトル *</span>
+        <input
+          type="text"
+          name="title"
+          required
+          maxLength={200}
+          defaultValue={session?.title}
+          className="input mt-1"
+        />
+      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-bold">登壇者名</span>
+          <input
+            type="text"
+            name="speaker_name"
+            maxLength={100}
+            defaultValue={session?.speakerName ?? undefined}
+            className="input mt-1"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-bold">登壇者リンク(SNS・サイト)</span>
+          <input
+            type="url"
+            name="speaker_url"
+            defaultValue={session?.speakerUrl ?? undefined}
+            className="input meta-mono mt-1"
+            placeholder="https://x.com/…"
+          />
+        </label>
+      </div>
+      <label className="block">
+        <span className="text-sm font-bold">概要</span>
+        <textarea
+          name="description_md"
+          rows={3}
+          defaultValue={session?.descriptionMd ?? undefined}
+          className="input mt-1"
+        />
+      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-bold">開始時刻</span>
+          <input
+            type="datetime-local"
+            name="starts_at"
+            defaultValue={toLocalInput(session?.startsAt ?? null)}
+            className="input meta-mono mt-1"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-bold">終了時刻</span>
+          <input
+            type="datetime-local"
+            name="ends_at"
+            defaultValue={toLocalInput(session?.endsAt ?? null)}
+            className="input meta-mono mt-1"
+          />
+        </label>
+      </div>
+    </>
+  );
+}
+
 export default async function ManagePage({
   handle,
   eventId,
@@ -308,39 +397,44 @@ export default async function ManagePage({
           {sessions.length > 0 && (
             <ul className="mt-2">
               {sessions.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 border-b border-rule py-3"
-                >
-                  <div className="min-w-0">
-                    {s.startsAt && (
-                      <span className="meta-mono mr-2 text-sm text-neutral">
-                        {new Intl.DateTimeFormat('ja-JP', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Asia/Tokyo',
-                        }).format(s.startsAt)}
-                        {s.endsAt &&
-                          `–${new Intl.DateTimeFormat('ja-JP', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'Asia/Tokyo',
-                          }).format(s.endsAt)}`}
-                      </span>
-                    )}
-                    <span className="font-bold">{s.title}</span>
-                    {s.speakerName && (
-                      <span className="ml-2 text-sm text-neutral">{s.speakerName}</span>
-                    )}
+                <li key={s.id} className="border-b border-rule py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      {s.startsAt && (
+                        <span className="meta-mono mr-2 text-sm text-neutral">
+                          {SESSION_TIME_FMT.format(s.startsAt)}
+                          {s.endsAt && `–${SESSION_TIME_FMT.format(s.endsAt)}`}
+                        </span>
+                      )}
+                      <span className="font-bold">{s.title}</span>
+                      {s.speakerName && (
+                        <span className="ml-2 text-sm text-neutral">{s.speakerName}</span>
+                      )}
+                    </div>
+                    <form method="post" action={`/sessions/${s.id}/delete`}>
+                      <button
+                        type="submit"
+                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                      >
+                        削除
+                      </button>
+                    </form>
                   </div>
-                  <form method="post" action={`/sessions/${s.id}/delete`}>
-                    <button
-                      type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                  <details className="mt-1">
+                    <summary className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink">
+                      編集
+                    </summary>
+                    <form
+                      method="post"
+                      action={`/sessions/${s.id}/update`}
+                      className="mt-2 space-y-4 border border-rule p-4"
                     >
-                      削除
-                    </button>
-                  </form>
+                      <SessionFormFields session={s} />
+                      <button type="submit" className="btn cursor-pointer">
+                        保存
+                      </button>
+                    </form>
+                  </details>
                 </li>
               ))}
             </ul>
@@ -352,39 +446,7 @@ export default async function ManagePage({
               action={`/events/${event.id}/sessions`}
               className="space-y-4 border-t-2 border-ink p-4"
             >
-              <label className="block">
-                <span className="text-sm font-bold">タイトル *</span>
-                <input type="text" name="title" required maxLength={200} className="input mt-1" />
-              </label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-bold">登壇者名</span>
-                  <input type="text" name="speaker_name" maxLength={100} className="input mt-1" />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold">登壇者リンク(SNS・サイト)</span>
-                  <input
-                    type="url"
-                    name="speaker_url"
-                    className="input meta-mono mt-1"
-                    placeholder="https://x.com/…"
-                  />
-                </label>
-              </div>
-              <label className="block">
-                <span className="text-sm font-bold">概要</span>
-                <textarea name="description_md" rows={3} className="input mt-1" />
-              </label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-bold">開始時刻</span>
-                  <input type="datetime-local" name="starts_at" className="input meta-mono mt-1" />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold">終了時刻</span>
-                  <input type="datetime-local" name="ends_at" className="input meta-mono mt-1" />
-                </label>
-              </div>
+              <SessionFormFields />
               <button type="submit" className="btn cursor-pointer">
                 追加
               </button>

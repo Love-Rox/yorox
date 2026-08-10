@@ -335,6 +335,39 @@ manage.post('/events/:id/sessions', async (c) => {
   return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
 });
 
+/** セッション更新(追加フォームと同じ項目。誤字を直すために削除→再作成させない) */
+manage.post('/sessions/:id/update', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const session = await db.query.eventSessions.findFirst({
+    where: eq(schema.eventSessions.id, c.req.param('id')),
+  });
+  if (!session) return c.notFound();
+  const ctx = await authorizeForEvent(db, session.eventId, actorId, 'event.edit');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const title = str(form.title);
+  if (!title) {
+    return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage?error=session_invalid`, 302);
+  }
+  await db
+    .update(schema.eventSessions)
+    .set({
+      title,
+      descriptionMd: str(form.description_md) || null,
+      speakerName: str(form.speaker_name) || null,
+      speakerUrl: /^https?:\/\//.test(str(form.speaker_url)) ? str(form.speaker_url) : null,
+      startsAt: parseLocalDateTime(form.starts_at) ?? null,
+      endsAt: parseLocalDateTime(form.ends_at) ?? null,
+    })
+    .where(eq(schema.eventSessions.id, session.id));
+  return c.redirect(`/g/${ctx.handle}/events/${ctx.eventId}/manage`, 302);
+});
+
 /** セッション削除 */
 manage.post('/sessions/:id/delete', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
