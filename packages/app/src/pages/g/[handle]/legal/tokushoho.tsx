@@ -13,7 +13,7 @@ export default async function GroupTokushohoPage({ handle }: { handle: string })
   if (!t) {
     // 未設定なら共通(プラットフォーム)表記へ誘導
     return (
-      <article className="max-w-[70ch]">
+      <article>
         <title>特定商取引法に基づく表記 - Yorox</title>
         <h1 className="display t-xl">特定商取引法に基づく表記</h1>
         <p className="mt-4 text-neutral">
@@ -29,7 +29,7 @@ export default async function GroupTokushohoPage({ handle }: { handle: string })
   }
 
   return (
-    <article className="max-w-[70ch]">
+    <article>
       <title>{`特定商取引法に基づく表記 - ${actor.displayName}`}</title>
       <p className="text-sm">
         <Link to={`/g/${handle}`} className="link">

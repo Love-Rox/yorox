@@ -9,7 +9,7 @@ import {
 export default async function TermsPage() {
   const info = await instanceInfo();
   return (
-    <article className="max-w-[70ch]">
+    <article>
       <title>利用規約 - Yorox</title>
       <h1 className="display t-xl">利用規約</h1>
       <LegalNav />

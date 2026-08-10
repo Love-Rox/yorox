@@ -43,7 +43,7 @@ export default async function HomePage() {
       {/* サービスの名称と目的(トップに明示) */}
       <section className="mb-10">
         <h1 className="display t-xl">Yorox</h1>
-        <p className="mt-3 max-w-[62ch] leading-relaxed text-neutral">
+        <p className="mt-3 leading-relaxed text-neutral">
           <strong className="text-ink">Yorox</strong>{' '}
           は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
           分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき、

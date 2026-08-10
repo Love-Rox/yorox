@@ -9,7 +9,7 @@ import {
 export default async function PrivacyPage() {
   const info = await instanceInfo();
   return (
-    <article className="max-w-[70ch]">
+    <article>
       <title>プライバシーポリシー - Yorox</title>
       <h1 className="display t-xl">プライバシーポリシー</h1>
       <LegalNav />

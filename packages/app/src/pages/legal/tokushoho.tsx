@@ -30,7 +30,7 @@ export default async function TokushohoPage() {
     ],
   ];
   return (
-    <article className="max-w-[70ch]">
+    <article>
       <title>特定商取引法に基づく表記 - Yorox</title>
       <h1 className="display t-xl">特定商取引法に基づく表記</h1>
       <LegalNav />
