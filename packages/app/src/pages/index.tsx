@@ -43,6 +43,32 @@ export default async function HomePage() {
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       <meta name="twitter:card" content="summary_large_image" />
+      {/*
+        構造化データ。アプリ名と目的を機械可読で示す。
+        Google OAuth のブランディング審査は「同意画面のアプリ名がホームページに
+        掲載されているか」を見るため、見出し・title に加えてここでも名乗る。
+      */}
+      {/* 値はすべてこのファイル内の定数。念のため < をエスケープして </script> 混入を防ぐ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'Yorox',
+            alternateName: 'Yorox — 分散型イベント管理プラットフォーム',
+            url: 'https://yorox.love-rox.cc/',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            inLanguage: 'ja',
+            description:
+              'Yorox は、コミュニティが中央のサービスに頼らず自分たちで運営できる分散型のイベント管理プラットフォームです。イベントの告知・参加申込(先着 / 抽選 / 補欠の繰上)・有料イベントの決済・当日の QR チェックインまでを一つで行えます。',
+            publisher: { '@type': 'Organization', name: 'Rox Developer' },
+            privacyPolicy: 'https://yorox.love-rox.cc/legal/privacy',
+            termsOfService: 'https://yorox.love-rox.cc/legal/terms',
+          }).replaceAll('<', '\\u003c'),
+        }}
+      />
 
       {/* サービスの名称と目的(トップに明示) */}
       <section className="mb-10">
