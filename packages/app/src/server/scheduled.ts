@@ -8,6 +8,7 @@ import { purgeExpiredSessions } from '../auth/session';
 import { createDb, schema, type Db } from '../db/client';
 import { publishEvent } from '../domain/event-service';
 import { emitDomainEvent } from '../domain/events';
+import { notifyLocalFollowersOfPublish } from '../domain/follow';
 import { runLottery } from '../domain/participation';
 import { DEFAULT_RATE_LIMITS, processMailQueue, type RateLimits } from '../mail/queue';
 import { createTransportFromEnv } from '../mail/transport';
@@ -149,6 +150,8 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
       if (!eventId) return;
       const queued = await enqueueEventAnnouncement(hookDb, eventId);
       if (queued > 0) console.log(`[scheduled] queued ${queued} AP delivery(ies) for ${eventId}`);
+      const notified = await notifyLocalFollowersOfPublish(hookDb, eventId);
+      if (notified > 0) console.log(`[scheduled] queued ${notified} follower notification(s) for ${eventId}`);
     },
   },
   // 通知本文にイベント名・日時・URL を載せるために origin が要る

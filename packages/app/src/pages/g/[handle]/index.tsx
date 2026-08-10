@@ -4,6 +4,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { Avatar } from '../../../components/avatar';
+import { FollowButton } from '../../../components/follow-button';
 import { ServiceIcon, serviceLinkLabel } from '../../../components/service-icon';
 import { ActorKindBadge } from '../../../components/actor-kind';
 import { Markdown } from '../../../lib/markdown';
@@ -41,6 +42,8 @@ export default async function GroupPage({ handle }: { handle: string }) {
   const events = await listGroupEvents(db, actor.id, { includeDrafts: canCreate });
   const organizers = await listOrganizers(db, actor.id);
   const followerCount = await countFollowers(db, actor.id);
+  const { isFollowing } = await import('../../../domain/follow');
+  const following = user ? await isFollowing(db, user.actorId, actor.id) : false;
   const posts = await listGroupPosts(db, actor.id);
 
   return (
@@ -88,6 +91,13 @@ export default async function GroupPage({ handle }: { handle: string }) {
           )}
         </div>
         <span className="flex gap-3">
+          {user && (
+            <FollowButton
+              targetActorId={actor.id}
+              following={following}
+              backPath={`/g/${handle}`}
+            />
+          )}
           {canSettings && (
             <Link to={`/g/${handle}/settings`} className="btn-quiet">
               設定

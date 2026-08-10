@@ -72,6 +72,12 @@ export const Header = async () => {
                   </a>
                 )}
                 <a
+                  href="/timeline"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  タイムライン
+                </a>
+                <a
                   href="/settings/profile"
                   className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
                 >

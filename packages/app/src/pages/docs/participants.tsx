@@ -56,6 +56,21 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">フォローとタイムライン</h2>
+        <p className="mt-3">
+          ユーザーやグループのページにある「フォロー」ボタンを押すと、ヘッダの
+          メニューにある<strong>タイムライン</strong>に、その相手の公開活動
+          (新しいイベントの公開・グループのお知らせ・公開の参加予定)が新しい順に
+          並びます。フォローされた人には通知が届き、フォロー中のグループが
+          イベントを公開したときにもお知らせが届きます。
+        </p>
+        <p className="mt-3 text-sm text-neutral">
+          タイムラインに流れるのは公開情報だけです。参加者一覧を非公開にした
+          イベントへの参加や、あなたが一覧から自分を隠した参加は表示されません。
+        </p>
+      </section>
+
+      <section className="mt-8">
         <h2 className="display border-b-2 border-ink pb-2 t-md">参加費のあるイベント</h2>
         <p className="mt-3">
           有料イベントでは枠に金額と支払方法(現地払い / 事前決済)が表示されます。

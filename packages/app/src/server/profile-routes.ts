@@ -14,6 +14,7 @@ import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
 import { confirmEmailChange, requestEmailChange } from '../auth/email-change';
+import { followActor, unfollowActor } from '../domain/follow';
 import { clearSessionCookieHeader } from '../auth/session';
 import { createDirectSender } from '../mail/send';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
@@ -166,6 +167,39 @@ profile.post('/profile/delete', async (c) => {
   // セッション cookie を破棄してトップへ
   c.header('set-cookie', clearSessionCookieHeader(await isSecureRequest(c)));
   return c.redirect('/?goodbye=1', 302);
+});
+
+/** back パラメータの安全な行き先(オープンリダイレクト防止に同一サイトのパスのみ) */
+function safeBackPath(v: unknown): string {
+  const s = typeof v === 'string' ? v : '';
+  return s.startsWith('/') && !s.startsWith('//') ? s : '/';
+}
+
+/** フォロー(ローカルのユーザー/グループ) */
+profile.post('/follow/:actorId', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const form = await c.req.parseBody();
+  try {
+    await followActor(db, actorId, c.req.param('actorId'));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'フォローできませんでした';
+    return c.redirect(`${safeBackPath(form.back)}?error=${encodeURIComponent(message)}`, 302);
+  }
+  return c.redirect(safeBackPath(form.back), 302);
+});
+
+/** フォロー解除 */
+profile.post('/unfollow/:actorId', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const form = await c.req.parseBody();
+  await unfollowActor(db, actorId, c.req.param('actorId'));
+  return c.redirect(safeBackPath(form.back), 302);
 });
 
 /** メールアドレス変更の確認ページ(GET でトークンを消費しないための緩衝) */

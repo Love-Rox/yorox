@@ -12,7 +12,7 @@ import { activities, buildEventNote, type ApActivity, type ApObject } from '@yor
 import { escapeHtml } from '../lib/html';
 import { sendDiscordWebhook } from '../lib/discord';
 import { formatHashtags, resolveHashtags } from '../lib/hashtags';
-import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, lt, lte } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ensureActorKeys } from '../lib/actor-keys';
@@ -92,7 +92,10 @@ async function collectFollowerInboxes(db: Db, groupActorId: string): Promise<Set
     })
     .from(schema.follows)
     .innerJoin(schema.actors, eq(schema.follows.followerActorId, schema.actors.id))
-    .where(eq(schema.follows.followedActorId, groupActorId));
+    // ローカルユーザーのフォロー(タイムライン用)は AP 配信の対象外
+    .where(
+      and(eq(schema.follows.followedActorId, groupActorId), isNotNull(schema.actors.domain)),
+    );
   const inboxes = new Set<string>();
   for (const f of followers) {
     const inbox = f.sharedInboxUrl ?? f.inboxUrl;

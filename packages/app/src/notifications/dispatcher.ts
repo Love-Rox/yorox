@@ -15,19 +15,22 @@ import type { Notification, NotificationDriver } from './driver';
  */
 async function loadEventContext(
   db: Db,
-  slotId: string,
+  ref: { slotId?: string; eventId?: string },
   origin: string,
 ): Promise<NotificationContext | null> {
-  const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, slotId) });
-  if (!slot) return null;
-  const event = await db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) });
+  const slot = ref.slotId
+    ? await db.query.slots.findFirst({ where: eq(schema.slots.id, ref.slotId) })
+    : null;
+  const eventId = slot?.eventId ?? ref.eventId;
+  if (!eventId) return null;
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, eventId) });
   if (!event) return null;
   return {
     eventTitle: event.title,
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
-    slotName: slot.name,
+    slotName: slot?.name ?? null,
     // 短縮 URL は正規 URL へ 301 するので、handle を引かずに済む
     url: `${origin.replace(/\/$/, '')}/e/${event.id}`,
   };
@@ -73,6 +76,14 @@ const TEMPLATES: Record<
   'event.cancelled': {
     subject: 'イベントが中止になりました',
     body: 'お申し込みいただいたイベントが主催者により中止されました。詳細はイベントページをご確認ください。お支払い済みの場合の返金は主催者にお問い合わせください。',
+  },
+  'follow.created': {
+    subject: '新しいフォロワー',
+    body: 'あなたをフォローしました。タイムラインにあなたの公開活動が表示されます。',
+  },
+  'event.followed_published': {
+    subject: 'フォロー中のグループが新しいイベントを公開しました',
+    body: 'フォロー中のグループが新しいイベントを公開しました。詳細はイベントページをご確認ください。',
   },
   'participation.consent_requested': {
     subject: '【要確認】繰上参加の承諾のお願い',
@@ -124,12 +135,27 @@ export async function dispatchPendingEvents(
           where: eq(schema.users.actorId, actorId),
         });
         // 「どのイベントの話か」が分かるよう、本文にイベント情報を添える
+        const refPayload = payload as { slotId?: string; eventId?: string; followerName?: string; followerHandle?: string | null };
         const ctx =
-          origin && payload.slotId ? await loadEventContext(db, payload.slotId, origin) : null;
+          origin && (refPayload.slotId || refPayload.eventId)
+            ? await loadEventContext(db, refPayload, origin)
+            : null;
+        // フォロー通知は誰からかが本題なので件名・本文に載せる
+        const follower =
+          event.type === 'follow.created' && refPayload.followerName
+            ? `${refPayload.followerName}${refPayload.followerHandle ? ` (@${refPayload.followerHandle})` : ''}`
+            : null;
+        const subjectBase = follower
+          ? `${follower} さんにフォローされました`
+          : template.subject;
+        const bodyBase =
+          follower && refPayload.followerHandle && origin
+            ? `${follower} さんがあなたをフォローしました。\n\n${origin}/u/${refPayload.followerHandle}`
+            : template.body;
         const notification: Notification = {
           actorId,
-          subject: ctx ? `[Yorox] ${template.subject} — ${ctx.eventTitle}` : `[Yorox] ${template.subject}`,
-          bodyText: buildNotificationBody(template.body, ctx),
+          subject: ctx ? `[Yorox] ${subjectBase} — ${ctx.eventTitle}` : `[Yorox] ${subjectBase}`,
+          bodyText: buildNotificationBody(bodyBase, ctx),
           eventType: event.type,
         };
         // メール通知をオフにしているユーザーには email を渡さない(AP 通知等は届く)

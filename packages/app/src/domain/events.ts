@@ -19,7 +19,9 @@ export type DomainEventType =
   | 'payment.paid'
   | 'lottery.completed'
   | 'event.published'
-  | 'event.cancelled';
+  | 'event.cancelled'
+  | 'follow.created'
+  | 'event.followed_published';
 
 export async function emitDomainEvent(
   db: Db,

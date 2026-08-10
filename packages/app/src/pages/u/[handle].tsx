@@ -5,6 +5,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { Avatar } from '../../components/avatar';
+import { FollowButton } from '../../components/follow-button';
 import { ActorKindBadge, ActorKindMark } from '../../components/actor-kind';
 import { ServiceIcon, serviceLinkLabel } from '../../components/service-icon';
 import { Markdown } from '../../lib/markdown';
@@ -30,6 +31,11 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
 
   const me = await getCurrentUser();
   const isSelf = me?.actorId === actor.id;
+  const { countFollowers } = await import('../../server/data');
+  const { countFollowing, isFollowing } = await import('../../domain/follow');
+  const followerCount = await countFollowers(db, actor.id);
+  const followingCount = await countFollowing(db, actor.id);
+  const following = me && !isSelf ? await isFollowing(db, me.actorId, actor.id) : false;
 
   // 連携済み Fediverse アカウント(claim)。rel=me で相互リンクになる
   const fediAliases = await db.query.actors.findMany({
@@ -119,7 +125,11 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                 <h1 className="display t-xl">{actor.displayName}</h1>
                 <ActorKindBadge kind="user" />
               </div>
-              <p className="meta-mono mt-1 text-sm text-neutral">@{actor.handle}</p>
+              <p className="meta-mono mt-1 text-sm text-neutral">
+                @{actor.handle}
+                {followerCount > 0 && <span className="ml-3">フォロワー {followerCount}</span>}
+                {followingCount > 0 && <span className="ml-3">フォロー {followingCount}</span>}
+              </p>
               {personalGroup && (
                 <p className="mt-1 text-sm text-neutral">
                   主催・イベントは{' '}
@@ -129,6 +139,13 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                 </p>
               )}
             </div>
+            {me && !isSelf && (
+              <FollowButton
+                targetActorId={actor.id}
+                following={following}
+                backPath={`/u/${handle}`}
+              />
+            )}
             {isSelf && (
               <Link to="/settings/profile" className="btn-quiet">
                 プロフィールを編集
