@@ -14,6 +14,7 @@ export interface CreateEventInput {
   descriptionMd?: string | undefined;
   participantInfoMd?: string | undefined;
   thumbnailUrl?: string | undefined;
+  hashtags?: string[] | undefined;
   startsAt: Date;
   endsAt?: Date | undefined;
   timezone?: string | undefined;
@@ -41,6 +42,7 @@ export async function createEvent(
     descriptionMd: input.descriptionMd ?? null,
     participantInfoMd: input.participantInfoMd ?? null,
     thumbnailUrl: input.thumbnailUrl ?? null,
+    hashtags: input.hashtags ?? null,
     startsAt: input.startsAt,
     endsAt: input.endsAt ?? null,
     timezone: input.timezone ?? 'Asia/Tokyo',
@@ -63,6 +65,7 @@ export interface UpdateEventInput {
   descriptionMd?: string | undefined;
   participantInfoMd?: string | undefined;
   thumbnailUrl?: string | undefined;
+  hashtags?: string[] | undefined;
   startsAt: Date;
   endsAt?: Date | undefined;
   venueName?: string | undefined;
@@ -89,6 +92,7 @@ export async function updateEvent(
       descriptionMd: input.descriptionMd ?? null,
       participantInfoMd: input.participantInfoMd ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
+      hashtags: input.hashtags ?? null,
       startsAt: input.startsAt,
       endsAt: input.endsAt ?? null,
       venueName: input.venueName ?? null,
@@ -148,6 +152,7 @@ export async function duplicateEvent(
     descriptionMd: src.descriptionMd,
     participantInfoMd: src.participantInfoMd,
     thumbnailUrl: src.thumbnailUrl,
+    hashtags: src.hashtags,
     startsAt: src.startsAt,
     endsAt: src.endsAt,
     timezone: src.timezone,

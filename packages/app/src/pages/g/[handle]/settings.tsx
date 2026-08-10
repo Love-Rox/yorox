@@ -120,6 +120,19 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                 className="input mt-1 leading-relaxed"
               />
             </label>
+            <label className="block">
+              <span className="text-sm font-bold">
+                既定のハッシュタグ
+                <HelpTip text="このグループのイベントを共有するときに既定で添えるタグです。イベント側で個別に指定した場合はそちらが優先されます。" />
+              </span>
+              <input
+                type="text"
+                name="hashtags"
+                defaultValue={(group.hashtags ?? []).map((t) => `#${t}`).join(' ')}
+                className="input mt-1"
+                placeholder="#yorox #勉強会(空白区切り、最大5個)"
+              />
+            </label>
             <button type="submit" className="btn cursor-pointer">
               保存
             </button>

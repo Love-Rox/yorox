@@ -26,6 +26,7 @@ import { recordAudit } from '../domain/audit';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
+import { parseHashtags } from '../lib/hashtags';
 import { buildEventOgSvg } from '../lib/ogp';
 import { renderOgPngResponse } from './og';
 import { saveImageUpload } from '../storage/driver';
@@ -128,6 +129,7 @@ events.post('/g/:handle/events', async (c) => {
       descriptionMd: str(form.description_md) || undefined,
       participantInfoMd: str(form.participant_info_md) || undefined,
       thumbnailUrl: str(form.thumbnail_url) || undefined,
+      hashtags: parseHashtags(str(form.hashtags)),
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
       venueName: str(form.venue_name) || undefined,
@@ -210,6 +212,7 @@ events.post('/events/:id/update', async (c) => {
       descriptionMd: str(form.description_md) || undefined,
       participantInfoMd: str(form.participant_info_md) || undefined,
       thumbnailUrl: str(form.thumbnail_url) || undefined,
+      hashtags: parseHashtags(str(form.hashtags)),
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
       venueName: str(form.venue_name) || undefined,

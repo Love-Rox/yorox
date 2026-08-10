@@ -7,6 +7,7 @@ import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
 import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
+import { parseHashtags } from '../lib/hashtags';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
@@ -148,8 +149,18 @@ groups.post('/g/:handle/settings', async (c) => {
     .where(eq(schema.actors.id, ctx.groupActorId));
   await db
     .update(schema.groups)
-    .set({ descriptionMd: str(form.description_md) || null })
+    .set({
+      descriptionMd: str(form.description_md) || null,
+      hashtags: parseHashtags(str(form.hashtags)),
+    })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
+  await recordAudit(db, {
+    actorId,
+    action: 'group.settings',
+    targetType: 'group',
+    targetId: ctx.groupActorId,
+    groupActorId: ctx.groupActorId,
+  });
   return c.redirect(`/g/${handle}/settings`, 302);
 });
 

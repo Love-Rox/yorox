@@ -10,8 +10,10 @@ import { Avatar } from '../../../../../components/avatar';
 import { ActorKindMark } from '../../../../../components/actor-kind';
 import { HelpTip } from '../../../../../components/help-tip';
 import { CopyLink } from '../../../../../components/copy-link';
+import { ShareNative } from '../../../../../components/share-native';
 import { Menu } from '../../../../../components/menu';
 import { ServiceIcon } from '../../../../../components/service-icon';
+import { formatHashtags, resolveHashtags, shareText } from '../../../../../lib/hashtags';
 import { googleCalendarUrl } from '../../../../../lib/ics';
 import { Markdown } from '../../../../../lib/markdown';
 import { getCurrentUser } from '../../../../../server/current-user';
@@ -151,6 +153,10 @@ export default async function EventPage({
     plainDescription(event.descriptionMd) ||
     `${FULL_FMT.format(event.startsAt)} 開催 · ${groupActor?.displayName ?? ''}`;
   const canonicalUrl = `${url.origin}/g/${handle}/events/${eventId}`;
+  const shortUrl = `${url.origin}/e/${eventId}`;
+  // イベント側のタグが無ければグループ既定を使う
+  const hashtags = resolveHashtags(event.hashtags, groupRow?.hashtags);
+  const shareTextValue = shareText(event.title, hashtags);
   // 自ホスティング(/files/…)の相対 URL は OGP 用に絶対化する。
   // サムネイル未設定なら SVG で動的生成した OGP カードを使う
   const ogImage = event.thumbnailUrl
@@ -240,14 +246,49 @@ export default async function EventPage({
             )}
             {isViewable(event.visibility) && (
               <Menu label="共有">
-                <div className="px-3 py-2">
+                <a
+                  href={`https://x.com/intent/post?${new URLSearchParams({
+                    text: shareTextValue,
+                    url: shortUrl,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  X に投稿
+                </a>
+                <a
+                  href={`https://misskey-hub.net/share/?${new URLSearchParams({
+                    text: shareTextValue,
+                    url: shortUrl,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  Fediverse に共有(Misskey / Mastodon)
+                </a>
+                <a
+                  href={`https://bsky.app/intent/compose?${new URLSearchParams({
+                    text: `${shareTextValue} ${shortUrl}`,
+                  })}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-3 py-2 text-sm hover:bg-paper-2 focus-visible:bg-paper-2"
+                >
+                  Bluesky に投稿
+                </a>
+                <ShareNative title={event.title} url={shortUrl} />
+                <div className="border-t border-rule px-3 py-2">
                   <p className="text-sm font-bold">短縮リンク</p>
-                  <p className="mt-1 text-sm text-neutral">
-                    SNS やチャットに貼りやすい短い URL です。
-                  </p>
                   <div className="mt-2">
-                    <CopyLink url={`${url.origin}/e/${eventId}`} />
+                    <CopyLink url={shortUrl} />
                   </div>
+                  {hashtags.length > 0 && (
+                    <p className="meta-mono mt-2 text-sm text-neutral">
+                      {formatHashtags(hashtags)}
+                    </p>
+                  )}
                 </div>
               </Menu>
             )}

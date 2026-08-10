@@ -201,6 +201,19 @@ export default async function EditEventPage({
           </select>
         </label>
         <label className="block">
+          <span className="text-sm font-bold">ハッシュタグ</span>
+          <input
+            type="text"
+            name="hashtags"
+            defaultValue={(event.hashtags ?? []).map((t) => `#${t}`).join(' ')}
+            className="input mt-1"
+            placeholder="#yorox #勉強会(空白区切り、最大5個)"
+          />
+          <span className="mt-1 block text-sm text-neutral">
+            共有ボタンから SNS に投稿するときに添えられます。未入力ならグループの既定タグを使います
+          </span>
+        </label>
+        <label className="block">
           <span className="text-sm font-bold">参加者への案内(Markdown)</span>
           <textarea
             name="participant_info_md"

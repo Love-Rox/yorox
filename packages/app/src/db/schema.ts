@@ -376,6 +376,8 @@ export const groups = sqliteTable('groups', {
   bskyAppPassword: text('bsky_app_password'),
   /** 接続済み Stripe アカウント ID(Connect)。決済はこの口座で直接受ける */
   stripeAccountId: text('stripe_account_id'),
+  /** グループ既定のハッシュタグ(# なし)。イベント側で未設定ならこれを使う */
+  hashtags: text('hashtags', { mode: 'json' }).$type<string[]>(),
   /** 特定商取引法に基づく表記(グループ=事業者ごと。null=未設定) */
   tokushoho: text('tokushoho', { mode: 'json' }).$type<
     import('./schema-types').TokushohoJson
@@ -509,6 +511,11 @@ export const events = sqliteTable(
     publishAt: integer('publish_at', { mode: 'timestamp_ms' }),
     /** 開催前リマインダーを送った時刻(重複送信防止) */
     reminderSentAt: integer('reminder_sent_at', { mode: 'timestamp_ms' }),
+    /**
+     * 共有・告知に付けるハッシュタグ(# なしで保存、空白区切り不可の単語)。
+     * 未設定ならグループの既定タグを使う。
+     */
+    hashtags: text('hashtags', { mode: 'json' }).$type<string[]>(),
     createdByActorId: text('created_by_actor_id')
       .notNull()
       .references(() => actors.id),
