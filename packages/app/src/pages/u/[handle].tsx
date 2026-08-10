@@ -6,7 +6,7 @@ import {
 } from 'waku/router/server';
 import { Avatar } from '../../components/avatar';
 import { ActorKindBadge, ActorKindMark } from '../../components/actor-kind';
-import { ServiceIcon } from '../../components/service-icon';
+import { ServiceIcon, serviceLinkLabel } from '../../components/service-icon';
 import { Markdown } from '../../lib/markdown';
 import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
@@ -35,6 +35,16 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
   const fediAliases = await db.query.actors.findMany({
     where: eq(schema.actors.claimedByActorId, actor.id),
   });
+
+  // 本人が「プロフィールに表示」を選んだ連携アカウント(Google は対象外)
+  const publicOauth = (
+    await db.query.oauthAccounts.findMany({
+      where: and(
+        eq(schema.oauthAccounts.userActorId, actor.id),
+        eq(schema.oauthAccounts.public, true),
+      ),
+    })
+  ).filter((o) => o.provider !== 'google');
 
   // 所属グループ(公開情報)
   const memberships = await db
@@ -125,9 +135,9 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
               </Link>
             )}
           </div>
-          {actor.profileLinks && actor.profileLinks.length > 0 && (
+          {((actor.profileLinks?.length ?? 0) > 0 || publicOauth.length > 0) && (
             <ul className="mt-3 flex flex-wrap gap-4 text-sm">
-              {actor.profileLinks.map((link) => (
+              {(actor.profileLinks ?? []).map((link) => (
                 <li key={link}>
                   <a
                     href={link}
@@ -136,10 +146,30 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
                     target="_blank"
                   >
                     <ServiceIcon url={link} />
-                    {new URL(link).hostname.replace(/^www\./, '')}
+                    {serviceLinkLabel(link)}
                   </a>
                 </li>
               ))}
+              {publicOauth.map((o) => {
+                // GitHub はユーザーページへ、Discord はプロフィール(アプリで開く)へ
+                const href =
+                  o.provider === 'github'
+                    ? `https://github.com/${o.label ?? ''}`
+                    : `https://discord.com/users/${o.providerUserId}`;
+                return (
+                  <li key={o.id}>
+                    <a
+                      href={href}
+                      className="link inline-flex items-center gap-1"
+                      rel="me noreferrer"
+                      target="_blank"
+                    >
+                      <ServiceIcon url={href} />
+                      {o.label ?? o.provider}
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {fediAliases.length > 0 && (

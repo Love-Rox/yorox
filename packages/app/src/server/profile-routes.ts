@@ -233,6 +233,31 @@ profile.post('/profile/email/confirm', async (c) => {
   return c.redirect('/settings/profile?email_changed=1#oauth', 302);
 });
 
+/** 連携アカウントをプロフィールに表示するかの切り替え(本人のみ・Google 不可) */
+profile.post('/profile/oauth/:id/visibility', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const row = await db.query.oauthAccounts.findFirst({
+    where: and(
+      eq(schema.oauthAccounts.id, c.req.param('id')),
+      eq(schema.oauthAccounts.userActorId, actorId),
+    ),
+  });
+  if (!row) return c.notFound();
+  // Google の label はメールアドレスなので公開させない
+  if (row.provider === 'google') return c.text('この連携は公開できません', 400);
+
+  const form = await c.req.parseBody();
+  await db
+    .update(schema.oauthAccounts)
+    .set({ public: form.public === 'on' })
+    .where(eq(schema.oauthAccounts.id, row.id));
+  return c.redirect('/settings/profile#oauth', 302);
+});
+
 /** お知らせ受け取り設定 */
 profile.post('/profile/notifications', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);

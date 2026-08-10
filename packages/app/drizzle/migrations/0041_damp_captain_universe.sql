@@ -1,0 +1,1 @@
+ALTER TABLE `oauth_accounts` ADD `public` integer DEFAULT false NOT NULL;

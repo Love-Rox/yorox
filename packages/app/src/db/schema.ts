@@ -326,6 +326,11 @@ export const oauthAccounts = sqliteTable(
       .references(() => users.actorId),
     /** 表示用ラベル(GitHub ログイン名、Google メールアドレスなど) */
     label: text('label'),
+    /**
+     * プロフィールページに表示するか(本人がアカウントごとに選ぶ。既定は非公開)。
+     * Google は label がメールアドレスなので公開の対象外(UI からも選ばせない)。
+     */
+    public: integer('public', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [

@@ -5,6 +5,7 @@ import { isDiscordSnowflake } from '../lib/discord';
 import { describeSlotConditions } from '../components/slot-conditions';
 import { SlotEditBlockedError } from './event-service';
 import { looksLikeEmail } from '../auth/email-change';
+import { serviceLinkLabel } from '../components/service-icon';
 import { attendanceWeight, drawRandom, drawWeighted } from './lottery';
 import { hasAllPermissions, PRESET_ROLES } from './permissions';
 import { validateHandle } from './groups';
@@ -262,5 +263,24 @@ describe('looksLikeEmail', () => {
     expect(looksLikeEmail('a@b')).toBe(false); // TLD なし
     expect(looksLikeEmail('a b@example.com')).toBe(false);
     expect(looksLikeEmail(`${'a'.repeat(250)}@example.com`)).toBe(false);
+  });
+});
+
+describe('serviceLinkLabel', () => {
+  it('既知サービスはユーザー名を返す', () => {
+    expect(serviceLinkLabel('https://github.com/sasapiyo')).toBe('sasapiyo');
+    expect(serviceLinkLabel('https://x.com/sasapiyo')).toBe('@sasapiyo');
+    expect(serviceLinkLabel('https://twitter.com/sasapiyo')).toBe('@sasapiyo');
+    expect(serviceLinkLabel('https://bsky.app/profile/foo.bsky.social')).toBe('@foo.bsky.social');
+  });
+
+  it('Fediverse の @handle 形式パスはそのまま', () => {
+    expect(serviceLinkLabel('https://misskey.io/@sasapiyo')).toBe('@sasapiyo');
+  });
+
+  it('未知サービス・パス無しはホスト名', () => {
+    expect(serviceLinkLabel('https://example.com/page')).toBe('example.com');
+    expect(serviceLinkLabel('https://www.example.com/')).toBe('example.com');
+    expect(serviceLinkLabel('https://github.com/')).toBe('github.com');
   });
 });

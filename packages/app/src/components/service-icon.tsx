@@ -4,7 +4,7 @@
  * 未知のサービスは汎用リンクアイコン。
  */
 
-type Service = 'github' | 'x' | 'bluesky' | 'fediverse' | 'link';
+type Service = 'github' | 'x' | 'bluesky' | 'fediverse' | 'discord' | 'link';
 
 const FEDIVERSE_HINTS = ['mastodon', 'misskey', 'mstdn', 'fedibird', 'pawoo'];
 
@@ -14,6 +14,8 @@ export function detectService(url: string): Service {
     if (host === 'github.com' || host.endsWith('.github.com')) return 'github';
     if (host === 'x.com' || host === 'twitter.com') return 'x';
     if (host === 'bsky.app' || host.endsWith('.bsky.app')) return 'bluesky';
+    if (host === 'discord.com' || host === 'discordapp.com' || host === 'discord.gg')
+      return 'discord';
     if (FEDIVERSE_HINTS.some((h) => host.includes(h))) return 'fediverse';
     return 'link';
   } catch {
@@ -21,10 +23,35 @@ export function detectService(url: string): Service {
   }
 }
 
+/**
+ * リンクの表示ラベル。既知サービスはパスからユーザー名を取り出し
+ * (例: github.com/foo → foo、x.com/foo → @foo)、未知はホスト名を返す。
+ */
+export function serviceLinkLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.split('/').filter(Boolean)[0];
+    const service = detectService(url);
+    if (seg) {
+      if (service === 'x') return `@${seg}`;
+      if (service === 'github') return seg;
+      if (service === 'bluesky' && seg === 'profile') {
+        const handle = u.pathname.split('/').filter(Boolean)[1];
+        if (handle) return `@${handle}`;
+      }
+      if (service === 'fediverse' && seg.startsWith('@')) return seg;
+    }
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 const SERVICE_LABEL: Record<Service, string> = {
   github: 'GitHub',
   x: 'X',
   bluesky: 'Bluesky',
+  discord: 'Discord',
   fediverse: 'Fediverse',
   link: 'リンク',
 };
@@ -52,6 +79,14 @@ function IconPath({ service }: { service: Service }) {
         <path
           fill="currentColor"
           d="M3.47 1.6C5.25 2.94 7.16 5.64 8 7.09c.84-1.45 2.75-4.15 4.53-5.49C13.81.63 16 .1 16 2.36c0 .45-.26 3.79-.41 4.33-.53 1.89-2.46 2.37-4.18 2.08 3 .51 3.77 2.2 2.12 3.9-3.13 3.21-4.5-.81-5.43-1.84-.09-.11-.1-.11-.2 0-.93 1.03-2.3 5.05-5.43 1.84-1.65-1.7-.88-3.39 2.12-3.9-1.72.29-3.65-.19-4.18-2.08C.26 6.15 0 2.81 0 2.36 0 .1 2.19.63 3.47 1.6Z"
+        />
+      );
+    case 'discord':
+      // 簡略クラン(Discord マーク)
+      return (
+        <path
+          fill="currentColor"
+          d="M13.55 3.02A13.2 13.2 0 0 0 10.25 2c-.14.26-.31.6-.42.87a12.3 12.3 0 0 0-3.66 0A9.4 9.4 0 0 0 5.74 2a13.2 13.2 0 0 0-3.3 1.03C.35 6.17-.21 9.24.07 12.26A13.3 13.3 0 0 0 4.1 14.3c.32-.44.61-.91.86-1.4-.47-.18-.93-.4-1.35-.66l.33-.26a9.5 9.5 0 0 0 8.12 0l.33.26c-.43.26-.88.48-1.36.66.25.49.54.96.87 1.4a13.3 13.3 0 0 0 4.03-2.04c.33-3.5-.56-6.54-2.38-9.24ZM5.35 10.4c-.79 0-1.44-.73-1.44-1.63 0-.9.64-1.63 1.44-1.63.81 0 1.45.74 1.44 1.63 0 .9-.64 1.63-1.44 1.63Zm5.3 0c-.79 0-1.43-.73-1.43-1.63 0-.9.63-1.63 1.43-1.63.81 0 1.46.74 1.44 1.63 0 .9-.63 1.63-1.44 1.63Z"
         />
       );
     case 'fediverse':

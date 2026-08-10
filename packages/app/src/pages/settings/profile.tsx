@@ -289,14 +289,32 @@ export default async function ProfileSettingsPage() {
                     <span className="meta-mono ml-2 text-sm text-neutral">{o.label}</span>
                   )}
                 </span>
-                <form method="post" action={`/auth/oauth/${o.id}/unlink`}>
-                  <button
-                    type="submit"
-                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
-                  >
-                    解除
-                  </button>
-                </form>
+                <span className="flex flex-wrap items-center gap-3">
+                  {/* Google は label がメールアドレスなので公開の選択肢を出さない */}
+                  {o.provider !== 'google' && (
+                    <form
+                      method="post"
+                      action={`/profile/oauth/${o.id}/visibility`}
+                      className="flex items-center gap-2"
+                    >
+                      <label className="flex min-h-11 items-center gap-1.5 text-sm">
+                        <input type="checkbox" name="public" defaultChecked={o.public} />
+                        プロフィールに表示
+                      </label>
+                      <button type="submit" className="btn-quiet cursor-pointer text-sm">
+                        保存
+                      </button>
+                    </form>
+                  )}
+                  <form method="post" action={`/auth/oauth/${o.id}/unlink`}>
+                    <button
+                      type="submit"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                    >
+                      解除
+                    </button>
+                  </form>
+                </span>
               </li>
             ))}
           </ul>
