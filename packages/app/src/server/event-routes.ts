@@ -80,7 +80,9 @@ events.get('/e/:id', async (c) => {
     where: eq(schema.actors.id, event.groupActorId),
   });
   if (!group?.handle) return c.notFound();
-  return c.redirect(`/g/${group.handle}/events/${id}`, 301);
+  // 恒久リダイレクト(301)を明示。c.redirect の第2引数だけでは 302 になる環境がある
+  c.header('Location', `/g/${group.handle}/events/${id}`);
+  return c.body(null, 301);
 });
 
 /** イベント作成(下書き) */
