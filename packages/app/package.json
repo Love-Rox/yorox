@@ -14,8 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply yorox-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply yorox-db --remote",
-    "test": "vitest run",
-    "typecheck:fast": "tsgo --noEmit"
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.0",
@@ -46,13 +45,12 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^6.0.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "drizzle-kit": "^0.31.10",
     "miniflare": "^4.20260721.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
 }
