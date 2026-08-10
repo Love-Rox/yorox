@@ -46,7 +46,9 @@
     "INSTANCE_NAME": "Yorox",
     "LEGAL_OPERATOR": "Rox Developer",
     // 設定すると /contact 問い合わせフォームが有効になり、この宛先へ届く
-    "CONTACT_EMAIL": "yorox-admin@love-rox.cc"
+    "CONTACT_EMAIL": "yorox-admin@love-rox.cc",
+    // Turnstile(bot 対策)の公開サイトキー。秘密鍵は wrangler secret で設定
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAELklZPlpq88vT0s"
   },
   "r2_buckets": [
     {
