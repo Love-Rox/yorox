@@ -10,7 +10,14 @@ type RootLayoutProps = { children: ReactNode };
 export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <div className="flex min-h-svh flex-col">
-      <meta name="description" content="分散型で運用できるイベント管理プラットフォーム" />
+      {/*
+        ページ側の description より前に出るため、クローラーはこちらを拾うことがある。
+        アプリ名(Google OAuth 同意画面と一致させる必要がある)を必ず含めること。
+      */}
+      <meta
+        name="description"
+        content="Yorox — コミュニティが自分たちで運営できる、分散型のイベント管理プラットフォーム"
+      />
       <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
       <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png" />
       <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />

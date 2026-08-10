@@ -31,6 +31,52 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
+        <h2 className="display border-b-2 border-ink pb-2 t-md">
+          ソーシャルログインで取得する情報
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed">
+          Google・GitHub・Discord のアカウントでログインした場合、本サービスは各社から
+          次の情報のみを受け取ります。パスワードは受け取りません。
+        </p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+          <li>
+            <strong>Google</strong> — メールアドレス、メールアドレスの確認状況、
+            アカウントの識別子(sub)。表示名・プロフィール画像を提供いただいた場合はそれらも
+            取得します。Gmail・カレンダー・ドライブなど他の Google サービスのデータには
+            一切アクセスしません
+          </li>
+          <li>
+            <strong>GitHub / Discord</strong> — メールアドレス、ユーザー名、
+            アカウントの識別子
+          </li>
+        </ul>
+        <p className="mt-2 text-sm leading-relaxed">
+          これらは<strong>ログイン(本人確認)とアカウントの作成・紐付け、
+          お知らせの送信のためだけ</strong>に利用します。広告・プロファイリング・
+          機械学習モデルの学習には利用せず、第三者に販売・譲渡しません。
+          Discord を連携している場合、Discord のユーザー名とユーザー ID は、
+          あなたが申し込んだイベントの主催者に対してのみ、参加者名簿の一部として
+          表示・書き出しされます。
+        </p>
+        <p className="mt-2 text-sm leading-relaxed">
+          Google から取得した情報の利用は、
+          <a
+            href="https://developers.google.com/terms/api-services-user-data-policy"
+            className="link"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Google API サービスのユーザーデータに関するポリシー
+          </a>
+          (限定使用の要件を含む)に準拠します。
+        </p>
+        <p className="mt-2 text-sm leading-relaxed">
+          連携の解除は設定 &gt; 連携済みアカウントから行えます。アカウントを削除すると、
+          連携情報も削除されます。
+        </p>
+      </section>
+
+      <section className="mt-6">
         <h2 className="display border-b-2 border-ink pb-2 t-md">利用目的</h2>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
           <li>本サービスの提供・本人確認・お知らせの送信</li>
