@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `applicant_list_public` integer DEFAULT false NOT NULL;

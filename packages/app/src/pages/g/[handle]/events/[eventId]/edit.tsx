@@ -227,6 +227,29 @@ export default async function EditEventPage({
           </span>
         </label>
         <fieldset className="block">
+          <legend className="text-sm font-bold">参加者一覧の公開<HelpTip text="イベントページに参加者の一覧を載せるかどうか。参加者は自分の判断で一覧から自分を隠すこともできます。" /></legend>
+          <label className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="participant_list_public"
+              defaultChecked={event.participantListPublic}
+            />
+            <span>参加が確定した人の一覧を公開する</span>
+          </label>
+          <label className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="applicant_list_public"
+              defaultChecked={event.applicantListPublic}
+            />
+            <span>抽選待ち・補欠の申込者も一覧に載せる</span>
+          </label>
+          <span className="mt-1 block text-sm text-neutral">
+            抽選待ちを公開すると、誰が申し込んだかが抽選前に分かります。
+            落選が第三者に伝わってもよいイベントかどうかをご検討ください
+          </span>
+        </fieldset>
+        <fieldset className="block">
           <legend className="text-sm font-bold">Fediverse からの参加申込<HelpTip text="フォロワーのタイムラインに流れる告知へのリプライ、または Mobilizon 等からの Join でイベントに申込できるようにします。実際に受け付けるには枠側の「リモート参加を受け入れる」も必要です。" /></legend>
           <label className="mt-1 flex items-center gap-2">
             <input

@@ -516,6 +516,14 @@ export const events = sqliteTable(
       .notNull()
       .default(true),
     /**
+     * 参加未確定(抽選待ち・補欠)の申込者も一覧に載せるか。
+     * 抽選前に申込者が見えると落選が第三者に分かるため既定は非公開。
+     * participantListPublic が false ならこちらの値によらず出さない。
+     */
+    applicantListPublic: integer('applicant_list_public', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    /**
      * Fediverse からの参加申込を受け付ける方法(イベント単位で選択)。
      * reply = 告知 Note へのリプライ / join = Join アクティビティ(Mobilizon 等)。
      * 実際に申込可能かは枠側の allowRemote も必要。

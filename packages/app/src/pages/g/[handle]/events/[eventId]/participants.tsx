@@ -11,6 +11,12 @@ import {
 import { hasGroupPermission } from '../../../../../server/route-auth';
 
 /** 参加者一覧ページ(イベントページはアイコンのみ、詳細はこちら) */
+/** 未確定の申込者を載せる設定のとき、状態を添えて区別できるようにする */
+const STATUS_LABEL: Record<string, string> = {
+  applied: '抽選待ち',
+  waitlisted: '補欠',
+};
+
 export default async function ParticipantsPage({
   handle,
   eventId,
@@ -30,7 +36,7 @@ export default async function ParticipantsPage({
   if (event.visibility !== 'public' && !canEdit) return notFound();
   if (!event.participantListPublic) return notFound();
 
-  const participants = await listVisibleParticipants(db, eventId);
+  const participants = await listVisibleParticipants(db, eventId, event.applicantListPublic);
 
   return (
     <div>
@@ -63,6 +69,11 @@ export default async function ParticipantsPage({
                   className="flex items-center gap-3 border-b border-rule py-3"
                 >
                   <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
+                  {STATUS_LABEL[p.status] && (
+                    <span className="meta-mono shrink-0 border border-rule px-1.5 py-0.5 text-sm text-neutral">
+                      {STATUS_LABEL[p.status]}
+                    </span>
+                  )}
                   {p.domain && p.claimedHandle ? (
                     // 連携済みリモート: 名前は自サーバーのプロフィールへ、リモートハンドルは本人サーバーへ
                     <span className="font-bold">

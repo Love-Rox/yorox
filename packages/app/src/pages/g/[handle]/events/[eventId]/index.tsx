@@ -120,7 +120,7 @@ export default async function EventPage({
         { id: string; slotId: string; status: string; hiddenFromList: boolean; paymentId: string | null }
       >();
   const participants = event.participantListPublic
-    ? await listVisibleParticipants(db, eventId)
+    ? await listVisibleParticipants(db, eventId, event.applicantListPublic)
     : [];
   const organizers = await listOrganizers(db, event.groupActorId);
   // 主催の種別バッジ・Stripe オプション判定に使うグループ行(常に取得)
@@ -130,8 +130,9 @@ export default async function EventPage({
   const groupStripeConnected = canEdit && !!groupRow?.stripeAccountId;
   // 登壇者: セッション由来 + 登壇枠の確定参加者(重複はセッション優先)
   const speakerSlotIds = new Set(slots.filter((s) => s.isSpeakerSlot).map((s) => s.id));
+  // 登壇者は参加が確定した人だけ(抽選待ちを載せる設定でも登壇者欄には出さない)
   const slotSpeakers = participants
-    .filter((p) => speakerSlotIds.has(p.slotId))
+    .filter((p) => p.status === 'accepted' && speakerSlotIds.has(p.slotId))
     .map((p) => ({
       name: p.displayName,
       // 連携済みリモートは自サーバーのプロフィールを優先
@@ -980,9 +981,12 @@ export default async function EventPage({
               {/* アイコンのみのグリッド(名前はホバー/長押しの title で) */}
               <ul className="mt-3 flex flex-wrap gap-2">
                 {participants.map((p) => {
-                  const label = p.domain
+                  const base = p.domain
                     ? `${p.displayName} (@${p.handle}@${p.domain})`
                     : p.displayName;
+                  // アイコンだけの並びなので、未確定の人は状態を添えて区別できるようにする
+                  const label =
+                    p.status === 'accepted' ? base : `${base} — ${STATUS_LABEL[p.status] ?? p.status}`;
                   const avatar = (
                     <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                   );

@@ -336,10 +336,20 @@ export async function getOwnParticipations(db: Db, eventId: string, actorId: str
 }
 
 /** 参加者一覧(確定者のみ、本人が隠している人を除く) */
-export async function listVisibleParticipants(db: Db, eventId: string) {
+/**
+ * 公開の参加者一覧。
+ * @param includePending true なら参加未確定(抽選待ち・補欠)の申込者も含める。
+ *   イベントの applicantListPublic に従って呼び出し側が渡す。
+ */
+export async function listVisibleParticipants(
+  db: Db,
+  eventId: string,
+  includePending = false,
+) {
   const claimedActor = alias(schema.actors, 'claimed_actor');
   return db
     .select({
+      status: schema.participations.status,
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
@@ -358,7 +368,10 @@ export async function listVisibleParticipants(db: Db, eventId: string) {
     .where(
       and(
         eq(schema.slots.eventId, eventId),
-        eq(schema.participations.status, 'accepted'),
+        includePending
+          ? inArray(schema.participations.status, ['accepted', 'applied', 'waitlisted'])
+          : eq(schema.participations.status, 'accepted'),
+        // 本人が非表示を選んでいる場合は未確定でも出さない
         eq(schema.participations.hiddenFromList, false),
       ),
     )

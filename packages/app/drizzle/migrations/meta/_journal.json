@@ -267,6 +267,13 @@
       "when": 1786349437493,
       "tag": "0037_naive_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1786370118344,
+      "tag": "0038_previous_scrambler",
+      "breakpoints": true
     }
   ]
 }

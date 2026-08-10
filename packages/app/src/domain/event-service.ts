@@ -76,6 +76,10 @@ export interface UpdateEventInput {
   onlineUrl?: string | undefined;
   sessionsLabel?: 'sessions' | 'timetable' | undefined;
   remoteJoinMethods?: ('reply' | 'join')[] | undefined;
+  /** 参加者一覧を公開するか */
+  participantListPublic?: boolean | undefined;
+  /** 参加未確定(抽選待ち・補欠)の申込者も一覧に載せるか */
+  applicantListPublic?: boolean | undefined;
 }
 
 /** イベントの基本情報を更新する */
@@ -103,6 +107,8 @@ export async function updateEvent(
       onlineUrl: input.onlineUrl ?? null,
       sessionsLabel: input.sessionsLabel ?? 'sessions',
       remoteJoinMethods: input.remoteJoinMethods ?? ['reply', 'join'],
+      participantListPublic: input.participantListPublic ?? true,
+      applicantListPublic: input.applicantListPublic ?? false,
       updatedAt: now,
     })
     .where(eq(schema.events.id, eventId));
@@ -220,6 +226,7 @@ export async function duplicateEvent(
     // 「その回限り」の状態はリセット
     visibility: 'draft',
     participantListPublic: src.participantListPublic,
+    applicantListPublic: src.applicantListPublic,
     checkinToken: null,
     publishedAt: null,
     publishAt: null,

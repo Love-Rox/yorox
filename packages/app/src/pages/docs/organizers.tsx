@@ -65,6 +65,28 @@ export default async function OrganizersGuidePage() {
           </li>
         </ol>
 
+        <h3 className="display mt-6 t-sm">参加者一覧の公開範囲</h3>
+        <p className="mt-2">
+          イベントの編集画面で、参加者一覧をどこまで見せるかを選べます。
+        </p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>
+            <strong>参加が確定した人の一覧を公開する</strong> — 既定でオン。
+            オフにすると一覧そのものを非公開にします
+          </li>
+          <li>
+            <strong>抽選待ち・補欠の申込者も一覧に載せる</strong> — 既定でオフ。
+            オンにすると、まだ結果の出ていない申込者も「抽選待ち」「補欠」の
+            表示付きで一覧に並びます
+          </li>
+        </ul>
+        <p className="mt-2">
+          抽選待ちを公開すると、誰が申し込んだかが抽選前に分かります。
+          あとで落選した人がいることも第三者に伝わるため、
+          そうなってよいイベントかどうかをご検討ください。
+          なお参加者は自分の判断で一覧から自分を隠せます。その設定は公開範囲より優先されます。
+        </p>
+
         <h3 className="display mt-6 t-sm">枠をあとから編集する</h3>
         <p className="mt-2">
           イベントページの各枠にある「この枠を編集」から、枠名・定員・参加条件などを

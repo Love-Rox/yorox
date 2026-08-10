@@ -230,6 +230,8 @@ events.post('/events/:id/update', async (c) => {
       onlineUrl: str(form.online_url) || undefined,
       sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
       remoteJoinMethods: parseRemoteJoinMethods(form),
+      participantListPublic: form.participant_list_public !== undefined,
+      applicantListPublic: form.applicant_list_public !== undefined,
     });
     // 公開済みイベントの変更はフォロワーへ Update(Note) で通知
     if (ctx.event.visibility === 'public') {
