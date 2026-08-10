@@ -7,6 +7,7 @@ import {
 export default async function ContactPage() {
   const env = (await import('cloudflare:workers')).env as Env;
   if (!env.CONTACT_EMAIL) return notFound();
+  const turnstileSiteKey = env.TURNSTILE_SITE_KEY ?? null;
 
   const url = new URL(getRequest().url);
   const sent = url.searchParams.get('sent') === '1';
@@ -26,11 +27,15 @@ export default async function ContactPage() {
           送信しました。お問い合わせありがとうございます。順次確認いたします。
         </p>
       )}
-      {error && (
+      {error === 'turnstile' ? (
+        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+          bot 対策の確認に失敗しました。ページを再読み込みして、もう一度お試しください。
+        </p>
+      ) : error ? (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
           メールアドレスの形式、または本文(5文字以上)をご確認ください。
         </p>
-      )}
+      ) : null}
 
       <form method="post" action="/contact" className="mt-6 space-y-5">
         <label className="block">
@@ -65,10 +70,20 @@ export default async function ContactPage() {
             <input type="text" name="website" tabIndex={-1} autoComplete="off" />
           </label>
         </div>
+        {turnstileSiteKey && (
+          <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="auto" />
+        )}
         <button type="submit" className="btn cursor-pointer">
           送信
         </button>
       </form>
+      {turnstileSiteKey && (
+        <script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        />
+      )}
     </div>
   );
 }

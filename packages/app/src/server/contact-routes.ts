@@ -14,6 +14,28 @@ async function getEnv(): Promise<Env> {
   return env;
 }
 
+/** Cloudflare Turnstile のトークンを検証する */
+async function verifyTurnstile(
+  secret: string,
+  token: string,
+  remoteIp?: string,
+): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const body = new URLSearchParams({ secret, response: token });
+    if (remoteIp) body.set('remoteip', remoteIp);
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const data = (await res.json()) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
 const contact = new Hono();
 
 contact.post('/contact', async (c: Context) => {
@@ -25,6 +47,16 @@ contact.post('/contact', async (c: Context) => {
   const form = await c.req.parseBody();
   // ハニーポット(ボットが埋めがちな隠しフィールド)。値が入っていたら黙って成功扱い
   if (formStr(form.website)) return c.redirect('/contact?sent=1', 302);
+
+  // Turnstile(設定されているときだけ検証)
+  if (env.TURNSTILE_SECRET_KEY) {
+    const ok = await verifyTurnstile(
+      env.TURNSTILE_SECRET_KEY,
+      formStr(form['cf-turnstile-response']),
+      c.req.header('cf-connecting-ip'),
+    );
+    if (!ok) return c.redirect('/contact?error=turnstile', 302);
+  }
 
   const email = formStr(form.email).slice(0, 200);
   const name = formStr(form.name).slice(0, 100);

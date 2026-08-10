@@ -36,6 +36,9 @@ interface Env {
   LEGAL_CONTACT?: string;
   /** 問い合わせフォームの送信先。設定すると /contact が有効になる */
   CONTACT_EMAIL?: string;
+  /** Cloudflare Turnstile。両方設定すると問い合わせフォームに bot 対策が付く */
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USERNAME?: string;
