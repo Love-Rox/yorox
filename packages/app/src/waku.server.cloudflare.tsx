@@ -6,6 +6,7 @@ import stripeRoutes from './server/stripe-routes';
 import calendarRoutes from './server/calendar-routes';
 import contactRoutes from './server/contact-routes';
 import mcpRoutes from './server/mcp-routes';
+import sitemapRoutes from './server/sitemap-routes';
 import authRoutes from './server/auth-routes';
 import passkeyRoutes from './auth/passkey-routes';
 import eventRoutes from './server/event-routes';
@@ -23,6 +24,7 @@ export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')), {
     calendarRoutes,
     contactRoutes,
     mcpRoutes,
+    sitemapRoutes,
     authRoutes,
     passkeyRoutes,
     eventRoutes,

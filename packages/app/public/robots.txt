@@ -1,2 +1,7 @@
 User-agent: *
 Disallow: /RSC/
+Disallow: /mcp
+Disallow: /settings/
+Disallow: /auth/
+
+Sitemap: https://yorox.love-rox.cc/sitemap.xml

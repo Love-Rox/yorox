@@ -39,6 +39,10 @@ export default async function HomePage() {
       />
       <meta property="og:type" content="website" />
       <meta property="og:url" content="https://yorox.love-rox.cc/" />
+      <meta property="og:image" content="https://yorox.love-rox.cc/images/og-default.png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta name="twitter:card" content="summary_large_image" />
 
       {/* サービスの名称と目的(トップに明示) */}
       <section className="mb-10">

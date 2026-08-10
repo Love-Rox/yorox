@@ -1,6 +1,9 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Link } from 'waku';
-import { unstable_notFound as notFound } from 'waku/router/server';
+import {
+  unstable_getRequest as getRequest,
+  unstable_notFound as notFound,
+} from 'waku/router/server';
 import { Avatar } from '../../components/avatar';
 import { ActorKindBadge, ActorKindMark } from '../../components/actor-kind';
 import { ServiceIcon } from '../../components/service-icon';
@@ -77,6 +80,26 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
   return (
     <div>
       <title>{`${actor.displayName} - Yorox`}</title>
+      {(() => {
+        const origin = new URL(getRequest().url).origin;
+        const desc = actor.summary
+          ? actor.summary.replace(/[#*_`>\-]/g, '').slice(0, 120)
+          : `${actor.displayName} のプロフィール - Yorox`;
+        return (
+          <>
+            <meta property="og:type" content="profile" />
+            <meta property="og:site_name" content="Yorox" />
+            <meta property="og:title" content={actor.displayName} />
+            <meta property="og:description" content={desc} />
+            <meta property="og:url" content={`${origin}/u/${actor.handle}`} />
+            <meta property="og:image" content={`${origin}/images/og-default.png`} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="description" content={desc} />
+          </>
+        );
+      })()}
       <header className="flex flex-wrap items-start gap-5">
         <Avatar avatarUrl={actor.avatarUrl} displayName={actor.displayName} size="lg" />
         <div className="min-w-0 flex-1">

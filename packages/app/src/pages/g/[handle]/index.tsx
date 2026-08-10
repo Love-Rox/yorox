@@ -1,5 +1,8 @@
 import { Link } from 'waku';
-import { unstable_notFound as notFound } from 'waku/router/server';
+import {
+  unstable_getRequest as getRequest,
+  unstable_notFound as notFound,
+} from 'waku/router/server';
 import { Avatar } from '../../../components/avatar';
 import { ActorKindBadge } from '../../../components/actor-kind';
 import { Markdown } from '../../../lib/markdown';
@@ -42,6 +45,26 @@ export default async function GroupPage({ handle }: { handle: string }) {
   return (
     <div>
       <title>{`${actor.displayName} - Yorox`}</title>
+      {(() => {
+        const origin = new URL(getRequest().url).origin;
+        const desc = group.descriptionMd
+          ? group.descriptionMd.replace(/[#*_`>\-]/g, '').slice(0, 120)
+          : `${actor.displayName} のイベント - Yorox`;
+        return (
+          <>
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content="Yorox" />
+            <meta property="og:title" content={actor.displayName} />
+            <meta property="og:description" content={desc} />
+            <meta property="og:url" content={`${origin}/g/${handle}`} />
+            <meta property="og:image" content={`${origin}/images/og-default.png`} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="description" content={desc} />
+          </>
+        );
+      })()}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
