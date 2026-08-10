@@ -77,6 +77,8 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
     .where(
       and(
         eq(schema.events.visibility, 'draft'),
+        // 中止したイベントは予約時刻が来ても公開しない
+        isNull(schema.events.cancelledAt),
         isNotNull(schema.events.publishAt),
         lte(schema.events.publishAt, now),
       ),
@@ -99,6 +101,8 @@ export async function runScheduledJobs(env: Env, now: Date = new Date()): Promis
     .where(
       and(
         eq(schema.events.visibility, 'public'),
+        // 中止したイベントにはリマインダーを送らない
+        isNull(schema.events.cancelledAt),
         isNull(schema.events.reminderSentAt),
         gte(schema.events.startsAt, now),
         lte(schema.events.startsAt, reminderWindowEnd),

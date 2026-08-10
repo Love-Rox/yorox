@@ -29,7 +29,11 @@ export async function listUpcomingEvents(db: Db, limit = 20) {
     .innerJoin(schema.actors, eq(schema.events.groupActorId, schema.actors.id))
     .innerJoin(schema.groups, eq(schema.events.groupActorId, schema.groups.actorId))
     .where(
-      and(eq(schema.events.visibility, 'public'), gte(schema.events.startsAt, new Date())),
+      and(
+        eq(schema.events.visibility, 'public'),
+        isNull(schema.events.cancelledAt),
+        gte(schema.events.startsAt, new Date()),
+      ),
     )
     .orderBy(asc(schema.events.startsAt))
     .limit(limit);
@@ -53,6 +57,7 @@ export async function searchUpcomingEvents(db: Db, query: string, limit = 20) {
     .where(
       and(
         eq(schema.events.visibility, 'public'),
+        isNull(schema.events.cancelledAt),
         gte(schema.events.startsAt, new Date()),
         sql`${schema.events.title} LIKE ${like} ESCAPE '\\'`,
       ),

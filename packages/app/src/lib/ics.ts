@@ -14,6 +14,8 @@ export interface IcsEvent {
   url?: string | null;
   /** 最終更新(なければ start を使う) */
   updated?: Date | null;
+  /** 中止済みか。true なら STATUS:CANCELLED を出し、購読側で取り消し表示になる */
+  cancelled?: boolean;
 }
 
 /** RFC5545 のテキストエスケープ(バックスラッシュ・カンマ・セミコロン・改行) */
@@ -52,7 +54,8 @@ function eventBlock(e: IcsEvent, stamp: Date): string {
     `DTSTAMP:${formatUtc(stamp)}`,
     `DTSTART:${formatUtc(e.start)}`,
     ...(e.end ? [`DTEND:${formatUtc(e.end)}`] : []),
-    `SUMMARY:${escapeText(e.title)}`,
+    `SUMMARY:${escapeText(e.cancelled ? `【中止】${e.title}` : e.title)}`,
+    ...(e.cancelled ? ['STATUS:CANCELLED'] : []),
     ...(e.location ? [`LOCATION:${escapeText(e.location)}`] : []),
     ...(e.description ? [`DESCRIPTION:${escapeText(e.description)}`] : []),
     ...(e.url ? [`URL:${e.url}`] : []),

@@ -41,6 +41,7 @@ function toIcsEvent(event: EventRow, origin: string, groupHandle: string | null)
     description: humanUrl,
     url: humanUrl,
     updated: event.updatedAt,
+    cancelled: !!event.cancelledAt,
   };
 }
 

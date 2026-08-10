@@ -1,7 +1,7 @@
 /**
  * sitemap.xml。主要な静的ページ + 公開グループ + 公開イベントを列挙する。
  */
-import { and, eq, gte } from 'drizzle-orm';
+import { and, eq, gte, isNull } from 'drizzle-orm';
 import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
@@ -65,7 +65,11 @@ sitemap.get('/sitemap.xml', async (c) => {
     .from(schema.events)
     .innerJoin(schema.actors, eq(schema.events.groupActorId, schema.actors.id))
     .where(
-      and(eq(schema.events.visibility, 'public'), gte(schema.events.startsAt, new Date())),
+      and(
+        eq(schema.events.visibility, 'public'),
+        isNull(schema.events.cancelledAt),
+        gte(schema.events.startsAt, new Date()),
+      ),
     )
     .limit(2000);
   for (const e of events) {

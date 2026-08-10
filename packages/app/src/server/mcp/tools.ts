@@ -13,6 +13,7 @@ import {
   AlreadyJoinedError,
   cancelParticipation,
   ConditionNotMetError,
+  EventCancelledError,
   joinSlot,
   ReJoinBlockedError,
   SlotFullError,
@@ -152,6 +153,8 @@ export const TOOLS: McpTool[] = [
         startsAt: iso(event.startsAt),
         endsAt: iso(event.endsAt),
         timezone: event.timezone,
+        cancelled: !!event.cancelledAt,
+        cancelReason: event.cancelReason ?? null,
         venue: venueOf(event),
         online: !!event.onlineUrl,
         group: { handle: groupActor?.handle ?? null, name: groupActor?.displayName ?? null },
@@ -307,6 +310,8 @@ export const TOOLS: McpTool[] = [
           return { error: 'condition', message: err.reason };
         if (err instanceof GroupBlockedError)
           return { error: 'blocked', message: 'このグループのイベントには参加できません' };
+        if (err instanceof EventCancelledError)
+          return { error: 'event_cancelled', message: 'このイベントは中止されました' };
         if (err instanceof ReJoinBlockedError) return { error: 'rejoin_blocked', message: err.message };
         throw err;
       }

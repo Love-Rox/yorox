@@ -63,3 +63,31 @@ describe('googleCalendarUrl', () => {
     expect(url).toContain('dates=20260828T100000Z%2F20260828T120000Z');
   });
 });
+
+describe('中止イベント', () => {
+  it('STATUS:CANCELLED と【中止】プレフィックスを出す', () => {
+    const ics = buildIcs(
+      [
+        {
+          uid: 'e1@example.com',
+          title: '勉強会',
+          start: new Date('2026-09-01T10:00:00Z'),
+          cancelled: true,
+        },
+      ],
+      'テスト',
+      new Date('2026-08-01T00:00:00Z'),
+    );
+    expect(ics).toContain('STATUS:CANCELLED');
+    expect(ics).toContain('SUMMARY:【中止】勉強会');
+  });
+
+  it('通常イベントには STATUS を出さない', () => {
+    const ics = buildIcs(
+      [{ uid: 'e2@example.com', title: '勉強会', start: new Date('2026-09-01T10:00:00Z') }],
+      'テスト',
+      new Date('2026-08-01T00:00:00Z'),
+    );
+    expect(ics).not.toContain('STATUS:CANCELLED');
+  });
+});
