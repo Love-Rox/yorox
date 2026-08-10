@@ -83,38 +83,56 @@ export interface EventOgInput {
   siteName?: string;
 }
 
+/** ロゴマーク(角丸タイル + 版ズレ Y)を (x,y) に size で描く */
+function logoMark(x: number, y: number, size: number): string {
+  const s = size / 512;
+  const yPath = 'M146 128 L256 262 M366 128 L256 262 M256 262 L256 396';
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <rect width="512" height="512" rx="104" fill="${INK}"/>
+    <path d="${yPath}" fill="none" stroke="${ACCENT}" stroke-width="92" stroke-linecap="round" stroke-linejoin="round" transform="translate(-12,-9)"/>
+    <path d="${yPath}" fill="none" stroke="${PAPER}" stroke-width="92" stroke-linecap="round" stroke-linejoin="round" transform="translate(8,8)"/>
+  </g>`;
+}
+
 /** イベント OGP カードの SVG 文字列を返す(1200×630) */
 export function buildEventOgSvg(input: EventOgInput): string {
   const pad = 80;
   const contentW = WIDTH - pad * 2;
-  const titleSize = 66;
+  const titleSize = 62;
   const titleLines = wrapText(input.title, titleSize, contentW, 3);
-  const lineHeight = titleSize * 1.28;
-  const titleTop = 210;
+  const lineHeight = titleSize * 1.34;
 
+  // ヘッダー: ロゴマーク + サービス名
+  const logoSize = 64;
+  const logoY = 52;
+  const site = escapeXml(input.siteName ?? 'Yorox');
+
+  // 仕切り線とタイトルの間に十分な余白を取る(線が文字に重ならないよう)
+  const ruleY = 196;
+  const titleFirstBaseline = ruleY + 76;
   const titleTspans = titleLines
     .map(
       (ln, i) =>
-        `<tspan x="${pad}" y="${titleTop + i * lineHeight}">${escapeXml(ln)}</tspan>`,
+        `<tspan x="${pad}" y="${titleFirstBaseline + i * lineHeight}">${escapeXml(ln)}</tspan>`,
     )
     .join('');
 
-  const metaY = titleTop + titleLines.length * lineHeight + 36;
+  const titleBottom = titleFirstBaseline + (titleLines.length - 1) * lineHeight;
+  const dateY = titleBottom + 84;
   const venueLine = input.venue
-    ? `<text x="${pad}" y="${metaY + 52}" font-family="sans-serif" font-size="32" fill="${INK}" opacity="0.8">${escapeXml(input.venue)}</text>`
+    ? `<text x="${pad}" y="${dateY + 50}" font-family="sans-serif" font-size="30" fill="${INK}" opacity="0.8">${escapeXml(input.venue)}</text>`
     : '';
-  const site = escapeXml(input.siteName ?? 'Yorox');
 
-  // 版ズレ風のアクセント帯 + 上部にサイト名・グループ名
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <rect width="${WIDTH}" height="${HEIGHT}" fill="${PAPER}"/>
   <rect x="0" y="0" width="${WIDTH}" height="16" fill="${ACCENT}"/>
   <rect x="0" y="16" width="${WIDTH}" height="6" fill="${ACCENT2}"/>
-  <text x="${pad}" y="108" font-family="sans-serif" font-size="34" font-weight="700" fill="${ACCENT}" letter-spacing="1">${site}</text>
-  <text x="${pad}" y="152" font-family="sans-serif" font-size="30" fill="${ACCENT2}">${escapeXml(input.groupName)}</text>
-  <line x1="${pad}" y1="176" x2="${WIDTH - pad}" y2="176" stroke="${RULE}" stroke-width="2"/>
+  ${logoMark(pad, logoY, logoSize)}
+  <text x="${pad + logoSize + 20}" y="${logoY + logoSize * 0.72}" font-family="sans-serif" font-size="40" font-weight="700" fill="${ACCENT}" letter-spacing="1">${site}</text>
+  <text x="${pad}" y="${ruleY - 20}" font-family="sans-serif" font-size="30" fill="${ACCENT2}">${escapeXml(input.groupName)}</text>
+  <line x1="${pad}" y1="${ruleY}" x2="${WIDTH - pad}" y2="${ruleY}" stroke="${RULE}" stroke-width="2"/>
   <text font-family="sans-serif" font-size="${titleSize}" font-weight="700" fill="${INK}">${titleTspans}</text>
-  <text x="${pad}" y="${metaY}" font-family="sans-serif" font-size="36" font-weight="700" fill="${ACCENT2}">${escapeXml(input.dateText)}</text>
+  <text x="${pad}" y="${dateY}" font-family="sans-serif" font-size="36" font-weight="700" fill="${ACCENT2}">${escapeXml(input.dateText)}</text>
   ${venueLine}
   <rect x="0" y="${HEIGHT - 14}" width="${WIDTH}" height="14" fill="${ACCENT2}"/>
 </svg>`;

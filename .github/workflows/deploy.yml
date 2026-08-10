@@ -27,6 +27,7 @@ jobs:
       # worker-configuration.d.ts は生成物(gitignore)なので CI で生成する
       - run: pnpm --filter @yorox/app exec wrangler types
       - run: pnpm --filter @yorox/slot-coordinator exec wrangler types
+      - run: pnpm --filter @yorox/og-renderer exec wrangler types
       - run: pnpm typecheck
       - run: pnpm test
 
@@ -52,6 +53,13 @@ jobs:
 
       - name: Deploy slot-coordinator
         working-directory: packages/slot-coordinator
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy og-renderer
+        working-directory: packages/og-renderer
         run: pnpm exec wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

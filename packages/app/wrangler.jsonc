@@ -62,6 +62,11 @@
       // 先着枠の定員直列化(packages/slot-coordinator の DO Worker)
       "binding": "SLOT_COORDINATOR",
       "service": "yorox-slot-coordinator"
+    },
+    {
+      // OGP 画像の SVG→PNG レンダラ(packages/og-renderer)
+      "binding": "OG_RENDERER",
+      "service": "yorox-og-renderer"
     }
   ],
   "triggers": {

@@ -9,6 +9,11 @@
 pnpm workspaces モノレポ:
 - `packages/app` — アプリ本体。Waku (RSC) + Hono、Cloudflare Workers + D1 + Drizzle
 - `packages/ap` — ゼロ依存 ActivityPub ライブラリ(**ランタイム依存を追加しない**)
+- `packages/slot-coordinator` — 先着枠を直列化する DO Worker(app から service binding `SLOT_COORDINATOR`)
+- `packages/og-renderer` — OGP 画像の SVG→PNG レンダラ Worker(resvg-wasm を静的同梱。
+  app から service binding `OG_RENDERER`)。Waku は wasm を静的モジュール化できないため
+  別ワーカーに分離している。ローカルで OGP PNG を試すときは wrangler dev の `-c` に
+  `../og-renderer/wrangler.jsonc` を追加(未起動でも app は SVG にフォールバック)
 
 ## コマンド(packages/app)
 

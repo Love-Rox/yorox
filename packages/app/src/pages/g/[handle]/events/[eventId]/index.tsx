@@ -155,7 +155,7 @@ export default async function EventPage({
     ? event.thumbnailUrl.startsWith('/')
       ? `${url.origin}${event.thumbnailUrl}`
       : event.thumbnailUrl
-    : `${url.origin}/events/${eventId}/ogp.svg`;
+    : `${url.origin}/events/${eventId}/ogp.png`;
 
   return (
     <article>
@@ -169,7 +169,7 @@ export default async function EventPage({
       {ogImage && <meta property="og:image" content={ogImage} />}
       {!event.thumbnailUrl && (
         <>
-          <meta property="og:image:type" content="image/svg+xml" />
+          <meta property="og:image:type" content="image/png" />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
         </>

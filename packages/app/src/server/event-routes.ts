@@ -343,6 +343,53 @@ events.get('/events/:id/ogp.svg', async (c) => {
   });
 });
 
+/**
+ * イベント OGP 画像(PNG、X/Facebook 対応)。
+ * SVG→PNG のラスタライズは og-renderer Worker(service binding)に委譲し、
+ * 生成物は R2 にキャッシュして再利用する(更新時刻をキーに含め自動更新)。
+ */
+events.get('/events/:id/ogp.png', async (c) => {
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const event = await db.query.events.findFirst({
+    where: eq(schema.events.id, c.req.param('id')),
+  });
+  if (!event || event.visibility !== 'public') return c.notFound();
+
+  const pngHeaders = { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' };
+  const cacheKey = `og-cache/${event.id}-${event.updatedAt.getTime()}.png`;
+  const cached = await env.FILES?.get(cacheKey);
+  if (cached) return c.body(cached.body, 200, pngHeaders);
+
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  const fmt = new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: event.timezone || 'Asia/Tokyo',
+  });
+  const svg = buildEventOgSvg({
+    title: event.title,
+    dateText: fmt.format(event.startsAt),
+    groupName: group?.displayName ?? '',
+    venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
+  });
+
+  try {
+    const res = await env.OG_RENDERER.fetch(
+      new Request('https://og-renderer/render', { method: 'POST', body: svg }),
+    );
+    if (!res.ok) throw new Error(`renderer ${res.status}`);
+    const png = new Uint8Array(await res.arrayBuffer());
+    await env.FILES?.put(cacheKey, png, { httpMetadata: { contentType: 'image/png' } });
+    return new Response(png, { status: 200, headers: pngHeaders });
+  } catch (err) {
+    console.error('[ogp] PNG 生成に失敗、SVG にフォールバック:', err);
+    return c.redirect(`/events/${event.id}/ogp.svg`, 302);
+  }
+});
+
 /** 予約公開の設定 */
 events.post('/events/:id/schedule-publish', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);

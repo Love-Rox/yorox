@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yorox-og-renderer",
+  "main": "./src/index.ts",
+  "compatibility_date": "2025-11-17",
+  // フォント(.ttf)をバイナリ(ArrayBuffer)としてバンドルする。
+  // .wasm は既定で CompiledWasm(WebAssembly.Module)として扱われる。
+  "rules": [
+    {
+      "type": "Data",
+      "globs": ["**/*.ttf"],
+      "fallthrough": true
+    }
+  ]
+}
