@@ -83,6 +83,50 @@ export interface EventOgInput {
   siteName?: string;
 }
 
+export interface ActorOgInput {
+  name: string;
+  handle: string;
+  /** 'グループ' | '個人グループ' | '個人' 等の種別ラベル */
+  kindLabel: string;
+  subtitle?: string | null;
+  siteName?: string;
+}
+
+/** グループ/ユーザー用の OGP カード SVG(1200×630) */
+export function buildActorOgSvg(input: ActorOgInput): string {
+  const pad = 80;
+  const contentW = WIDTH - pad * 2;
+  const nameSize = 66;
+  const nameLines = wrapText(input.name, nameSize, contentW, 2);
+  const lineHeight = nameSize * 1.34;
+  const logoSize = 64;
+  const logoY = 52;
+  const site = escapeXml(input.siteName ?? 'Yorox');
+  const ruleY = 196;
+  const nameFirstBaseline = ruleY + 78;
+  const nameTspans = nameLines
+    .map((ln, i) => `<tspan x="${pad}" y="${nameFirstBaseline + i * lineHeight}">${escapeXml(ln)}</tspan>`)
+    .join('');
+  const nameBottom = nameFirstBaseline + (nameLines.length - 1) * lineHeight;
+  const subLine = input.subtitle
+    ? `<text x="${pad}" y="${nameBottom + 100}" font-family="sans-serif" font-size="30" fill="${INK}" opacity="0.8">${escapeXml(input.subtitle)}</text>`
+    : '';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="${PAPER}"/>
+  <rect x="0" y="0" width="${WIDTH}" height="16" fill="${ACCENT}"/>
+  <rect x="0" y="16" width="${WIDTH}" height="6" fill="${ACCENT2}"/>
+  ${logoMark(pad, logoY, logoSize)}
+  <text x="${pad + logoSize + 20}" y="${logoY + logoSize * 0.72}" font-family="sans-serif" font-size="40" font-weight="700" fill="${ACCENT}" letter-spacing="1">${site}</text>
+  <text x="${pad}" y="${ruleY - 20}" font-family="sans-serif" font-size="30" fill="${ACCENT2}">${escapeXml(input.kindLabel)}</text>
+  <line x1="${pad}" y1="${ruleY}" x2="${WIDTH - pad}" y2="${ruleY}" stroke="${RULE}" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="${nameSize}" font-weight="700" fill="${INK}">${nameTspans}</text>
+  <text x="${pad}" y="${nameBottom + 54}" font-family="monospace" font-size="34" fill="${ACCENT2}">@${escapeXml(input.handle)}</text>
+  ${subLine}
+  <rect x="0" y="${HEIGHT - 14}" width="${WIDTH}" height="14" fill="${ACCENT2}"/>
+</svg>`;
+}
+
 /** ロゴマーク(角丸タイル + 版ズレ Y)を (x,y) に size で描く */
 function logoMark(x: number, y: number, size: number): string {
   const s = size / 512;

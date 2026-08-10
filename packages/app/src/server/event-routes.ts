@@ -25,6 +25,7 @@ import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
 import { buildEventOgSvg } from '../lib/ogp';
+import { renderOgPngResponse } from './og';
 import { saveImageUpload } from '../storage/driver';
 import { generateToken } from '../lib/token';
 import { ulid } from '../lib/ulid';
@@ -80,9 +81,12 @@ events.get('/e/:id', async (c) => {
     where: eq(schema.actors.id, event.groupActorId),
   });
   if (!group?.handle) return c.notFound();
-  // 恒久リダイレクト(301)を明示。c.redirect の第2引数だけでは 302 になる環境がある
-  c.header('Location', `/g/${group.handle}/events/${id}`);
-  return c.body(null, 301);
+  // 恒久リダイレクト(301)。hono の c.redirect/c.body では 302 になる環境が
+  // あったため、生の Response で 301 を明示する
+  return new Response(null, {
+    status: 301,
+    headers: { Location: `/g/${group.handle}/events/${id}` },
+  });
 });
 
 /** イベント作成(下書き) */
@@ -358,11 +362,6 @@ events.get('/events/:id/ogp.png', async (c) => {
   });
   if (!event || event.visibility !== 'public') return c.notFound();
 
-  const pngHeaders = { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' };
-  const cacheKey = `og-cache/${event.id}-${event.updatedAt.getTime()}.png`;
-  const cached = await env.FILES?.get(cacheKey);
-  if (cached) return c.body(cached.body, 200, pngHeaders);
-
   const group = await db.query.actors.findFirst({
     where: eq(schema.actors.id, event.groupActorId),
   });
@@ -378,18 +377,12 @@ events.get('/events/:id/ogp.png', async (c) => {
     venue: event.venueName ?? (event.onlineUrl ? 'オンライン開催' : null),
   });
 
-  try {
-    const res = await env.OG_RENDERER.fetch(
-      new Request('https://og-renderer/render', { method: 'POST', body: svg }),
-    );
-    if (!res.ok) throw new Error(`renderer ${res.status}`);
-    const png = new Uint8Array(await res.arrayBuffer());
-    await env.FILES?.put(cacheKey, png, { httpMetadata: { contentType: 'image/png' } });
-    return new Response(png, { status: 200, headers: pngHeaders });
-  } catch (err) {
-    console.error('[ogp] PNG 生成に失敗、SVG にフォールバック:', err);
-    return c.redirect(`/events/${event.id}/ogp.svg`, 302);
-  }
+  const cacheKey = `og-cache/${event.id}-${event.updatedAt.getTime()}.png`;
+  // レンダラ失敗時は SVG にフォールバック
+  return (
+    (await renderOgPngResponse(env, cacheKey, svg)) ??
+    c.redirect(`/events/${event.id}/ogp.svg`, 302)
+  );
 });
 
 /** 予約公開の設定 */

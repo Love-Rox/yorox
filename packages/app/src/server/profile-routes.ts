@@ -9,7 +9,9 @@ import { createDb, schema } from '../db/client';
 import { createAccessToken, revokeAccessToken } from '../domain/access-token';
 import { deleteAccount, exportUserData } from '../domain/account';
 import { escapeHtml } from '../lib/html';
+import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
+import { renderOgPngResponse } from './og';
 import { clearSessionCookieHeader } from '../auth/session';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
 import { claimBluesky, claimByRelMe, generateClaimCode, unlinkRemoteAlias } from './claim';
@@ -36,6 +38,29 @@ const profile = new Hono();
 /** /@handle → /u/handle(URL-DESIGN の人間向け表記) */
 profile.get('/:atHandle{@[a-z0-9-]+}', (c) => {
   return c.redirect(`/u/${c.req.param('atHandle').slice(1)}`, 302);
+});
+
+/** ユーザーの OGP 画像(PNG)。og-renderer に委譲し R2 キャッシュ */
+profile.get('/u/:handle/ogp.png', async (c) => {
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const handle = c.req.param('handle');
+  const actor = await db.query.actors.findFirst({
+    where: and(
+      eq(schema.actors.handle, handle),
+      isNull(schema.actors.domain),
+      eq(schema.actors.kind, 'user'),
+    ),
+  });
+  if (!actor) return c.notFound();
+  const svg = buildActorOgSvg({
+    name: actor.displayName,
+    handle,
+    kindLabel: '個人',
+    subtitle: actor.summary ? actor.summary.replace(/[#*_`>-]/g, '').slice(0, 60) : null,
+  });
+  const cacheKey = `og-cache/u-${actor.id}-${actor.updatedAt.getTime()}.png`;
+  return (await renderOgPngResponse(env, cacheKey, svg)) ?? c.notFound();
 });
 
 /** プロフィール更新(表示名・自己紹介・リンク) */

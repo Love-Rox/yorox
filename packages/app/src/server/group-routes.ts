@@ -8,7 +8,9 @@ import { createDb, schema } from '../db/client';
 import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
 import { renderMarkdownToHtml } from '../lib/markdown';
+import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
+import { renderOgPngResponse } from './og';
 import { announceGroupPostDeleteNow, announceGroupPostNow } from './ap-delivery';
 import {
   addMemberByHandle,
@@ -75,6 +77,30 @@ function redirectWithError(c: Context, path: string, err: unknown): Response {
 }
 
 const groups = new Hono();
+
+/** グループの OGP 画像(PNG)。og-renderer に委譲し R2 キャッシュ */
+groups.get('/g/:handle/ogp.png', async (c) => {
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const handle = c.req.param('handle');
+  const actor = await db.query.actors.findFirst({
+    where: and(
+      eq(schema.actors.handle, handle),
+      isNull(schema.actors.domain),
+      eq(schema.actors.kind, 'group'),
+    ),
+  });
+  if (!actor) return c.notFound();
+  const group = await db.query.groups.findFirst({ where: eq(schema.groups.actorId, actor.id) });
+  const svg = buildActorOgSvg({
+    name: actor.displayName,
+    handle: handle,
+    kindLabel: group?.isPersonal ? '個人グループ' : 'グループ',
+    subtitle: group?.descriptionMd ? group.descriptionMd.replace(/[#*_`>-]/g, '').slice(0, 60) : null,
+  });
+  const cacheKey = `og-cache/g-${actor.id}-${actor.updatedAt.getTime()}.png`;
+  return (await renderOgPngResponse(env, cacheKey, svg)) ?? c.notFound();
+});
 
 /** グループ作成 */
 groups.post('/groups', async (c) => {
