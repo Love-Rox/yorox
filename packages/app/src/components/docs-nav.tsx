@@ -12,6 +12,7 @@ const SECTIONS: { href: string; title: string }[] = [
   { href: '/docs/participants', title: '参加者向け' },
   { href: '/docs/organizers', title: '主催者向け' },
   { href: '/docs/federation', title: '分散型のしくみ' },
+  { href: '/docs/mcp', title: 'MCP 連携' },
   { href: '/docs/instance-owners', title: 'サイトオーナー向け' },
 ];
 

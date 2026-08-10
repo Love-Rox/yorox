@@ -12,6 +12,8 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb } from '../db/client';
+import { resolveActorByToken } from '../domain/access-token';
+import { getSlotCoordinator } from './coordinator';
 import { requestOrigin } from './http';
 import { TOOLS, TOOLS_BY_NAME } from './mcp/tools';
 
@@ -89,8 +91,25 @@ async function handleRpc(c: Context, msg: JsonRpcMessage): Promise<unknown> {
       const args = (params.arguments ?? {}) as Record<string, unknown>;
       const db = createDb((await getEnv()).DB);
       const origin = await requestOrigin(c);
+
+      // Bearer PAT から本人を解決(書き込みツールで必須)
+      const auth = c.req.header('authorization') ?? '';
+      const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : undefined;
+      const actorId = await resolveActorByToken(db, token);
+      if (tool.requiresAuth && !actorId) {
+        return rpcResult(id, {
+          content: [
+            {
+              type: 'text',
+              text: 'このツールには認証が必要です。Yorox の設定でアクセストークンを発行し、Authorization: Bearer <token> を設定してください。',
+            },
+          ],
+          isError: true,
+        });
+      }
+      const slotCoordinator = await getSlotCoordinator();
       try {
-        const data = await tool.handler(db, origin, args);
+        const data = await tool.handler({ db, origin, actorId, slotCoordinator }, args);
         const isError = !!(data && typeof data === 'object' && 'error' in data);
         return rpcResult(id, {
           content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],

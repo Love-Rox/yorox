@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../server/current-user';
 import { enabledProviders } from '../../auth/oauth';
 import { PasskeyRegisterButton } from '../../components/passkey-buttons';
 import { listClaimedAliases } from '../../server/claim';
+import { listAccessTokens } from '../../domain/access-token';
 import { getDb } from '../../server/data';
 import { getUploadConfig } from '../../storage/driver';
 import { SectionNavLayout, type SectionNavItem } from '../../components/section-nav';
@@ -62,12 +63,15 @@ export default async function ProfileSettingsPage() {
   });
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
 
+  const tokens = await listAccessTokens(db, user.actorId);
+
   const sections: SectionNavItem[] = [
     { id: 'avatar', label: 'アバター' },
     { id: 'oauth', label: 'ログイン方法' },
     { id: 'calendar', label: '参加予定カレンダー' },
     { id: 'notifications', label: 'お知らせ' },
     { id: 'fediverse', label: 'Fediverse 連携' },
+    { id: 'tokens', label: 'アクセストークン' },
     { id: 'danger', label: 'データと退会' },
   ];
 
@@ -473,6 +477,71 @@ export default async function ProfileSettingsPage() {
             </form>
           </div>
         </div>
+      </section>
+
+      {/* ---- アクセストークン(API / MCP) ---- */}
+      <section id="tokens" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+        <h2 className="display t-md">
+          アクセストークン
+          <HelpTip text="MCP クライアントや API から Yorox をあなたとして操作するための鍵です。発行時に一度だけ表示されるので安全に保管してください。不要になったら失効できます。" />
+        </h2>
+        <p className="mt-2 text-sm text-neutral">
+          MCP サーバー(<span className="meta-mono">/mcp</span>)にこのトークンを{' '}
+          <span className="meta-mono">Authorization: Bearer …</span>{' '}
+          として設定すると、イベント作成・参加などの操作ができます。
+        </p>
+
+        {tokens.length > 0 ? (
+          <ul className="mt-4">
+            {tokens.map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3"
+              >
+                <div className="min-w-0">
+                  <span className="font-bold">{t.name}</span>
+                  <p className="meta-mono mt-0.5 text-sm text-neutral">
+                    発行 {t.createdAt.toLocaleDateString('ja-JP')}
+                    {t.lastUsedAt
+                      ? ` · 最終利用 ${t.lastUsedAt.toLocaleDateString('ja-JP')}`
+                      : ' · 未使用'}
+                  </p>
+                </div>
+                <form method="post" action={`/profile/tokens/${t.id}/revoke`}>
+                  <button
+                    type="submit"
+                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                  >
+                    失効
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-neutral">発行済みのトークンはありません。</p>
+        )}
+
+        <form
+          method="post"
+          action="/profile/tokens"
+          className="mt-4 flex flex-wrap items-end gap-3"
+        >
+          <label className="block min-w-48 flex-1">
+            <span className="text-sm font-bold">トークン名</span>
+            <input
+              type="text"
+              name="name"
+              maxLength={60}
+              required
+              className="input mt-1"
+              placeholder="例: Claude Desktop"
+            />
+          </label>
+          <button type="submit" className="btn cursor-pointer">
+            発行
+          </button>
+        </form>
       </section>
 
       {/* ---- データと退会(危険な操作) ---- */}

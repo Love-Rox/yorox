@@ -6,7 +6,9 @@ import { generateToken } from '../lib/token';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
+import { createAccessToken, revokeAccessToken } from '../domain/access-token';
 import { deleteAccount, exportUserData } from '../domain/account';
+import { escapeHtml } from '../lib/html';
 import { ulid } from '../lib/ulid';
 import { clearSessionCookieHeader } from '../auth/session';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
@@ -264,6 +266,53 @@ profile.post('/profile/avatar', async (c) => {
     .where(eq(schema.actors.id, actorId));
 
   return c.redirect('/settings/profile', 302);
+});
+
+/** アクセストークン(PAT)の発行。平文は一度きり表示する */
+profile.post('/profile/tokens', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const form = await c.req.parseBody();
+  const name = str(form.name) || 'アクセストークン';
+  const { token } = await createAccessToken(db, actorId, name.slice(0, 60));
+
+  // 平文はこの画面でのみ表示する(URL・DB には残さない)
+  const t = escapeHtml(token);
+  const n = escapeHtml(name.slice(0, 60));
+  return c.html(
+    `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>アクセストークンを発行しました - Yorox</title>
+<style>
+:root{color-scheme:light dark}
+body{font-family:system-ui,-apple-system,'Hiragino Sans',sans-serif;max-width:44rem;margin:3rem auto;padding:0 1.25rem;line-height:1.7;background:#f4f0e4;color:#23283a}
+@media(prefers-color-scheme:dark){body{background:#1b2240;color:#f4efde}}
+h1{font-size:1.5rem}
+.token{font-family:ui-monospace,monospace;font-size:1rem;word-break:break-all;border:2px solid #35507e;background:rgba(53,80,126,.08);padding:.9rem 1rem;border-radius:4px;margin:1rem 0}
+.warn{border-left:4px solid #e8446b;padding:.5rem .9rem;background:rgba(232,68,107,.08)}
+a{color:#35507e}
+</style></head><body>
+<h1>アクセストークンを発行しました</h1>
+<p>名前: <strong>${n}</strong></p>
+<p class="warn">このトークンは <strong>いま一度だけ</strong> 表示されます。安全な場所にコピーして保管してください。二度と表示できません(紛失時は再発行してください)。</p>
+<div class="token">${t}</div>
+<p>MCP クライアントには <code>Authorization: Bearer ${t}</code> として設定します。エンドポイントは <code>/mcp</code> です。</p>
+<p><a href="/settings/profile#tokens">← 設定に戻る</a></p>
+</body></html>`,
+  );
+});
+
+/** アクセストークンの失効 */
+profile.post('/profile/tokens/:id/revoke', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  await revokeAccessToken(db, actorId, c.req.param('id'));
+  return c.redirect('/settings/profile#tokens', 302);
 });
 
 export default function profileRoutes(opts: { app: Hono }): MiddlewareHandler {

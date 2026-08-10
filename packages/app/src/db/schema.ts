@@ -303,6 +303,30 @@ export const oauthAccounts = sqliteTable(
   ],
 );
 
+/**
+ * 個人アクセストークン(PAT)。MCP など API クライアントが Bearer で認証する。
+ * 平文は発行時のみ表示し、DB には SHA-256(hex)のみ保存する。
+ */
+export const accessTokens = sqliteTable(
+  'access_tokens',
+  {
+    id: text('id').primaryKey(), // ULID
+    userActorId: text('user_actor_id')
+      .notNull()
+      .references(() => users.actorId),
+    /** トークンの SHA-256(hex)。平文は保存しない */
+    tokenHash: text('token_hash').notNull(),
+    /** 利用者が付ける名前(例: "Claude Desktop") */
+    name: text('name').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('access_tokens_token_hash_unique').on(t.tokenHash),
+    index('access_tokens_user_idx').on(t.userActorId),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // グループ
 // ---------------------------------------------------------------------------

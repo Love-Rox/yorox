@@ -23,6 +23,11 @@ const GUIDES = [
     description: 'Yorox はどう繋がるのか — インスタンスと連合の解説',
   },
   {
+    href: '/docs/mcp',
+    title: 'MCP 連携',
+    description: 'AI クライアント(Claude 等)から Yorox を操作する',
+  },
+  {
     href: '/docs/instance-owners',
     title: 'サイトオーナー向けガイド',
     description: '自分の Yorox インスタンスを建てて運営する',
