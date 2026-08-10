@@ -46,6 +46,7 @@ export default async function ProfileSettingsPage() {
   const claimOk = url.searchParams.get('claim_ok');
   const claimError = url.searchParams.get('claim_error');
   const notifySaved = url.searchParams.get('notify_saved');
+  const discordTest = url.searchParams.get('discord_test');
   const calSaved = url.searchParams.get('cal_saved');
   const oauthOk = url.searchParams.get('oauth_ok');
   const oauthError = url.searchParams.get('oauth_error');
@@ -393,6 +394,20 @@ export default async function ProfileSettingsPage() {
           <button type="submit" className="btn-quiet mt-3 cursor-pointer">
             保存
           </button>
+        </form>
+
+        {discordTest && (
+          <p role="status" className="mt-4 border-2 border-accent-2 p-3 text-sm text-accent-2">
+            {discordTest}
+          </p>
+        )}
+        <form method="post" action="/profile/discord/test" className="mt-3">
+          <button type="submit" className="btn-quiet cursor-pointer text-sm">
+            Discord にテスト送信
+          </button>
+          <span className="ml-2 text-sm text-neutral">
+            設定を保存してから試すと、DM と Webhook の到達を確認できます
+          </span>
         </form>
       </section>
 

@@ -9,7 +9,7 @@ import { createDb, schema } from '../db/client';
 import { createAccessToken, revokeAccessToken } from '../domain/access-token';
 import { deleteAccount, exportUserData } from '../domain/account';
 import { escapeHtml } from '../lib/html';
-import { isDiscordWebhookUrl } from '../lib/discord';
+import { isDiscordWebhookUrl, sendDiscordDm, sendDiscordWebhook } from '../lib/discord';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
@@ -184,6 +184,56 @@ profile.post('/profile/notifications', async (c) => {
     })
     .where(eq(schema.users.actorId, actorId));
   return c.redirect('/settings/profile?notify_saved=1#notifications', 302);
+});
+
+
+/** Discord 通知のテスト送信(設定画面から即時に結果を確認する) */
+profile.post('/profile/discord/test', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.actorId, actorId),
+  });
+  const link = await db.query.oauthAccounts.findFirst({
+    where: and(
+      eq(schema.oauthAccounts.userActorId, actorId),
+      eq(schema.oauthAccounts.provider, 'discord'),
+    ),
+  });
+
+  const content = '**[Yorox] テスト送信**\nこのメッセージが届いていれば、Discord への通知は正常に設定されています。';
+  const results: string[] = [];
+
+  // DM
+  if (!link) {
+    results.push('DM: Discord アカウントが未連携です');
+  } else if (!user?.discordDmNotifications) {
+    results.push('DM: この設定がオフです');
+  } else if (!env.DISCORD_BOT_TOKEN) {
+    results.push('DM: このインスタンスでは Bot が未設定です');
+  } else {
+    const ok = await sendDiscordDm(env.DISCORD_BOT_TOKEN, link.providerUserId, content);
+    results.push(
+      ok
+        ? 'DM: 送信しました'
+        : 'DM: 送信できませんでした(Bot と共通のサーバーに参加しているか確認してください)',
+    );
+  }
+
+  // 個人 Webhook
+  if (user?.discordWebhookUrl) {
+    const ok = await sendDiscordWebhook(user.discordWebhookUrl, content);
+    results.push(ok ? 'Webhook: 送信しました' : 'Webhook: 送信できませんでした(URL を確認してください)');
+  }
+
+  return c.redirect(
+    `/settings/profile?discord_test=${encodeURIComponent(results.join(' / '))}#notifications`,
+    302,
+  );
 });
 
 /** claim: ワンタイムコード発行 */
