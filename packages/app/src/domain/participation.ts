@@ -16,6 +16,7 @@ import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
 import { GroupBlockedError, isActorBlocked } from './blocks';
 import { evaluateConditions, type ApplicantInfo } from './conditions';
+import { checkDiscordGuildCondition, resolveRequiredGuildId } from './discord-condition';
 import { emitDomainEvent } from './events';
 import { drawRandom, drawWeighted, type LotteryApplicant } from './lottery';
 import { confirmedStatus, ensurePayment, flagRefundIfPaid } from './payment';
@@ -113,7 +114,7 @@ async function getApplicantInfo(db: Db, actorId: string): Promise<ApplicantInfo>
 export async function joinSlot(
   db: Db,
   input: { slotId: string; actorId: string; now?: Date },
-  deps: { slotCoordinator?: SlotCoordinatorLike } = {},
+  deps: { slotCoordinator?: SlotCoordinatorLike; discordBotToken?: string } = {},
 ): Promise<{ participationId: string; status: 'accepted' | 'waitlisted' | 'applied' }> {
   const now = input.now ?? new Date();
   const slot = await db.query.slots.findFirst({ where: eq(schema.slots.id, input.slotId) });
@@ -131,6 +132,20 @@ export async function joinSlot(
   const applicant = await getApplicantInfo(db, input.actorId);
   const condResult = evaluateConditions(slot.conditions, applicant, now);
   if (!condResult.ok) throw new ConditionNotMetError(condResult.reason);
+
+  // Discord サーバー所属だけは外部 API を叩くので個別に評価する
+  if (event && slot.conditions?.requireDiscordGuild) {
+    const group = await db.query.groups.findFirst({
+      where: eq(schema.groups.actorId, event.groupActorId),
+    });
+    const guildId = resolveRequiredGuildId(slot.conditions, group?.discordGuildId);
+    const discordResult = await checkDiscordGuildCondition(
+      db,
+      { actorId: input.actorId, guildId },
+      deps.discordBotToken,
+    );
+    if (!discordResult.ok) throw new ConditionNotMetError(discordResult.reason);
+  }
 
   const existing = await db.query.participations.findFirst({
     where: and(

@@ -392,6 +392,12 @@ export const groups = sqliteTable('groups', {
    * そのチャンネルへ告知する。個人宛の通知(参加確定など)には使わない。
    */
   discordWebhookUrl: text('discord_webhook_url'),
+  /**
+   * グループ既定の Discord サーバー ID(任意)。枠の参加条件で
+   * 「このサーバーの参加者のみ」を有効にしたときの既定値になる。
+   * Bot がそのサーバーに参加していないと所属を確認できない。
+   */
+  discordGuildId: text('discord_guild_id'),
   /** 特定商取引法に基づく表記(グループ=事業者ごと。null=未設定) */
   tokushoho: text('tokushoho', { mode: 'json' }).$type<
     import('./schema-types').TokushohoJson
@@ -600,6 +606,15 @@ export interface SlotConditions {
   minAccountAgeDays?: number;
   /** 過去の参加実績の最低回数 */
   minAttendedCount?: number;
+  /**
+   * Discord サーバーへの所属を必須にする。対象サーバーは
+   * `discordGuildId`(枠ごとの上書き)→ グループ既定 の順で解決する。
+   * 外部 API を叩くため evaluateConditions では判定できない
+   * (domain/discord-condition.ts を参照)。
+   */
+  requireDiscordGuild?: boolean;
+  /** 枠ごとに対象サーバーを上書きする場合の Discord サーバー ID */
+  discordGuildId?: string;
 }
 
 export const slots = sqliteTable(

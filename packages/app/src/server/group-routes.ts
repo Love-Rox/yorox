@@ -9,7 +9,12 @@ import { deferWork } from '../lib/defer';
 import { createBskySession } from '../lib/bluesky';
 import { formatHashtags, parseHashtags } from '../lib/hashtags';
 import { escapeHtml } from '../lib/html';
-import { isDiscordWebhookUrl, sendDiscordWebhook } from '../lib/discord';
+import {
+  fetchDiscordGuild,
+  isDiscordSnowflake,
+  isDiscordWebhookUrl,
+  sendDiscordWebhook,
+} from '../lib/discord';
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
@@ -149,6 +154,13 @@ groups.post('/g/:handle/settings', async (c) => {
     .update(schema.actors)
     .set({ displayName, summary: str(form.description_md) || null, updatedAt: new Date() })
     .where(eq(schema.actors.id, ctx.groupActorId));
+  const guildIdInput = str(form.discord_guild_id);
+  if (guildIdInput && !isDiscordSnowflake(guildIdInput)) {
+    return c.redirect(
+      `/g/${handle}/settings?error=${encodeURIComponent('Discord サーバー ID は 17〜20 桁の数字です')}`,
+      302,
+    );
+  }
   await db
     .update(schema.groups)
     .set({
@@ -160,6 +172,7 @@ groups.post('/g/:handle/settings', async (c) => {
         if (!v) return null;
         return isDiscordWebhookUrl(v) ? v : null;
       })(),
+      discordGuildId: guildIdInput || null,
     })
     .where(eq(schema.groups.actorId, ctx.groupActorId));
   await recordAudit(db, {
@@ -169,6 +182,27 @@ groups.post('/g/:handle/settings', async (c) => {
     targetId: ctx.groupActorId,
     groupActorId: ctx.groupActorId,
   });
+
+  // Bot がそのサーバーに居ないと所属を確認できず、条件が全員を弾いてしまう。
+  // 保存自体は通したうえで、招待が必要なことをその場で伝える。
+  if (guildIdInput) {
+    const botToken = (await getEnv()).DISCORD_BOT_TOKEN;
+    const guild = botToken ? await fetchDiscordGuild(botToken, guildIdInput) : null;
+    if (!guild) {
+      return c.redirect(
+        `/g/${handle}/settings?notice=${encodeURIComponent(
+          'サーバー ID を保存しましたが、Yorox の Bot がそのサーバーに参加していないため所属を確認できません。Bot を招待してから参加条件を有効にしてください。',
+        )}`,
+        302,
+      );
+    }
+    return c.redirect(
+      `/g/${handle}/settings?notice=${encodeURIComponent(
+        `Discord サーバー「${guild.name}」を確認しました。`,
+      )}`,
+      302,
+    );
+  }
   return c.redirect(`/g/${handle}/settings`, 302);
 });
 

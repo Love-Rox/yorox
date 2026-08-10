@@ -57,6 +57,72 @@ export async function sendDiscordDm(
   }
 }
 
+/** Discord の ID(snowflake)の形式か。ユーザー入力の素朴な検証に使う */
+export function isDiscordSnowflake(id: string): boolean {
+  return /^\d{17,20}$/.test(id);
+}
+
+/**
+ * Bot が参加しているサーバーの情報を取得する。
+ * サーバー ID の設定時に「Bot が居るか」を確かめるために使う。
+ * Bot が未参加なら Discord は 404 を返すので null になる。
+ */
+export async function fetchDiscordGuild(
+  botToken: string,
+  guildId: string,
+): Promise<{ id: string; name: string } | null> {
+  if (!isDiscordSnowflake(guildId)) return null;
+  try {
+    const res = await fetch(`${API}/guilds/${guildId}`, {
+      headers: { authorization: `Bot ${botToken}` },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error(
+        `[discord] サーバー情報を取得できません status=${res.status} body=${detail.slice(0, 300)}`,
+      );
+      return null;
+    }
+    const data = (await res.json()) as { id?: string; name?: string };
+    return data.id ? { id: data.id, name: data.name ?? data.id } : null;
+  } catch (err) {
+    console.error('[discord] サーバー情報の取得に失敗:', err);
+    return null;
+  }
+}
+
+/**
+ * ユーザーがサーバーのメンバーかを確かめる。
+ *
+ * `GET /guilds/{id}/members/{user}` は Bot がそのサーバーに参加していれば
+ * 特権インテント無しで使える。判定できなかった場合は 'error' を返し、
+ * 呼び出し側が安全側(参加を許さない)に倒せるようにする。
+ */
+export async function checkDiscordGuildMember(
+  botToken: string,
+  guildId: string,
+  userId: string,
+): Promise<'member' | 'not_member' | 'error'> {
+  if (!isDiscordSnowflake(guildId) || !isDiscordSnowflake(userId)) return 'error';
+  try {
+    const res = await fetch(`${API}/guilds/${guildId}/members/${userId}`, {
+      headers: { authorization: `Bot ${botToken}` },
+    });
+    if (res.ok) return 'member';
+    // 404 は「メンバーでない」か「Bot がそのサーバーに居ない」。
+    // 後者は運営の設定ミスなので、判別のためログに残す。
+    if (res.status === 404) return 'not_member';
+    const detail = await res.text().catch(() => '');
+    console.error(
+      `[discord] メンバー確認に失敗 status=${res.status} guild=${guildId} body=${detail.slice(0, 300)}`,
+    );
+    return 'error';
+  } catch (err) {
+    console.error('[discord] メンバー確認に失敗:', err);
+    return 'error';
+  }
+}
+
 /** Webhook URL の形式が Discord のものか(SSRF 対策に厳格に判定) */
 export function isDiscordWebhookUrl(url: string): boolean {
   try {

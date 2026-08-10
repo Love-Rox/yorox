@@ -129,6 +129,11 @@ export default async function ManagePage({
             CSV(絵文字コードなし)
           </a>
         </span>
+        <p className="w-full text-sm text-neutral">
+          Discord を連携している参加者は、ユーザー名とユーザー ID の列に出力されます。
+          Excel で開くと ID が指数表記になるため、取り込み時に列を「文字列」に指定してください。
+          参加者の個人情報にあたるので、取り扱いにご注意ください
+        </p>
       </section>
 
       {/* ---- QR チェックイン ---- */}

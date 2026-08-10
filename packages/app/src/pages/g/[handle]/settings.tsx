@@ -60,6 +60,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
 
   const url = new URL(getRequest().url);
   const error = url.searchParams.get('error');
+  const notice = url.searchParams.get('notice');
   const blockError = url.searchParams.get('block_error');
 
   const sections: SectionNavItem[] = [
@@ -86,6 +87,12 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
           {decodeURIComponent(error)}
+        </p>
+      )}
+
+      {notice && (
+        <p role="status" className="mt-4 border-2 border-rule p-3 text-sm">
+          {decodeURIComponent(notice)}
         </p>
       )}
 
@@ -148,6 +155,25 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               <span className="mt-1 block text-sm text-neutral">
                 Discord のチャンネル設定 → 連携サービス → ウェブフック から作成できます。
                 イベント公開・お知らせがこのチャンネルに投稿されます
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-sm font-bold">
+                Discord サーバー ID(任意)
+                <HelpTip text="参加枠の条件で「このサーバーの参加者のみ」を有効にしたときの対象サーバーです。所属を確認するには Yorox の Bot がそのサーバーに参加している必要があります。" />
+              </span>
+              <input
+                type="text"
+                name="discord_guild_id"
+                defaultValue={group.discordGuildId ?? ''}
+                className="input meta-mono mt-1"
+                inputMode="numeric"
+                pattern="\d{17,20}"
+                placeholder="123456789012345678"
+              />
+              <span className="mt-1 block text-sm text-neutral">
+                Discord で開発者モードを有効にし、サーバー名を右クリック →「サーバー ID をコピー」で取得できます。
+                保存すると Bot がそのサーバーに参加しているか確認します
               </span>
             </label>
             <button type="submit" className="btn cursor-pointer">

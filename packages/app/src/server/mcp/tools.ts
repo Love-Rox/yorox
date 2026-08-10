@@ -28,6 +28,7 @@ import {
   searchUpcomingEvents,
 } from '../data';
 import { hasGroupPermission } from '../route-auth';
+import { buildJoinDeps } from '../join-deps';
 
 export interface McpContext {
   db: Db;
@@ -299,7 +300,7 @@ export const TOOLS: McpTool[] = [
         const result = await joinSlot(
           ctx.db,
           { slotId, actorId: ctx.actorId! },
-          ctx.slotCoordinator ? { slotCoordinator: ctx.slotCoordinator } : {},
+          await buildJoinDeps(ctx.slotCoordinator),
         );
         return { participationId: result.participationId, status: result.status };
       } catch (err) {

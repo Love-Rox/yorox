@@ -1,0 +1,1 @@
+ALTER TABLE `groups` ADD `discord_guild_id` text;

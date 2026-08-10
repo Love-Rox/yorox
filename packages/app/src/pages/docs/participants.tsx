@@ -43,6 +43,16 @@ export default async function ParticipantsGuidePage() {
           補欠のときは、空きが出ると順番に繰り上がります。イベントによっては繰上時に
           本人の承諾が必要な場合があり、その際はヘッダの「要確認」からご回答ください。
         </p>
+        <p className="mt-3">
+          枠に<strong>参加条件</strong>が設定されていることがあります(アカウント作成からの
+          日数、参加実績の回数、指定の Discord サーバーへの所属など)。条件は枠の欄に
+          表示されるので、申し込む前にご確認ください。
+        </p>
+        <p className="mt-3">
+          「指定の Discord サーバーの参加者のみ」の枠に申し込むには、
+          設定 &gt; 連携済みアカウント で <strong>Discord を連携</strong>したうえで、
+          主催者が指定するサーバーに参加している必要があります。
+        </p>
       </section>
 
       <section className="mt-8">

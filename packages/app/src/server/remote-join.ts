@@ -24,6 +24,7 @@ import {
 import { ulid } from '../lib/ulid';
 import { deliverWithRetry } from './ap-delivery';
 import { getSlotCoordinator } from './coordinator';
+import { buildJoinDeps } from './join-deps';
 
 const ULID_PATTERN = '[0-9A-HJKMNP-TV-Z]{26}';
 const EVENT_URI_RE = new RegExp(`/events/(${ULID_PATTERN})(?:/note)?$`);
@@ -99,8 +100,7 @@ export async function processRemoteJoin(
   }
 
   try {
-    const coordinator = await getSlotCoordinator();
-    const deps = coordinator ? { slotCoordinator: coordinator } : {};
+    const deps = await buildJoinDeps();
     const result = await joinSlot(
       db,
       { slotId: slot.id, actorId: input.remoteActor.id, now: input.now ?? new Date() },

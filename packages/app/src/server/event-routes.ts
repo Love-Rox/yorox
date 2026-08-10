@@ -38,8 +38,10 @@ import { announceEventNow, announceEventUpdateNow } from './ap-delivery';
 import { enqueueMail } from '../mail/queue';
 import { getSlotCoordinator } from './coordinator';
 import { sendReplyNote } from './remote-join';
-import { listManageParticipations } from './data';
+import { listDiscordAccounts, listManageParticipations } from './data';
 import { getSessionActorId, hasEventPermission, hasGroupPermission } from './route-auth';
+import { buildJoinDeps } from './join-deps';
+import { isDiscordSnowflake } from '../lib/discord';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -298,7 +300,9 @@ events.get('/events/:id/participants.csv', async (c) => {
     timeStyle: 'short',
     timeZone: 'Asia/Tokyo',
   });
-  const lines = ['枠,状態,表示名,ハンドル,出欠,支払い,申込日時'];
+  // Discord ID は個人情報。ここは attendance.manage / event.edit 権限の配下
+  const discord = await listDiscordAccounts(db, [...new Set(rows.map((r) => r.actorId))]);
+  const lines = ['枠,状態,表示名,ハンドル,Discord ユーザー名,Discord ユーザー ID,出欠,支払い,申込日時'];
   for (const r of rows) {
     const name = strip ? stripShortcodes(r.displayName) : r.displayName;
     const handle = r.handle ? (r.domain ? `@${r.handle}@${r.domain}` : `@${r.handle}`) : '';
@@ -311,6 +315,10 @@ events.get('/events/:id/participants.csv', async (c) => {
         CSV_STATUS_LABEL[r.status] ?? r.status,
         name,
         handle,
+        discord.get(r.actorId)?.label ?? '',
+        // 数式インジェクション対策(csvCell)を崩さないよう ID はそのまま出す。
+        // Excel は 18 桁を指数表記にするので、開くときに列を「文字列」指定する
+        discord.get(r.actorId)?.userId ?? '',
         attendance,
         payment,
         fmt.format(r.appliedAt),
@@ -753,6 +761,24 @@ events.post('/events/:id/slots', async (c) => {
   if (minAge !== undefined && minAge > 0) conditions.minAccountAgeDays = minAge;
   const minAttended = optionalInt(form.min_attended_count);
   if (minAttended !== undefined && minAttended > 0) conditions.minAttendedCount = minAttended;
+  if (form.require_discord_guild === 'on') {
+    const guildId = str(form.discord_guild_id);
+    if (guildId && !isDiscordSnowflake(guildId)) {
+      return c.text('Discord サーバー ID は 17〜20 桁の数字です', 400);
+    }
+    // 枠にも指定が無く、グループ既定も無いなら条件が成立しない(全員弾いてしまう)
+    const group = await db.query.groups.findFirst({
+      where: eq(schema.groups.actorId, ctx.event.groupActorId),
+    });
+    if (!guildId && !group?.discordGuildId) {
+      return c.text(
+        'Discord サーバーの条件を使うには、この枠かグループ設定でサーバー ID を指定してください',
+        400,
+      );
+    }
+    conditions.requireDiscordGuild = true;
+    if (guildId) conditions.discordGuildId = guildId;
+  }
 
   try {
     await addSlot(db, {
@@ -813,12 +839,7 @@ events.post('/slots/:id/join', async (c) => {
 
   const eventUrl = `/g/${groupActor.handle}/events/${event.id}`;
   try {
-    const slotCoordinator = await getSlotCoordinator();
-    await joinSlot(
-      db,
-      { slotId: slot.id, actorId },
-      slotCoordinator ? { slotCoordinator } : {},
-    );
+    await joinSlot(db, { slotId: slot.id, actorId }, await buildJoinDeps());
     return c.redirect(eventUrl, 302);
   } catch (err) {
     if (err instanceof SlotFullError) return c.redirect(`${eventUrl}?error=full`, 302);

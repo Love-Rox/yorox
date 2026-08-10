@@ -60,9 +60,35 @@ export default async function OrganizersGuidePage() {
             出欠率による重み付け
           </li>
           <li>
-            <strong>参加条件</strong> — アカウント年齢や参加実績などの組み合わせ
+            <strong>参加条件</strong> — アカウント年齢・参加実績・アカウント連携済み・
+            指定の Discord サーバーへの所属(AND で評価)
           </li>
         </ol>
+
+        <h3 className="display mt-6 t-sm">Discord サーバーの参加者だけに限定する</h3>
+        <p className="mt-2">
+          「指定の Discord サーバーの参加者のみ」を有効にすると、申込時に対象サーバーへの
+          所属を確認します。使うには次の準備が必要です。
+        </p>
+        <ol className="mt-2 list-inside list-decimal space-y-1">
+          <li>Yorox の Bot を対象の Discord サーバーに招待する</li>
+          <li>
+            グループ設定に対象サーバーの ID を登録する(枠ごとに別のサーバーを指定することもできます)
+          </li>
+          <li>参加者側も、設定から Discord アカウントを連携しておく</li>
+        </ol>
+        <p className="mt-2">
+          サーバー ID は Discord で開発者モードを有効にし、サーバー名を右クリック →
+          「サーバー ID をコピー」で取得できます。
+          Bot が対象サーバーに居ない・Discord 側の障害などで所属を確認できなかったときは、
+          条件が骨抜きにならないよう<strong>申込を断ります</strong>。
+          グループ設定の保存時に Bot がサーバーに居るかを確認するので、
+          先に招待を済ませてください。
+        </p>
+        <p className="mt-2">
+          参加者が Discord を連携していれば、参加者 CSV に Discord のユーザー名と
+          ユーザー ID の列が出力されます(主催者のみ)。ロール付与などにお使いください。
+        </p>
         <p className="mt-3">
           参加費を設定すると有料枠になります。支払方法は3種類:
         </p>

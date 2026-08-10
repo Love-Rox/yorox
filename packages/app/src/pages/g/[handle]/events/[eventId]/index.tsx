@@ -32,6 +32,7 @@ import {
 } from '../../../../../server/data';
 import { schema } from '../../../../../db/client';
 import { hasEventPermission } from '../../../../../server/route-auth';
+import { SlotConditionBadges } from '../../../../../components/slot-conditions';
 
 const TZ = 'Asia/Tokyo';
 const TIME_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -616,6 +617,7 @@ export default async function EventPage({
                               )}
                             </div>
                           )}
+                          <SlotConditionBadges conditions={slot.conditions} />
                         </div>
                         <div className="meta-mono shrink-0 text-right">
                           <span className="t-md font-bold">{stats?.accepted ?? 0}</span>
@@ -873,6 +875,29 @@ export default async function EventPage({
                         min={0}
                         className="input meta-mono mt-1"
                       />
+                    </label>
+                    <label className="mt-1 flex min-h-11 items-center gap-2">
+                      <input type="checkbox" name="require_discord_guild" />
+                      指定の Discord サーバーの参加者のみ
+                      <HelpTip text="申込時に Discord サーバーへの所属を確認します。申込者が Discord を連携していない場合や、所属を確認できなかった場合は申込を断ります。" />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm">
+                        対象の Discord サーバー ID(空欄ならグループ既定)
+                      </span>
+                      <input
+                        type="text"
+                        name="discord_guild_id"
+                        inputMode="numeric"
+                        pattern="\d{17,20}"
+                        className="input meta-mono mt-1"
+                        placeholder={groupRow?.discordGuildId ?? '123456789012345678'}
+                      />
+                      {!groupRow?.discordGuildId && (
+                        <span className="mt-1 block text-sm text-neutral">
+                          グループ設定でサーバー ID を登録しておくと、枠ごとの入力を省けます
+                        </span>
+                      )}
                     </label>
                   </fieldset>
                   <fieldset>

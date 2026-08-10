@@ -2,7 +2,7 @@
  * RSC から使う読み取りクエリ集。
  * cloudflare:workers の env は workerd ランタイム内でのみ解決される。
  */
-import { and, asc, desc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { createDb, schema, type Db } from '../db/client';
 
@@ -147,6 +147,54 @@ export async function getEventDetail(db: Db, eventId: string) {
   });
 
   return { event, groupActor, slots, slotStats, sessions, materials };
+}
+
+/**
+ * 参加者の Discord 連携情報を actorId 引きで返す(主催者向け)。
+ *
+ * Discord ユーザー ID は個人情報なので、attendance.manage / event.edit を
+ * 持つ主催者向けの画面・書き出しからのみ呼ぶこと。
+ * claim 済みの Fediverse アカウントで申し込んだ場合は本体アカウントの連携を辿る。
+ */
+export async function listDiscordAccounts(
+  db: Db,
+  actorIds: string[],
+): Promise<Map<string, { userId: string; label: string | null }>> {
+  const result = new Map<string, { userId: string; label: string | null }>();
+  if (actorIds.length === 0) return result;
+
+  const actorRows = await db
+    .select({ id: schema.actors.id, claimedByActorId: schema.actors.claimedByActorId })
+    .from(schema.actors)
+    .where(inArray(schema.actors.id, actorIds));
+
+  // 申込に使った actor → 連携情報を持つ本体 actor
+  const rootOf = new Map<string, string>();
+  for (const a of actorRows) rootOf.set(a.id, a.claimedByActorId ?? a.id);
+
+  const roots = [...new Set(rootOf.values())];
+  const oauthRows = await db
+    .select({
+      userActorId: schema.oauthAccounts.userActorId,
+      providerUserId: schema.oauthAccounts.providerUserId,
+      label: schema.oauthAccounts.label,
+    })
+    .from(schema.oauthAccounts)
+    .where(
+      and(
+        eq(schema.oauthAccounts.provider, 'discord'),
+        inArray(schema.oauthAccounts.userActorId, roots),
+      ),
+    );
+
+  const byRoot = new Map(
+    oauthRows.map((r) => [r.userActorId, { userId: r.providerUserId, label: r.label }]),
+  );
+  for (const [actorId, rootId] of rootOf) {
+    const hit = byRoot.get(rootId);
+    if (hit) result.set(actorId, hit);
+  }
+  return result;
 }
 
 /**

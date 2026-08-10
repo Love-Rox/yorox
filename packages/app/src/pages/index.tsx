@@ -29,7 +29,7 @@ export default async function HomePage() {
       <title>Yorox — 分散型イベント管理プラットフォーム</title>
       <meta
         name="description"
-        content="Yorox は、コミュニティが自分たちで運営できる分散型のイベント管理プラットフォームです。メール登録だけで、告知・申込・抽選・当日の QR チェックインまで。"
+        content="Yorox は、コミュニティが自分たちで運営できる分散型のイベント管理プラットフォームです。告知・申込・抽選・決済・当日の QR チェックインまで一つで。ActivityPub 連合対応。"
       />
       <meta property="og:site_name" content="Yorox" />
       <meta property="og:title" content="Yorox" />
@@ -50,9 +50,16 @@ export default async function HomePage() {
         <p className="mt-3 leading-relaxed text-neutral">
           <strong className="text-ink">Yorox</strong>{' '}
           は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
-          分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき、
+          分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき
+          (Google・GitHub・Discord のアカウントでもログインできます)、
           イベントの告知・参加申込(先着 / 抽選 / 補欠の繰上)・有料イベントの決済・
-          当日の QR チェックインまでを一つで行えます。使い方は{' '}
+          当日の QR チェックインまでを一つで行えます。
+        </p>
+        <p className="mt-3 leading-relaxed text-neutral">
+          主催はグループ単位で権限を分けて共同運営でき、参加者にはメールや Discord で
+          リマインダーが届き、カレンダー(ics)にも取り込めます。
+          ActivityPub による連合に対応しているので、Fediverse の他サーバーからも参加できます。
+          使い方は{' '}
           <Link to="/docs" className="link">
             ガイド
           </Link>

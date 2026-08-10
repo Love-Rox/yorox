@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateConditions } from './conditions';
+import { resolveRequiredGuildId } from './discord-condition';
+import { isDiscordSnowflake } from '../lib/discord';
+import { describeSlotConditions } from '../components/slot-conditions';
 import { attendanceWeight, drawRandom, drawWeighted } from './lottery';
 import { hasAllPermissions, PRESET_ROLES } from './permissions';
 import { validateHandle } from './groups';
@@ -178,5 +181,59 @@ describe('lottery draw with zero/limited seats', () => {
 
   it('drawWeighted: 残席0なら誰も当選しない', () => {
     expect(drawWeighted(applicants, 0).size).toBe(0);
+  });
+});
+
+describe('resolveRequiredGuildId', () => {
+  it('条件が無効なら null', () => {
+    expect(resolveRequiredGuildId({}, '111111111111111111')).toBeNull();
+    expect(resolveRequiredGuildId(null, '111111111111111111')).toBeNull();
+  });
+
+  it('枠の指定がグループ既定より優先される', () => {
+    expect(
+      resolveRequiredGuildId(
+        { requireDiscordGuild: true, discordGuildId: '222222222222222222' },
+        '111111111111111111',
+      ),
+    ).toBe('222222222222222222');
+  });
+
+  it('枠に指定が無ければグループ既定を使う', () => {
+    expect(resolveRequiredGuildId({ requireDiscordGuild: true }, '111111111111111111')).toBe(
+      '111111111111111111',
+    );
+  });
+
+  it('どちらも無ければ null(呼び出し側が設定漏れとして弾く)', () => {
+    expect(resolveRequiredGuildId({ requireDiscordGuild: true }, null)).toBeNull();
+  });
+});
+
+describe('isDiscordSnowflake', () => {
+  it('17〜20桁の数字だけを受け付ける', () => {
+    expect(isDiscordSnowflake('123456789012345678')).toBe(true);
+    expect(isDiscordSnowflake('12345678901234567890')).toBe(true);
+    expect(isDiscordSnowflake('1234567890123456')).toBe(false); // 16桁
+    expect(isDiscordSnowflake('123456789012345678901')).toBe(false); // 21桁
+    expect(isDiscordSnowflake('12345678901234567a')).toBe(false);
+    expect(isDiscordSnowflake('')).toBe(false);
+  });
+});
+
+describe('describeSlotConditions', () => {
+  it('条件なしは空配列', () => {
+    expect(describeSlotConditions(null)).toEqual([]);
+    expect(describeSlotConditions({})).toEqual([]);
+  });
+
+  it('0 は条件として表示しない', () => {
+    expect(describeSlotConditions({ minAccountAgeDays: 0, minAttendedCount: 0 })).toEqual([]);
+  });
+
+  it('Discord サーバー条件を含める', () => {
+    expect(describeSlotConditions({ requireDiscordGuild: true })).toEqual([
+      '指定の Discord サーバーの参加者のみ',
+    ]);
   });
 });
