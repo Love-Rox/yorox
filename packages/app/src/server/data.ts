@@ -202,6 +202,8 @@ export async function listDiscordAccounts(
  * 実績は自インスタンス分のみ(評判の連合はしない)。母数も返す(コールドスタート保護)。
  */
 export async function listManageParticipations(db: Db, eventId: string) {
+  // claim 済みリモートは自インスタンスのプロフィールへ寄せたいので別名で join
+  const claimedActor = alias(schema.actors, 'manage_claimed_actor');
   const rows = await db
     .select({
       id: schema.participations.id,
@@ -212,6 +214,8 @@ export async function listManageParticipations(db: Db, eventId: string) {
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,
       domain: schema.actors.domain,
+      uri: schema.actors.uri,
+      claimedHandle: claimedActor.handle,
       avatarUrl: schema.actors.avatarUrl,
       emojis: schema.actors.emojis,
       attendanceStatus: schema.attendances.status,
@@ -222,6 +226,7 @@ export async function listManageParticipations(db: Db, eventId: string) {
     .from(schema.participations)
     .innerJoin(schema.slots, eq(schema.participations.slotId, schema.slots.id))
     .innerJoin(schema.actors, eq(schema.participations.actorId, schema.actors.id))
+    .leftJoin(claimedActor, eq(schema.actors.claimedByActorId, claimedActor.id))
     .leftJoin(
       schema.attendances,
       eq(schema.attendances.participationId, schema.participations.id),

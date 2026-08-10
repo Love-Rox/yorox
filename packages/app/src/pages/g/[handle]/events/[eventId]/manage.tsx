@@ -221,6 +221,8 @@ export default async function ManagePage({
           displayName: r.displayName,
           handle: r.handle,
           domain: r.domain,
+          uri: r.uri,
+          claimedHandle: r.claimedHandle,
           avatarUrl: r.avatarUrl,
           emojis: r.emojis,
           attendanceStatus: r.attendanceStatus,

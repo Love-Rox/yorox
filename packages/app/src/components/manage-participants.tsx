@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { ActorName } from './actor-name';
 import { Avatar } from './avatar';
+import { actorLink } from '../lib/actor-link';
 
 const STATUS_LABEL: Record<string, string> = {
   applied: '抽選待ち',
@@ -50,6 +51,9 @@ export interface ManageRow {
   displayName: string;
   handle: string | null;
   domain: string | null;
+  uri: string | null;
+  /** claim 済みリモートの場合、紐付いたローカルアカウントの handle */
+  claimedHandle: string | null;
   avatarUrl: string | null;
   emojis: Record<string, string> | null;
   attendanceStatus: string | null;
@@ -224,15 +228,35 @@ export function ManageParticipants({
                         )}
                         <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                         <div className="min-w-0">
-                          <span className="font-bold">
-                            <ActorName name={p.displayName} emojis={p.emojis} />
-                          </span>
-                          {p.handle && (
-                            <span className="meta-mono ml-2 text-sm text-neutral">
-                              @{p.handle}
-                              {p.domain && `@${p.domain}`}
-                            </span>
-                          )}
+                          {/* 主催が申込者の素性を確かめられるようプロフィールへ飛べるようにする */}
+                          {(() => {
+                            const link = actorLink(p);
+                            const label = (
+                              <>
+                                <span className="font-bold">
+                                  <ActorName name={p.displayName} emojis={p.emojis} />
+                                </span>
+                                {p.handle && (
+                                  <span className="meta-mono ml-2 text-sm font-normal text-neutral">
+                                    @{p.handle}
+                                    {p.domain && `@${p.domain}`}
+                                  </span>
+                                )}
+                              </>
+                            );
+                            if (link.kind === 'none') return label;
+                            return (
+                              <a
+                                href={link.href}
+                                className="link"
+                                {...(link.kind === 'remote'
+                                  ? { rel: 'noreferrer', target: '_blank' }
+                                  : {})}
+                              >
+                                {label}
+                              </a>
+                            );
+                          })()}
                           <div className="meta-mono mt-0.5 text-sm text-neutral">
                             {STATUS_LABEL[p.status] ?? p.status}
                             {' · 過去実績 '}
