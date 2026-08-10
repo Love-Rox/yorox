@@ -18,6 +18,7 @@ import {
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
+import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
 import { renderOgPngResponse } from './og';
 import { announceGroupPostDeleteNow, announceGroupPostNow } from './ap-delivery';
 import {
@@ -151,9 +152,17 @@ groups.post('/g/:handle/settings', async (c) => {
   if (!displayName) {
     return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('表示名は必須です')}`, 302);
   }
+  const links = [str(form.link1), str(form.link2), str(form.link3)]
+    .filter((u) => /^https?:\/\//.test(u))
+    .slice(0, 3);
   await db
     .update(schema.actors)
-    .set({ displayName, summary: str(form.description_md) || null, updatedAt: new Date() })
+    .set({
+      displayName,
+      summary: str(form.description_md) || null,
+      profileLinks: links.length > 0 ? links : null,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.actors.id, ctx.groupActorId));
   const guildIdInput = str(form.discord_guild_id);
   if (guildIdInput && !isDiscordSnowflake(guildIdInput)) {
@@ -207,6 +216,62 @@ groups.post('/g/:handle/settings', async (c) => {
   return c.redirect(`/g/${handle}/settings`, 302);
 });
 
+
+/** グループアイコンのアップロード(group.settings 権限) */
+groups.post('/g/:handle/avatar', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const env = await getEnv();
+  const db = createDb(env.DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const { enabled, maxBytes } = getUploadConfig(env);
+  const storage = getStorage(env);
+  if (!enabled || !storage) {
+    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('このインスタンスではファイルアップロードが無効です')}`, 302);
+  }
+
+  const form = await c.req.parseBody();
+  const file = form.file;
+  if (!(file instanceof File) || file.size === 0) {
+    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('ファイルが選択されていません')}`, 302);
+  }
+  if (file.size > maxBytes) {
+    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('ファイルサイズが上限を超えています')}`, 302);
+  }
+  const ext = IMAGE_TYPES[file.type];
+  if (!ext) {
+    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('対応していない画像形式です(PNG / JPEG / WebP / GIF)')}`, 302);
+  }
+
+  const key = `avatars/${ctx.groupActorId}/${ulid()}.${ext}`;
+  await storage.put(key, await file.arrayBuffer(), file.type);
+
+  const current = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, ctx.groupActorId),
+  });
+  if (current?.avatarUrl?.startsWith('/files/')) {
+    await storage.delete(current.avatarUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  }
+
+  await db
+    .update(schema.actors)
+    .set({ avatarUrl: `/files/${key}`, updatedAt: new Date() })
+    .where(eq(schema.actors.id, ctx.groupActorId));
+  await recordAudit(db, {
+    actorId,
+    action: 'group.settings',
+    targetType: 'group',
+    targetId: ctx.groupActorId,
+    groupActorId: ctx.groupActorId,
+    metadata: { avatar: true },
+  });
+  return c.redirect(`/g/${handle}/settings`, 302);
+});
 
 /** Bluesky クロスポスト連携の登録(App Password を検証してから保存) */
 groups.post('/g/:handle/settings/bluesky', async (c) => {

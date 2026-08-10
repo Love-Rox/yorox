@@ -4,6 +4,7 @@ import {
   unstable_notFound as notFound,
 } from 'waku/router/server';
 import { Avatar } from '../../../components/avatar';
+import { ServiceIcon, serviceLinkLabel } from '../../../components/service-icon';
 import { ActorKindBadge } from '../../../components/actor-kind';
 import { Markdown } from '../../../lib/markdown';
 import { getCurrentUser } from '../../../server/current-user';
@@ -99,6 +100,24 @@ export default async function GroupPage({ handle }: { handle: string }) {
           )}
         </span>
       </div>
+      {actor.profileLinks && actor.profileLinks.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-4 text-sm">
+          {actor.profileLinks.map((link) => (
+            <li key={link}>
+              <a
+                href={link}
+                className="link inline-flex items-center gap-1"
+                rel="me noreferrer"
+                target="_blank"
+              >
+                <ServiceIcon url={link} />
+                {serviceLinkLabel(link)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {group.descriptionMd && (
         <div className="mt-4">
           <Markdown source={group.descriptionMd} />

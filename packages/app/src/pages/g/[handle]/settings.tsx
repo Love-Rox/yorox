@@ -43,6 +43,8 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
     .orderBy(asc(schema.groupMembers.createdAt));
 
   const { env } = await import('cloudflare:workers');
+  const { getUploadConfig } = await import('../../../storage/driver');
+  const uploads = getUploadConfig(env as Env);
   const { stripeConnectConfigured } = await import('../../../lib/stripe');
   const stripeAvailable = stripeConnectConfigured(env);
 
@@ -102,6 +104,39 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {canSettings && (
         <section id="info" className="mt-8 scroll-mt-4">
           <h2 className="display border-b-2 border-ink pb-2 t-md">グループ情報</h2>
+          {uploads.enabled && (
+            <div className="mt-4 border border-rule p-4">
+              <h3 className="text-sm font-bold">グループアイコン</h3>
+              {actor.avatarUrl && (
+                <img
+                  src={actor.avatarUrl}
+                  alt="現在のアイコン"
+                  className="mt-2 size-20 border border-rule object-cover"
+                />
+              )}
+              <form
+                method="post"
+                action={`/g/${handle}/avatar`}
+                encType="multipart/form-data"
+                className="mt-3 flex flex-wrap items-center gap-3"
+              >
+                <input
+                  type="file"
+                  name="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  required
+                  className="text-sm"
+                />
+                <button type="submit" className="btn-quiet cursor-pointer">
+                  アップロード
+                </button>
+              </form>
+              <p className="mt-2 text-sm text-neutral">
+                PNG / JPEG / WebP / GIF、{Math.floor(uploads.maxBytes / 1024 / 1024)}MB まで。
+                正方形推奨。イベントページ・チェックインの QR・Fediverse 連合で表示されます
+              </p>
+            </div>
+          )}
           <form
             method="post"
             action={`/g/${handle}/settings`}
@@ -127,6 +162,22 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                 className="input mt-1 leading-relaxed"
               />
             </label>
+            <fieldset className="block">
+              <legend className="text-sm font-bold">
+                リンク(最大3つ)
+                <HelpTip text="グループの Web サイトや SNS へのリンクです。グループページにサービスアイコン付きで表示されます。" />
+              </legend>
+              {[0, 1, 2].map((i) => (
+                <input
+                  key={i}
+                  type="url"
+                  name={`link${i + 1}`}
+                  defaultValue={actor.profileLinks?.[i] ?? ''}
+                  className="input meta-mono mt-1"
+                  placeholder={i === 0 ? 'https://example.com' : ''}
+                />
+              ))}
+            </fieldset>
             <label className="block">
               <span className="text-sm font-bold">
                 既定のハッシュタグ
