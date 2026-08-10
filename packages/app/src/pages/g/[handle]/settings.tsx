@@ -580,6 +580,51 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                     </button>
                   </form>
                 )}
+                {!r.isPreset && (
+                  <details className="w-full">
+                    <summary className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink">
+                      編集
+                    </summary>
+                    <form
+                      method="post"
+                      action={`/g/${handle}/roles/${r.id}/update`}
+                      className="mt-2 space-y-4 border border-rule p-4"
+                    >
+                      <label className="block">
+                        <span className="text-sm font-bold">ロール名 *</span>
+                        <input
+                          type="text"
+                          name="name"
+                          required
+                          maxLength={50}
+                          defaultValue={r.name}
+                          className="input mt-1"
+                        />
+                      </label>
+                      <fieldset>
+                        <legend className="text-sm font-bold">権限</legend>
+                        <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                          {PERMISSIONS.map((p) => (
+                            <label key={p} className="flex min-h-11 items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                name={`perm_${p}`}
+                                defaultChecked={r.permissions.includes(p)}
+                              />
+                              {PERMISSION_LABELS[p]}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <p className="text-sm text-neutral">
+                        変更はこのロールを持つ全メンバーに即時反映されます
+                      </p>
+                      <button type="submit" className="btn cursor-pointer">
+                        保存
+                      </button>
+                    </form>
+                  </details>
+                )}
               </li>
             ))}
           </ul>

@@ -51,6 +51,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   'member.remove': 'メンバー削除',
   'member.role': 'ロール変更',
   'role.create': 'ロール作成',
+  'role.update': 'ロールを編集',
   'role.delete': 'ロール削除',
   'block.add': '参加者をブロック',
   'block.remove': 'ブロック解除',

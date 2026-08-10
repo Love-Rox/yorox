@@ -31,6 +31,7 @@ import {
   LastOwnerError,
   removeMember,
   RoleInUseError,
+  updateRole,
 } from '../domain/groups';
 import { blockActor, unblockActor } from '../domain/blocks';
 import { recordAudit } from '../domain/audit';
@@ -579,6 +580,35 @@ groups.post('/g/:handle/roles', async (c) => {
       actorId,
       action: 'role.create',
       targetType: 'role',
+      groupActorId: ctx.groupActorId,
+      metadata: { name: str(form.name), permissions },
+    });
+    return c.redirect(`/g/${handle}/settings`, 302);
+  } catch (err) {
+    return redirectWithError(c, `/g/${handle}/settings`, err);
+  }
+});
+
+/** カスタムロール更新(名前と権限) */
+groups.post('/g/:handle/roles/:roleId/update', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+
+  const handle = c.req.param('handle');
+  const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
+  if (!ctx) return c.text('権限がありません', 403);
+
+  const form = await c.req.parseBody();
+  const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
+  try {
+    await updateRole(db, ctx.groupActorId, c.req.param('roleId'), str(form.name), permissions);
+    await recordAudit(db, {
+      actorId,
+      action: 'role.update',
+      targetType: 'role',
+      targetId: c.req.param('roleId'),
       groupActorId: ctx.groupActorId,
       metadata: { name: str(form.name), permissions },
     });

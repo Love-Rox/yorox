@@ -232,6 +232,47 @@ export async function createRole(
   });
 }
 
+/**
+ * カスタムロール更新(プリセット不可)。
+ * 権限を減らす変更で、グループから全権限持ちが居なくなる場合は断る
+ * (このロールを持つメンバーが最後のオーナー相当かもしれないため)。
+ */
+export async function updateRole(
+  db: Db,
+  groupActorId: string,
+  roleId: string,
+  name: string,
+  permissions: string[],
+): Promise<void> {
+  const role = await db.query.groupRoles.findFirst({
+    where: and(eq(schema.groupRoles.id, roleId), eq(schema.groupRoles.groupActorId, groupActorId)),
+  });
+  if (!role) throw new Error('ロールが見つかりません');
+  if (role.isPreset) throw new Error('プリセットロールは編集できません');
+  if (!name.trim()) throw new Error('ロール名は必須です');
+
+  // 変更後の状態で全権限持ちが残るかを検証する
+  if (hasAllPermissions(role.permissions) && !hasAllPermissions(permissions)) {
+    const rows = await db
+      .select({
+        roleId: schema.groupMembers.roleId,
+        permissions: schema.groupRoles.permissions,
+      })
+      .from(schema.groupMembers)
+      .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
+      .where(eq(schema.groupMembers.groupActorId, groupActorId));
+    const stillHasOwner = rows.some(
+      (r) => r.roleId !== roleId && hasAllPermissions(r.permissions),
+    );
+    if (!stillHasOwner) throw new LastOwnerError();
+  }
+
+  await db
+    .update(schema.groupRoles)
+    .set({ name: name.trim(), permissions })
+    .where(eq(schema.groupRoles.id, roleId));
+}
+
 /** カスタムロール削除(プリセット不可・使用中不可) */
 export async function deleteRole(db: Db, groupActorId: string, roleId: string): Promise<void> {
   const role = await db.query.groupRoles.findFirst({
