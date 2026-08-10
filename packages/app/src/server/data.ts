@@ -35,6 +35,32 @@ export async function listUpcomingEvents(db: Db, limit = 20) {
     .limit(limit);
 }
 
+/** 公開済みの今後のイベントをキーワード(タイトル部分一致)で検索する */
+export async function searchUpcomingEvents(db: Db, query: string, limit = 20) {
+  const like = `%${query.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
+  return db
+    .select({
+      id: schema.events.id,
+      title: schema.events.title,
+      startsAt: schema.events.startsAt,
+      venueName: schema.events.venueName,
+      onlineUrl: schema.events.onlineUrl,
+      groupHandle: schema.actors.handle,
+      groupName: schema.actors.displayName,
+    })
+    .from(schema.events)
+    .innerJoin(schema.actors, eq(schema.events.groupActorId, schema.actors.id))
+    .where(
+      and(
+        eq(schema.events.visibility, 'public'),
+        gte(schema.events.startsAt, new Date()),
+        sql`${schema.events.title} LIKE ${like} ESCAPE '\\'`,
+      ),
+    )
+    .orderBy(asc(schema.events.startsAt))
+    .limit(limit);
+}
+
 /** handle からローカルグループを引く */
 export async function getGroupByHandle(db: Db, handle: string) {
   const actor = await db.query.actors.findFirst({
