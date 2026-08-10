@@ -70,6 +70,19 @@ function parseLocalDateTime(v: unknown): Date | undefined {
 
 const events = new Hono();
 
+/** 短縮イベント URL: /e/:id → 正規 URL(/g/:handle/events/:id)へ恒久リダイレクト */
+events.get('/e/:id', async (c) => {
+  const db = createDb((await getEnv()).DB);
+  const id = c.req.param('id');
+  const event = await db.query.events.findFirst({ where: eq(schema.events.id, id) });
+  if (!event) return c.notFound();
+  const group = await db.query.actors.findFirst({
+    where: eq(schema.actors.id, event.groupActorId),
+  });
+  if (!group?.handle) return c.notFound();
+  return c.redirect(`/g/${group.handle}/events/${id}`, 301);
+});
+
 /** イベント作成(下書き) */
 events.post('/g/:handle/events', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
@@ -329,7 +342,6 @@ events.get('/events/:id/ogp.svg', async (c) => {
     'cache-control': 'public, max-age=600',
   });
 });
-
 
 /** 予約公開の設定 */
 events.post('/events/:id/schedule-publish', async (c) => {
