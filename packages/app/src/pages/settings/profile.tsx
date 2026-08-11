@@ -8,6 +8,7 @@ import { schema } from '../../db/client';
 import { getCurrentUser } from '../../server/current-user';
 import { enabledProviders } from '../../auth/oauth';
 import { PasskeyRegisterButton } from '../../components/passkey-buttons';
+import { formatPasskeyLabel } from '../../lib/passkey-label';
 import { listClaimedAliases } from '../../server/claim';
 import { listAccessTokens } from '../../domain/access-token';
 import { getDb } from '../../server/data';
@@ -254,7 +255,7 @@ export default async function ProfileSettingsPage() {
               {passkeyList.map((p) => (
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm">
-                    {p.label || 'パスキー'}
+                    {formatPasskeyLabel(p.label)}
                     <span className="meta-mono ml-2 text-neutral">
                       {new Intl.DateTimeFormat('ja-JP', {
                         dateStyle: 'medium',

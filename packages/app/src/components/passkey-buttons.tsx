@@ -51,6 +51,41 @@ export function PasskeyLoginButton() {
   );
 }
 
+/**
+ * 表示用のデバイスラベルを組み立てる。
+ * navigator.platform は Mac だと Apple Silicon でも常に "MacIntel" を返すため使わない。
+ */
+function deviceLabel(): string {
+  const ua = navigator.userAgent;
+  const os = /iPhone/.test(ua)
+    ? 'iPhone'
+    : /iPad/.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1)
+      ? 'iPad'
+      : /Android/.test(ua)
+        ? 'Android'
+        : /Mac/.test(ua)
+          ? 'Mac'
+          : /Windows/.test(ua)
+            ? 'Windows'
+            : /CrOS/.test(ua)
+              ? 'ChromeOS'
+              : /Linux/.test(ua)
+                ? 'Linux'
+                : 'このデバイス';
+  const browser = /Edg\//.test(ua)
+    ? 'Edge'
+    : /OPR\//.test(ua)
+      ? 'Opera'
+      : /Firefox\//.test(ua)
+        ? 'Firefox'
+        : /Chrome\//.test(ua)
+          ? 'Chrome'
+          : /Safari\//.test(ua)
+            ? 'Safari'
+            : '';
+  return browser ? `${os} (${browser})` : os;
+}
+
 /** 設定画面用: このデバイスでパスキーを登録 */
 export function PasskeyRegisterButton() {
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
@@ -60,7 +95,7 @@ export function PasskeyRegisterButton() {
       const options = await postJson<Parameters<typeof startRegistration>[0]['optionsJSON']>('/auth/passkey/register/options');
       const attestation = await startRegistration({ optionsJSON: options });
       // 表示用ラベルとして OS / ブラウザのおおまかな情報を添える
-      const label = navigator.platform || navigator.userAgent.slice(0, 60);
+      const label = deviceLabel();
       await postJson('/auth/passkey/register/verify', { ...attestation, label });
       setState('done');
       location.reload();
