@@ -10,6 +10,7 @@ import { AP_MEDIA_TYPE, signRequest, type ApActor } from '@yorox/ap';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from './ulid';
+import { isPublicHttpUrl } from './safe-fetch';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -27,6 +28,7 @@ export async function fetchRemoteActor(
   uri: string,
   signer?: FetchSigner,
 ): Promise<ApActor | null> {
+  if (!isPublicHttpUrl(uri)) return null;
   try {
     const headers: Record<string, string> = {
       accept: `${AP_MEDIA_TYPE}, application/activity+json`,

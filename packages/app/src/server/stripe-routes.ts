@@ -202,7 +202,14 @@ stripe.post('/webhooks/stripe', async (c) => {
       const payment = await db.query.payments.findFirst({
         where: eq(schema.payments.id, paymentId),
       });
-      if (payment && payment.status === 'pending' && systemActorId) {
+      // この完了イベントが、アプリ自身が作成した本物のチェックアウトセッションか照合する。
+      // 照合しないと、攻撃者が自分の接続済み Stripe アカウントから
+      // client_reference_id に他人の payment_id を詰めた完了イベントを送るだけで
+      // 未払いの参加を「支払い済み」にできてしまう(決済バイパス)。
+      // providerRef には checkout 作成時にセッション id を控えてある。
+      const sessionMatches =
+        typeof obj.id === 'string' && !!payment?.providerRef && obj.id === payment.providerRef;
+      if (payment && payment.status === 'pending' && systemActorId && sessionMatches) {
         // 返金に使う payment_intent を控える(providerRef を上書き)
         const pi = obj.payment_intent;
         if (typeof pi === 'string') {

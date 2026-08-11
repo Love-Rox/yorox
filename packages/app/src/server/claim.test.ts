@@ -46,4 +46,19 @@ describe('actorLinksTo', () => {
     };
     expect(actorLinksTo(other, ['https://yorox.love-rox.cc/u/sasapiyo'])).toBe(false);
   });
+
+  it('プレフィックスが一致する別ハンドルの URL は横取りできない', () => {
+    // sasapiyo2 の証明を持つアクターを、ハンドル sasapiyo が奪えないこと
+    const actor: ApActor = {
+      ...baseActor,
+      alsoKnownAs: ['https://yorox.love-rox.cc/u/sasapiyo2'],
+    };
+    expect(actorLinksTo(actor, ['https://yorox.love-rox.cc/u/sasapiyo'])).toBe(false);
+    expect(actorLinksTo(actor, ['https://yorox.love-rox.cc/u/sasapiyo2'])).toBe(true);
+  });
+
+  it('末尾スラッシュの有無は無視する', () => {
+    const actor: ApActor = { ...baseActor, alsoKnownAs: ['https://yorox.love-rox.cc/u/sasapiyo/'] };
+    expect(actorLinksTo(actor, ['https://yorox.love-rox.cc/u/sasapiyo'])).toBe(true);
+  });
 });

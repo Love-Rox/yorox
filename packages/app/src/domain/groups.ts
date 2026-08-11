@@ -117,6 +117,22 @@ export class RoleInUseError extends Error {
   }
 }
 
+export class PermissionEscalationError extends Error {
+  constructor() {
+    super('自分が持っていない権限をロールに付与することはできません');
+    this.name = 'PermissionEscalationError';
+  }
+}
+
+/**
+ * ロールに付与しようとする権限が、操作者自身の権限の範囲内かを検証する。
+ * これを欠くと group.settings だけを委任されたメンバーが、自分のロールに
+ * member.manage や全権限を書き込んでグループを乗っ取れてしまう。
+ */
+function assertNoEscalation(requested: string[], granterPermissions: Set<string>): void {
+  if (requested.some((p) => !granterPermissions.has(p))) throw new PermissionEscalationError();
+}
+
 /** ローカルユーザーを handle で探してメンバー追加する */
 export async function addMemberByHandle(
   db: Db,
@@ -218,9 +234,11 @@ export async function createRole(
   groupActorId: string,
   name: string,
   permissions: string[],
+  granterPermissions: Set<string>,
   now: Date = new Date(),
 ): Promise<void> {
   if (!name.trim()) throw new Error('ロール名は必須です');
+  assertNoEscalation(permissions, granterPermissions);
   const { ulid } = await import('../lib/ulid');
   await db.insert(schema.groupRoles).values({
     id: ulid(),
@@ -243,6 +261,7 @@ export async function updateRole(
   roleId: string,
   name: string,
   permissions: string[],
+  granterPermissions: Set<string>,
 ): Promise<void> {
   const role = await db.query.groupRoles.findFirst({
     where: and(eq(schema.groupRoles.id, roleId), eq(schema.groupRoles.groupActorId, groupActorId)),
@@ -250,6 +269,12 @@ export async function updateRole(
   if (!role) throw new Error('ロールが見つかりません');
   if (role.isPreset) throw new Error('プリセットロールは編集できません');
   if (!name.trim()) throw new Error('ロール名は必須です');
+  // 新たに追加される権限だけを検査する(名前変更・権限削減は妨げない)
+  const existing = new Set(role.permissions);
+  assertNoEscalation(
+    permissions.filter((p) => !existing.has(p)),
+    granterPermissions,
+  );
 
   // 変更後の状態で全権限持ちが残るかを検証する
   if (hasAllPermissions(role.permissions) && !hasAllPermissions(permissions)) {

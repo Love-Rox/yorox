@@ -273,7 +273,7 @@ export const TOOLS: McpTool[] = [
         startsAt,
         endsAt: parseDate(args.ends_at) ?? undefined,
         venueName: str(args.venue_name) || undefined,
-        onlineUrl: str(args.online_url) || undefined,
+        onlineUrl: /^https?:\/\//.test(str(args.online_url)) ? str(args.online_url) : undefined,
         createdByActorId: ctx.actorId!,
       });
       return {
@@ -296,6 +296,17 @@ export const TOOLS: McpTool[] = [
     async handler(ctx, args) {
       const slotId = str(args.slot_id);
       if (!slotId) return { error: 'invalid', message: 'slot_id は必須です' };
+      // Web ルートと同じく、公開イベントの枠だけ申込を受け付ける
+      // (下書き・限定公開の枠 ID を推測して申し込む経路を塞ぐ)
+      const slot = await ctx.db.query.slots.findFirst({
+        where: eq(schema.slots.id, slotId),
+      });
+      const event = slot
+        ? await ctx.db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) })
+        : null;
+      if (!event || event.visibility !== 'public') {
+        return { error: 'not_found', message: 'この枠は見つかりません' };
+      }
       try {
         const result = await joinSlot(
           ctx.db,

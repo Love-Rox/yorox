@@ -37,7 +37,7 @@ import {
 import { blockActor, unblockActor } from '../domain/blocks';
 import { recordAudit } from '../domain/audit';
 import { PERMISSIONS, type Permission } from '../domain/permissions';
-import { getSessionActorId, hasGroupPermission } from './route-auth';
+import { getGroupPermissions, getSessionActorId, hasGroupPermission } from './route-auth';
 
 async function getEnv(): Promise<Env> {
   const { env } = await import('cloudflare:workers');
@@ -329,6 +329,9 @@ groups.post('/g/:handle/settings/bluesky/disconnect', async (c) => {
 /** 安全なローカル相対パスだけを戻り先として許可する(オープンリダイレクト防止) */
 function safeReturnTo(v: unknown, fallback: string): string {
   const s = str(v);
+  // バックスラッシュはブラウザが / に正規化するため //evil.com への
+  // スキーム相対リダイレクトに使える。制御文字ごと弾く。
+  if (s.includes('\\') || /[\x00-\x1f]/.test(s)) return fallback;
   return s.startsWith('/') && !s.startsWith('//') ? s : fallback;
 }
 
@@ -639,8 +642,9 @@ groups.post('/g/:handle/roles', async (c) => {
 
   const form = await c.req.parseBody();
   const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
+  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
   try {
-    await createRole(db, ctx.groupActorId, str(form.name), permissions);
+    await createRole(db, ctx.groupActorId, str(form.name), permissions, granter);
     await recordAudit(db, {
       actorId,
       action: 'role.create',
@@ -667,8 +671,16 @@ groups.post('/g/:handle/roles/:roleId/update', async (c) => {
 
   const form = await c.req.parseBody();
   const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
+  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
   try {
-    await updateRole(db, ctx.groupActorId, c.req.param('roleId'), str(form.name), permissions);
+    await updateRole(
+      db,
+      ctx.groupActorId,
+      c.req.param('roleId'),
+      str(form.name),
+      permissions,
+      granter,
+    );
     await recordAudit(db, {
       actorId,
       action: 'role.update',

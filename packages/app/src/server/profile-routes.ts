@@ -172,6 +172,9 @@ profile.post('/profile/delete', async (c) => {
 /** back パラメータの安全な行き先(オープンリダイレクト防止に同一サイトのパスのみ) */
 function safeBackPath(v: unknown): string {
   const s = typeof v === 'string' ? v : '';
+  // バックスラッシュはブラウザが / に正規化するため //evil.com への
+  // スキーム相対リダイレクトに使える。制御文字ごと弾く。
+  if (s.includes('\\') || /[\x00-\x1f]/.test(s)) return '/';
   return s.startsWith('/') && !s.startsWith('//') ? s : '/';
 }
 
@@ -254,6 +257,7 @@ profile.get('/profile/email/confirm', async (c) => {
 });
 
 profile.post('/profile/email/confirm', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
   const db = createDb((await getEnv()).DB);
   const form = await c.req.parseBody();
   const token = typeof form.token === 'string' ? form.token : '';

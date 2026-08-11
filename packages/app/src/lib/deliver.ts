@@ -3,6 +3,7 @@
  * 送信元アクターの秘密鍵で HTTP Signatures を付けて inbox へ POST する。
  */
 import { AP_MEDIA_TYPE, signRequest, type ApActivity } from '@yorox/ap';
+import { isPublicHttpUrl } from './safe-fetch';
 
 export interface DeliverInput {
   activity: ApActivity;
@@ -14,6 +15,9 @@ export interface DeliverInput {
 
 /** 1 つの inbox へ配信する。2xx なら true */
 export async function deliverActivity(input: DeliverInput): Promise<boolean> {
+  // 内部宛先(接続済みリモートの inbox が private IP を指す等)への
+  // 署名付き POST を防ぐ(SSRF)
+  if (!isPublicHttpUrl(input.inboxUrl)) return false;
   const body = JSON.stringify(input.activity);
   const signed = await signRequest({
     method: 'POST',

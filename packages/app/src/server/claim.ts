@@ -18,6 +18,7 @@ import { ulid } from '../lib/ulid';
 import { fetchBskyProfile } from '../lib/bluesky';
 import { getInstanceActorSigner } from '../lib/instance-actor';
 import { fetchRemoteActor, upsertRemoteActor } from '../lib/remote-actor';
+import { isPublicHttpUrl } from '../lib/safe-fetch';
 
 const CODE_TTL_MS = 30 * 60 * 1000;
 /** 投稿本文から拾うコード形式 */
@@ -99,14 +100,13 @@ export async function claimByCode(
 
 /** webfinger で acct:user@host からアクター URI を解決する */
 async function resolveAcct(handle: string, domain: string): Promise<string | null> {
+  const webfingerUrl = `https://${domain}/.well-known/webfinger?resource=${encodeURIComponent(`acct:${handle}@${domain}`)}`;
+  if (!isPublicHttpUrl(webfingerUrl)) return null;
   try {
-    const res = await fetch(
-      `https://${domain}/.well-known/webfinger?resource=${encodeURIComponent(`acct:${handle}@${domain}`)}`,
-      {
-        headers: { accept: 'application/jrd+json, application/json' },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
+    const res = await fetch(webfingerUrl, {
+      headers: { accept: 'application/jrd+json, application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) return null;
     const jrd = (await res.json()) as {
       links?: { rel: string; type?: string; href?: string }[];
@@ -188,8 +188,7 @@ export async function claimBluesky(
   if (!profile) return { ok: false, reason: 'Bluesky アカウントが見つかりませんでした' };
 
   const description = profile.description ?? '';
-  const targets = profileUrls.map((u) => u.replace(/\/$/, ''));
-  if (!targets.some((t) => description.includes(t))) {
+  if (!linksToTarget([description], profileUrls)) {
     return {
       ok: false,
       reason:
@@ -234,9 +233,25 @@ export async function claimBluesky(
   return { ok: true, remoteActorId: actorId, remoteHandle: `@${profile.handle}` };
 }
 
+const normalizeUrl = (u: string) => u.trim().replace(/\/+$/, '');
+
+/**
+ * テキスト(HTML アンカーや生 URL を含みうる)から http(s) URL を抜き出す。
+ * 部分一致だと `/u/bob` が `/u/bob2` に誤マッチしてエイリアスを横取りできるため、
+ * URL を境界付きで抽出してから完全一致で比較する。
+ */
+export function extractUrls(text: string): string[] {
+  return text.match(/https?:\/\/[^\s"'<>]+/g)?.map(normalizeUrl) ?? [];
+}
+
+/** テキスト集合のいずれかが対象 URL のどれかと完全一致するか */
+export function linksToTarget(haystacks: string[], targetUrls: string[]): boolean {
+  const targets = new Set(targetUrls.map(normalizeUrl));
+  return haystacks.some((h) => extractUrls(h).some((u) => targets.has(u)));
+}
+
 /** アクター文書のリンク欄(attachment PropertyValue / alsoKnownAs / url)に対象 URL があるか */
 export function actorLinksTo(doc: ApActor, targetUrls: string[]): boolean {
-  const targets = targetUrls.map((u) => u.replace(/\/$/, ''));
   const haystacks: string[] = [];
   const attachments = doc.attachment;
   if (Array.isArray(attachments)) {
@@ -247,7 +262,7 @@ export function actorLinksTo(doc: ApActor, targetUrls: string[]): boolean {
   }
   if (Array.isArray(doc.alsoKnownAs)) haystacks.push(...doc.alsoKnownAs);
   if (typeof doc.url === 'string') haystacks.push(doc.url);
-  return targets.some((t) => haystacks.some((h) => h.includes(t)));
+  return linksToTarget(haystacks, targetUrls);
 }
 
 /** 自分に紐付いたリモートエイリアス一覧 */

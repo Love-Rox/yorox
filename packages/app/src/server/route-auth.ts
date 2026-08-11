@@ -37,6 +37,27 @@ export async function hasGroupPermission(
   return rows.some((r) => hasPermission(r.permissions, permission));
 }
 
+/** グループ内でそのメンバーが持つ全権限の和集合(非メンバーは空) */
+export async function getGroupPermissions(
+  db: Db,
+  groupActorId: string,
+  memberActorId: string,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ permissions: schema.groupRoles.permissions })
+    .from(schema.groupMembers)
+    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
+    .where(
+      and(
+        eq(schema.groupMembers.groupActorId, groupActorId),
+        eq(schema.groupMembers.memberActorId, memberActorId),
+      ),
+    );
+  const perms = new Set<string>();
+  for (const r of rows) for (const p of r.permissions) perms.add(p);
+  return perms;
+}
+
 /** イベント共同管理者に与える運用権限(グループ設定・メンバー管理は含めない) */
 const EVENT_MANAGER_PERMISSIONS: Permission[] = [
   'event.edit',

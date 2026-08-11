@@ -144,7 +144,7 @@ events.post('/g/:handle/events', async (c) => {
       venueAddress: venueAddress || undefined,
       venueLat: geo?.lat,
       venueLng: geo?.lng,
-      onlineUrl: str(form.online_url) || undefined,
+      onlineUrl: /^https?:\/\//.test(str(form.online_url)) ? str(form.online_url) : undefined,
       remoteJoinMethods: parseRemoteJoinMethods(form),
       createdByActorId: actorId,
     });
@@ -227,7 +227,7 @@ events.post('/events/:id/update', async (c) => {
       venueAddress: venueAddress || undefined,
       venueLat: geo?.lat ?? undefined,
       venueLng: geo?.lng ?? undefined,
-      onlineUrl: str(form.online_url) || undefined,
+      onlineUrl: /^https?:\/\//.test(str(form.online_url)) ? str(form.online_url) : undefined,
       sessionsLabel: str(form.sessions_label) === 'timetable' ? 'timetable' : 'sessions',
       remoteJoinMethods: parseRemoteJoinMethods(form),
       totalCapacity: (() => {
