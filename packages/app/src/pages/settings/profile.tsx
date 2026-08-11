@@ -253,25 +253,47 @@ export default async function ProfileSettingsPage() {
           {passkeyList.length > 0 && (
             <ul className="mt-2 space-y-2">
               {passkeyList.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm">
-                    {formatPasskeyLabel(p.label)}
-                    <span className="meta-mono ml-2 text-neutral">
-                      {new Intl.DateTimeFormat('ja-JP', {
-                        dateStyle: 'medium',
-                        timeZone: 'Asia/Tokyo',
-                      }).format(p.createdAt)}{' '}
-                      登録
+                <li key={p.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm">
+                      {formatPasskeyLabel(p.label)}
+                      <span className="meta-mono ml-2 text-neutral">
+                        {new Intl.DateTimeFormat('ja-JP', {
+                          dateStyle: 'medium',
+                          timeZone: 'Asia/Tokyo',
+                        }).format(p.createdAt)}{' '}
+                        登録
+                      </span>
                     </span>
-                  </span>
-                  <form method="post" action={`/auth/passkey/${p.id}/delete`}>
-                    <button
-                      type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                    <form method="post" action={`/auth/passkey/${p.id}/delete`}>
+                      <button
+                        type="submit"
+                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink"
+                      >
+                        削除
+                      </button>
+                    </form>
+                  </div>
+                  <details>
+                    <summary className="cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-ink">
+                      名前を変更
+                    </summary>
+                    <form
+                      method="post"
+                      action={`/auth/passkey/${p.id}/rename`}
+                      className="mt-2 flex flex-wrap items-center gap-2"
                     >
-                      削除
-                    </button>
-                  </form>
+                      <input
+                        type="text"
+                        name="label"
+                        defaultValue={p.label ?? ''}
+                        maxLength={100}
+                        placeholder="例: Mac (Chrome)"
+                        className="input max-w-xs"
+                      />
+                      <SubmitButton pendingLabel="保存中…">保存</SubmitButton>
+                    </form>
+                  </details>
                 </li>
               ))}
             </ul>

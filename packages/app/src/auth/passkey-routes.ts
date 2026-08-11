@@ -191,6 +191,24 @@ passkey.post('/auth/passkey/login/verify', async (c) => {
   }
 });
 
+/** パスキーのリネーム(設定画面) */
+passkey.post('/auth/passkey/:id/rename', async (c) => {
+  if (!assertSameOrigin(c)) return c.text('forbidden', 403);
+  const db = createDb((await getEnv()).DB);
+  const actorId = await getSessionActorId(db, c);
+  if (!actorId) return c.redirect('/login', 302);
+  const form = await c.req.parseBody();
+  const raw = typeof form.label === 'string' ? form.label : '';
+  const label = raw.replace(/\p{Cc}/gu, '').trim().slice(0, 100) || null;
+  await db
+    .update(schema.passkeys)
+    .set({ label })
+    .where(
+      and(eq(schema.passkeys.id, c.req.param('id')), eq(schema.passkeys.userActorId, actorId)),
+    );
+  return c.redirect('/settings/profile#oauth', 302);
+});
+
 /** パスキーの削除(設定画面) */
 passkey.post('/auth/passkey/:id/delete', async (c) => {
   if (!assertSameOrigin(c)) return c.text('forbidden', 403);
