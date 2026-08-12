@@ -302,6 +302,13 @@
       "when": 1786376617609,
       "tag": "0042_peaceful_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1786537574127,
+      "tag": "0043_yummy_serpent_society",
+      "breakpoints": true
     }
   ]
 }

@@ -210,6 +210,7 @@ export async function listManageParticipations(db: Db, eventId: string) {
       slotId: schema.participations.slotId,
       status: schema.participations.status,
       appliedAt: schema.participations.appliedAt,
+      surveyAnswers: schema.participations.surveyAnswers,
       actorId: schema.actors.id,
       displayName: schema.actors.displayName,
       handle: schema.actors.handle,

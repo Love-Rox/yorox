@@ -29,6 +29,12 @@ import {
 } from '../domain/participation';
 import { GroupBlockedError } from '../domain/blocks';
 import { recordAudit } from '../domain/audit';
+import {
+  answerToText,
+  effectiveSurvey,
+  parseSurveyDefinition,
+  validateAndSnapshotAnswers,
+} from '../domain/survey';
 import type { SlotConditions } from '../db/schema';
 import { deferWork } from '../lib/defer';
 import { geocodeAddress } from '../lib/geocode';
@@ -146,6 +152,8 @@ events.post('/g/:handle/events', async (c) => {
       venueLng: geo?.lng,
       onlineUrl: /^https?:\/\//.test(str(form.online_url)) ? str(form.online_url) : undefined,
       remoteJoinMethods: parseRemoteJoinMethods(form),
+      applicationSurvey: parseSurveyDefinition(str(form.survey_json)),
+      surveyRemotePolicy: str(form.survey_remote_policy) === 'block' ? 'block' : 'exempt',
       createdByActorId: actorId,
     });
 
@@ -236,6 +244,8 @@ events.post('/events/:id/update', async (c) => {
       })(),
       participantListPublic: form.participant_list_public !== undefined,
       applicantListPublic: form.applicant_list_public !== undefined,
+      applicationSurvey: parseSurveyDefinition(str(form.survey_json)),
+      surveyRemotePolicy: str(form.survey_remote_policy) === 'block' ? 'block' : 'exempt',
     });
     // 公開済みイベントの変更はフォロワーへ Update(Note) で通知
     if (ctx.event.visibility === 'public') {
@@ -312,13 +322,19 @@ events.get('/events/:id/participants.csv', async (c) => {
   });
   // Discord ID は個人情報。ここは attendance.manage / event.edit 権限の配下
   const discord = await listDiscordAccounts(db, [...new Set(rows.map((r) => r.actorId))]);
-  const lines = ['枠,状態,表示名,ハンドル,Discord ユーザー名,Discord ユーザー ID,出欠,支払い,申込日時'];
+  const lines = [
+    '枠,状態,表示名,ハンドル,Discord ユーザー名,Discord ユーザー ID,出欠,支払い,申込日時,アンケート回答',
+  ];
   for (const r of rows) {
     const name = strip ? stripShortcodes(r.displayName) : r.displayName;
     const handle = r.handle ? (r.domain ? `@${r.handle}@${r.domain}` : `@${r.handle}`) : '';
     const attendance =
       r.attendanceStatus === 'attended' ? '出席' : r.attendanceStatus === 'no_show' ? '無断欠席' : '';
     const payment = r.paymentStatus ? (CSV_PAYMENT_LABEL[r.paymentStatus] ?? r.paymentStatus) : '';
+    // 枠ごとに質問が違うため、1列に「質問: 回答」をまとめる
+    const survey = (r.surveyAnswers ?? [])
+      .map((a) => `${a.label}: ${answerToText(a)}`)
+      .join(' / ');
     lines.push(
       [
         slotName.get(r.slotId) ?? '',
@@ -332,6 +348,7 @@ events.get('/events/:id/participants.csv', async (c) => {
         attendance,
         payment,
         fmt.format(r.appliedAt),
+        survey,
       ]
         .map(csvCell)
         .join(','),
@@ -865,6 +882,7 @@ async function parseSlotForm(
           : undefined,
       lotteryAt: method === 'lottery' ? parseLocalDateTime(form.lottery_at) : undefined,
       conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
+      applicationSurvey: parseSurveyDefinition(str(form.survey_json)),
       allowRemote: form.allow_remote !== undefined,
       isSpeakerSlot: form.is_speaker_slot !== undefined,
       price: price && price > 0 ? price : undefined,
@@ -1006,9 +1024,35 @@ events.post('/slots/:id/join', async (c) => {
 
   const eventUrl = `/g/${groupActor.handle}/events/${event.id}`;
   try {
-    const joinForm = await c.req.parseBody();
+    const joinForm = await c.req.parseBody({ all: true });
     const fallbackSlotId = str(joinForm.fallback_slot_id) || undefined;
-    await joinSlot(db, { slotId: slot.id, actorId, fallbackSlotId }, await buildJoinDeps());
+
+    // 申込アンケート(イベント共通 + 枠固有)を先に検証してから申込を作る
+    const questions = effectiveSurvey(event.applicationSurvey, slot.applicationSurvey);
+    const validation = validateAndSnapshotAnswers(questions, (qid) => {
+      const v = joinForm[`survey_${qid}`];
+      return Array.isArray(v) ? v.map(String) : v === undefined ? undefined : String(v);
+    });
+    if (!validation.ok) {
+      return c.redirect(`${eventUrl}?error=survey&reason=${encodeURIComponent(validation.error)}`, 302);
+    }
+
+    const { participationId } = await joinSlot(
+      db,
+      { slotId: slot.id, actorId, fallbackSlotId },
+      await buildJoinDeps(),
+    );
+    if (validation.answers.length > 0) {
+      await db
+        .update(schema.participations)
+        .set({ surveyAnswers: validation.answers })
+        .where(
+          and(
+            eq(schema.participations.id, participationId),
+            eq(schema.participations.actorId, actorId),
+          ),
+        );
+    }
     return c.redirect(eventUrl, 302);
   } catch (err) {
     if (err instanceof SlotFullError) return c.redirect(`${eventUrl}?error=full`, 302);

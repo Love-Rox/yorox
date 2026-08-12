@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { ActorName } from './actor-name';
 import { Avatar } from './avatar';
 import { actorLink } from '../lib/actor-link';
+import type { SurveyAnswer } from '../db/schema';
 
 const STATUS_LABEL: Record<string, string> = {
   applied: '抽選待ち',
@@ -60,6 +61,7 @@ export interface ManageRow {
   paymentId: string | null;
   paymentStatus: string | null;
   paymentAmount: number | null;
+  surveyAnswers: SurveyAnswer[] | null;
 }
 
 export function ManageParticipants({
@@ -269,6 +271,23 @@ export function ManageParticipants({
                               </span>
                             )}
                           </div>
+                          {p.surveyAnswers && p.surveyAnswers.length > 0 && (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-sm text-neutral">
+                                アンケート回答({p.surveyAnswers.length})
+                              </summary>
+                              <dl className="mt-1 space-y-1 text-sm">
+                                {p.surveyAnswers.map((a, i) => (
+                                  <div key={i}>
+                                    <dt className="font-bold">{a.label}</dt>
+                                    <dd className="whitespace-pre-wrap">
+                                      {Array.isArray(a.value) ? a.value.join(' / ') : a.value}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </details>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">

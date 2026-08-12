@@ -566,6 +566,19 @@ export const events = sqliteTable(
       .$type<('reply' | 'join')[]>()
       .notNull()
       .default(['reply', 'join']),
+    /**
+     * 申込アンケート(イベント共通)。どの枠から申し込んでも聞かれる質問。
+     * 枠固有の追加質問は slots.applicationSurvey にある。null/[] = なし。
+     */
+    applicationSurvey: text('application_survey', { mode: 'json' }).$type<ApplicationSurvey>(),
+    /**
+     * フォームを埋められないリモート申込(Fediverse/Bluesky のリプライ等)で
+     * 必須アンケートをどう扱うか。exempt = 免除して受け付ける(既定)/
+     * block = 必須質問があるとリモート申込を断る。
+     */
+    surveyRemotePolicy: text('survey_remote_policy', { enum: ['exempt', 'block'] })
+      .notNull()
+      .default('exempt'),
     /** セルフチェックイン用トークン(QR に載せる)。null = 無効 */
     checkinToken: text('checkin_token'),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
@@ -641,6 +654,40 @@ export const materials = sqliteTable(
 // ---------------------------------------------------------------------------
 
 /** 参加条件の宣言的ルール(AND で評価) */
+/** 申込アンケートの質問形式 */
+export type SurveyQuestionType = 'text' | 'single' | 'multiple';
+
+/** 申込アンケートの1問 */
+export interface SurveyQuestion {
+  /** 回答と対応づける安定 ID(短い英数字) */
+  id: string;
+  /** 質問文 */
+  label: string;
+  type: SurveyQuestionType;
+  /** 回答必須か */
+  required: boolean;
+  /** type=text のとき複数行入力にするか */
+  multiline?: boolean;
+  /** type=single / multiple の選択肢 */
+  options?: string[];
+}
+
+/** 申込アンケートの定義(質問の順序付きリスト) */
+export type ApplicationSurvey = SurveyQuestion[];
+
+/**
+ * 申込時のアンケート回答スナップショット。
+ * 質問が後から編集・削除されても表示・CSV が壊れないよう、
+ * 回答時点の質問文と形式ごと控える。
+ */
+export interface SurveyAnswer {
+  questionId: string;
+  label: string;
+  type: SurveyQuestionType;
+  /** text / single は string、multiple は string[] */
+  value: string | string[];
+}
+
 export interface SlotConditions {
   /** claim 済み(またはローカル)アカウントのみ */
   requireClaimed?: boolean;
@@ -690,6 +737,8 @@ export const slots = sqliteTable(
     lotteryAt: integer('lottery_at', { mode: 'timestamp_ms' }),
     /** 5. 参加条件(AND 組合せ)。null = 無条件 */
     conditions: text('conditions', { mode: 'json' }).$type<SlotConditions>(),
+    /** 申込アンケート(この枠だけの追加質問)。イベント共通質問の後に聞く。null/[] = なし */
+    applicationSurvey: text('application_survey', { mode: 'json' }).$type<ApplicationSurvey>(),
     /** Fediverse からのリモート参加を受け入れるか(主催者が枠ごとに明示) */
     allowRemote: integer('allow_remote', { mode: 'boolean' }).notNull().default(false),
     /** 登壇枠(LT 枠など)。参加確定者はイベントページの登壇者欄にも表示される */
@@ -751,6 +800,8 @@ export const participations = sqliteTable(
      * この枠へ自動で申し込む。null = 通常どおり補欠/落選
      */
     fallbackSlotId: text('fallback_slot_id'),
+    /** 申込アンケートの回答スナップショット(質問文・形式ごと控える)。null = 回答なし */
+    surveyAnswers: text('survey_answers', { mode: 'json' }).$type<SurveyAnswer[]>(),
     appliedAt: integer('applied_at', { mode: 'timestamp_ms' }).notNull(),
     decidedAt: integer('decided_at', { mode: 'timestamp_ms' }),
     cancelledAt: integer('cancelled_at', { mode: 'timestamp_ms' }),

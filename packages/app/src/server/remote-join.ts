@@ -22,6 +22,7 @@ import {
   SlotFullError,
 } from '../domain/participation';
 import { ulid } from '../lib/ulid';
+import { effectiveSurvey, hasRequiredQuestions } from '../domain/survey';
 import { deliverWithRetry } from './ap-delivery';
 import { getSlotCoordinator } from './coordinator';
 import { buildJoinDeps } from './join-deps';
@@ -97,6 +98,19 @@ export async function processRemoteJoin(
       message:
         'このイベントにはリモート参加を受け付けている枠がありません。イベントページからお申し込みください。',
     };
+  }
+
+  // リモート申込はフォームを埋められない。主催者が block を選んでいて、
+  // かつ必須アンケートがある枠なら受け付けない(exempt なら未回答で受ける)
+  if (input.event.surveyRemotePolicy === 'block') {
+    const questions = effectiveSurvey(input.event.applicationSurvey, slot.applicationSurvey);
+    if (hasRequiredQuestions(questions)) {
+      return {
+        outcome: 'rejected',
+        message:
+          'このイベントは申込時のアンケート回答が必須のため、リモートからは申し込めません。イベントページからお申し込みください。',
+      };
+    }
   }
 
   try {

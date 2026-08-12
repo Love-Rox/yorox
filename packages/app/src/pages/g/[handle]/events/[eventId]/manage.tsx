@@ -327,6 +327,7 @@ export default async function ManagePage({
           paymentId: r.paymentId,
           paymentStatus: r.paymentStatus,
           paymentAmount: r.paymentAmount,
+          surveyAnswers: r.surveyAnswers,
         }))}
         history={Object.fromEntries(history)}
         canLottery={canLottery}

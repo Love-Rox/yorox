@@ -4,7 +4,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
-import type { SlotConditions } from '../db/schema';
+import type { ApplicationSurvey, SlotConditions } from '../db/schema';
 import { ulid } from '../lib/ulid';
 import { emitDomainEvent } from './events';
 import { flagRefundIfPaid } from './payment';
@@ -25,6 +25,8 @@ export interface CreateEventInput {
   venueLng?: number | undefined;
   onlineUrl?: string | undefined;
   remoteJoinMethods?: ('reply' | 'join')[] | undefined;
+  applicationSurvey?: ApplicationSurvey | null | undefined;
+  surveyRemotePolicy?: 'exempt' | 'block' | undefined;
   createdByActorId: string;
 }
 
@@ -53,6 +55,8 @@ export async function createEvent(
     venueLng: input.venueLng ?? null,
     onlineUrl: input.onlineUrl ?? null,
     remoteJoinMethods: input.remoteJoinMethods ?? ['reply', 'join'],
+    applicationSurvey: input.applicationSurvey ?? null,
+    surveyRemotePolicy: input.surveyRemotePolicy ?? 'exempt',
     visibility: 'draft',
     createdByActorId: input.createdByActorId,
     createdAt: now,
@@ -82,6 +86,10 @@ export interface UpdateEventInput {
   participantListPublic?: boolean | undefined;
   /** 参加未確定(抽選待ち・補欠)の申込者も一覧に載せるか */
   applicantListPublic?: boolean | undefined;
+  /** 申込アンケート(イベント共通)。null で消去 */
+  applicationSurvey?: ApplicationSurvey | null | undefined;
+  /** リモート申込での必須アンケートの扱い */
+  surveyRemotePolicy?: 'exempt' | 'block' | undefined;
 }
 
 /** イベントの基本情報を更新する */
@@ -112,6 +120,8 @@ export async function updateEvent(
       totalCapacity: input.totalCapacity ?? null,
       participantListPublic: input.participantListPublic ?? true,
       applicantListPublic: input.applicantListPublic ?? false,
+      applicationSurvey: input.applicationSurvey ?? null,
+      surveyRemotePolicy: input.surveyRemotePolicy ?? 'exempt',
       updatedAt: now,
     })
     .where(eq(schema.events.id, eventId));
@@ -241,6 +251,8 @@ export async function duplicateEvent(
     totalCapacity: src.totalCapacity,
     participantListPublic: src.participantListPublic,
     applicantListPublic: src.applicantListPublic,
+    applicationSurvey: src.applicationSurvey,
+    surveyRemotePolicy: src.surveyRemotePolicy,
     checkinToken: null,
     publishedAt: null,
     publishAt: null,
@@ -268,6 +280,7 @@ export async function duplicateEvent(
       lotteryLogic: s.lotteryLogic,
       lotteryAt: null,
       conditions: s.conditions,
+      applicationSurvey: s.applicationSurvey,
       allowRemote: s.allowRemote,
       isSpeakerSlot: s.isSpeakerSlot,
       price: s.price,
@@ -322,6 +335,7 @@ export interface AddSlotInput {
   lotteryLogic?: 'random' | 'manual' | 'weighted' | undefined;
   lotteryAt?: Date | undefined;
   conditions?: SlotConditions | undefined;
+  applicationSurvey?: ApplicationSurvey | null | undefined;
   price?: number | undefined;
   paymentMethod?: 'onsite' | 'external' | 'stripe' | undefined;
   paymentUrl?: string | undefined;
@@ -370,6 +384,7 @@ export async function addSlot(
     lotteryLogic: input.method === 'lottery' ? (input.lotteryLogic ?? 'random') : null,
     lotteryAt: input.lotteryAt ?? null,
     conditions: input.conditions ?? null,
+    applicationSurvey: input.applicationSurvey ?? null,
     price: input.price ?? null,
     paymentMethod: input.paymentMethod ?? null,
     paymentUrl: input.paymentUrl ?? null,
@@ -401,6 +416,7 @@ export interface UpdateSlotInput {
   lotteryLogic?: 'random' | 'manual' | 'weighted' | undefined;
   lotteryAt?: Date | undefined;
   conditions?: SlotConditions | undefined;
+  applicationSurvey?: ApplicationSurvey | null | undefined;
   price?: number | undefined;
   paymentMethod?: 'onsite' | 'external' | 'stripe' | undefined;
   paymentUrl?: string | undefined;
@@ -488,6 +504,7 @@ export async function updateSlot(
       lotteryLogic: input.method === 'lottery' ? (input.lotteryLogic ?? 'random') : null,
       lotteryAt: input.method === 'lottery' ? (input.lotteryAt ?? null) : null,
       conditions: input.conditions ?? null,
+      applicationSurvey: input.applicationSurvey ?? null,
       price: price,
       paymentMethod: paid ? (input.paymentMethod ?? null) : null,
       paymentUrl: paid && input.paymentMethod === 'external' ? (input.paymentUrl ?? null) : null,

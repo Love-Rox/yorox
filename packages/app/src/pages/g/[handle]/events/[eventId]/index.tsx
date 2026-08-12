@@ -34,6 +34,8 @@ import { schema } from '../../../../../db/client';
 import { hasEventPermission } from '../../../../../server/route-auth';
 import { SlotConditionBadges } from '../../../../../components/slot-conditions';
 import { SlotFormFields } from '../../../../../components/slot-form-fields';
+import { SurveyFields } from '../../../../../components/survey-fields';
+import { effectiveSurvey } from '../../../../../domain/survey';
 
 const TZ = 'Asia/Tokyo';
 const TIME_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -409,7 +411,7 @@ export default async function EventPage({
 
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
-          {error === 'condition' && errorReason
+          {(error === 'condition' || error === 'survey') && errorReason
             ? errorReason
             : (ERROR_MESSAGES[error] ?? 'エラーが発生しました。')}
         </p>
@@ -771,6 +773,12 @@ export default async function EventPage({
                                   </select>
                                 </label>
                               )}
+                              <SurveyFields
+                                questions={effectiveSurvey(
+                                  event.applicationSurvey,
+                                  slot.applicationSurvey,
+                                )}
+                              />
                               <button type="submit" className="btn w-full cursor-pointer">
                                 申し込む
                               </button>

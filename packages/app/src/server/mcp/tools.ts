@@ -5,6 +5,7 @@
  * 認証は ctx.actorId(Bearer PAT から解決)で判定する。
  */
 import { isViewable } from '../../domain/visibility';
+import { effectiveSurvey, hasRequiredQuestions } from '../../domain/survey';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { schema } from '../../db/client';
@@ -304,8 +305,19 @@ export const TOOLS: McpTool[] = [
       const event = slot
         ? await ctx.db.query.events.findFirst({ where: eq(schema.events.id, slot.eventId) })
         : null;
-      if (!event || event.visibility !== 'public') {
+      if (!slot || !event || event.visibility !== 'public') {
         return { error: 'not_found', message: 'この枠は見つかりません' };
+      }
+      // MCP はアンケートフォームを埋められない。主催者が block を選んでいて
+      // 必須アンケートがある枠は、イベントページからの申込を案内する
+      if (event.surveyRemotePolicy === 'block') {
+        const questions = effectiveSurvey(event.applicationSurvey, slot.applicationSurvey);
+        if (hasRequiredQuestions(questions)) {
+          return {
+            error: 'survey_required',
+            message: 'この枠は申込時アンケートが必須です。イベントページからお申し込みください。',
+          };
+        }
       }
       try {
         const result = await joinSlot(

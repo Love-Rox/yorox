@@ -5,6 +5,7 @@
  * 入力欄はここ一箇所にまとめてある。既定値は slot を渡すと入る。
  */
 import { HelpTip } from './help-tip';
+import { SurveyBuilder } from './survey-builder';
 import type { schema } from '../db/client';
 
 type Slot = typeof schema.slots.$inferSelect;
@@ -249,6 +250,15 @@ export function SlotFormFields({
           <input type="checkbox" name="is_speaker_slot" defaultChecked={!!slot?.isSpeakerSlot} />
           登壇枠にする(確定者を登壇者として表示)
         </label>
+      </fieldset>
+      <fieldset>
+        <legend className="text-sm font-bold">この枠の申込アンケート<HelpTip text="この枠だけで聞く追加質問です。イベント共通のアンケート(イベント編集画面)の後に表示されます。申込フォームで回答してもらえます。" /></legend>
+        <p className="mt-1 text-sm text-neutral">
+          この枠に申し込むときに聞く質問です(イベント共通の質問の後に表示されます)。
+        </p>
+        <div className="mt-2">
+          <SurveyBuilder name="survey_json" initial={slot?.applicationSurvey} />
+        </div>
       </fieldset>
       <fieldset>
         <legend className="text-sm font-bold">連合(Fediverse)<HelpTip text="オンにすると、Misskey / Mastodon などのアカウントのまま(Yorox 未登録でも)この枠に参加申込できます。告知へのリプライ「参加」で申し込め、結果はリプライで届きます。" /></legend>
