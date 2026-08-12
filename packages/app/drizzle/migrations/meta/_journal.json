@@ -316,6 +316,13 @@
       "when": 1786539489811,
       "tag": "0044_faithful_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1786539988957,
+      "tag": "0045_regular_mantis",
+      "breakpoints": true
     }
   ]
 }

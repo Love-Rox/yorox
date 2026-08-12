@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `notify_ap_targets` text;

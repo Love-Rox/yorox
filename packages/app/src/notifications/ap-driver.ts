@@ -36,15 +36,23 @@ export class ApNoteDriver implements NotificationDriver {
     if (!actor) return;
 
     // 届け先(inbox を持つリモートアクター)を決める
-    const recipients: ActorRow[] =
-      actor.state === 'local'
-        ? await this.db.query.actors.findMany({
-            where: and(
-              eq(schema.actors.claimedByActorId, actor.id),
-              isNotNull(schema.actors.domain),
-            ),
-          })
-        : [actor];
+    let recipients: ActorRow[];
+    if (actor.state === 'local') {
+      const aliases = await this.db.query.actors.findMany({
+        where: and(
+          eq(schema.actors.claimedByActorId, actor.id),
+          isNotNull(schema.actors.domain),
+        ),
+      });
+      // ユーザーが宛先を選んでいれば、その ID に絞る(null = 全連携アカウント)
+      const user = await this.db.query.users.findFirst({
+        where: eq(schema.users.actorId, actor.id),
+      });
+      const targets = user?.notifyApTargets ?? null;
+      recipients = targets ? aliases.filter((a) => targets.includes(a.id)) : aliases;
+    } else {
+      recipients = [actor];
+    }
     if (recipients.length === 0) return;
 
     const slot = await this.db.query.slots.findFirst({

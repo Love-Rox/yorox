@@ -510,6 +510,30 @@ export default async function ProfileSettingsPage() {
               {aliases.length === 0 && '(現在は連携アカウントなし)'}。
             </li>
           </ul>
+          {aliases.length > 0 && (
+            <fieldset className="mt-3 border border-rule p-3">
+              <legend className="text-sm font-bold">連携 Fediverse の通知先</legend>
+              <p className="text-sm text-neutral">
+                「連携 Fediverse」で届ける先を選べます(複数可)。
+              </p>
+              <div className="mt-2 space-y-1">
+                {aliases.map((a) => {
+                  const checked =
+                    account?.notifyApTargets == null
+                      ? true
+                      : account.notifyApTargets.includes(a.id);
+                  return (
+                    <label key={a.id} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" name={`ap_target_${a.id}`} defaultChecked={checked} />
+                      <span className="meta-mono">
+                        {a.domain === 'bsky' ? `@${a.handle} (Bluesky)` : `@${a.handle}@${a.domain}`}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
           <div className="mt-2 border border-rule bg-paper-2 p-3 text-sm">
             <p className="font-bold">DM を受け取るには</p>
             <ol className="mt-1 list-inside list-decimal space-y-1 text-neutral">

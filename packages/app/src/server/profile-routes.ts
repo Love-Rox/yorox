@@ -19,7 +19,13 @@ import { followActor, unfollowActor } from '../domain/follow';
 import { clearSessionCookieHeader } from '../auth/session';
 import { createDirectSender } from '../mail/send';
 import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
-import { claimBluesky, claimByRelMe, generateClaimCode, unlinkRemoteAlias } from './claim';
+import {
+  claimBluesky,
+  claimByRelMe,
+  generateClaimCode,
+  listClaimedAliases,
+  unlinkRemoteAlias,
+} from './claim';
 import { isSecureRequest } from './http';
 import { getSessionActorId } from './route-auth';
 
@@ -308,6 +314,9 @@ profile.post('/profile/notifications', async (c) => {
   const webhook = str(form.discord_webhook_url);
   // 種別 × チャンネルのマトリクスを読む
   const prefs = parseNotificationPrefs((field) => form[field] !== undefined);
+  // 連携 Fediverse 通知の宛先(本人の claim 済みエイリアスに限定して受理)
+  const aliases = await listClaimedAliases(db, actorId);
+  const apTargets = aliases.map((a) => a.id).filter((id) => form[`ap_target_${id}`] !== undefined);
   // 従来のトグル(既定値・エクスポート表示用)はマトリクスの要約として同期する
   const anyEmail = NOTIFICATION_CATEGORIES.some((c) => prefs[c.key]?.email);
   const anyDiscordDm = NOTIFICATION_CATEGORIES.some((c) => prefs[c.key]?.discordDm);
@@ -318,6 +327,7 @@ profile.post('/profile/notifications', async (c) => {
       discordDmNotifications: anyDiscordDm,
       discordWebhookUrl: webhook && isDiscordWebhookUrl(webhook) ? webhook : null,
       notificationPrefs: prefs,
+      notifyApTargets: apTargets,
     })
     .where(eq(schema.users.actorId, actorId));
   return c.redirect('/settings/profile?notify_saved=1#notifications', 302);

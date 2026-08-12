@@ -238,6 +238,12 @@ export const users = sqliteTable('users', {
    * 既定を導く(domain/notification-prefs.ts)。
    */
   notificationPrefs: text('notification_prefs', { mode: 'json' }).$type<NotificationPrefs>(),
+  /**
+   * 連携 Fediverse 通知の宛先(claim 済みリモートアクターの ID 配列)。
+   * 連携アカウントは複数持てるため、どれに届けるかを選べる。
+   * null = 未選択(連携済みの全アカウントを対象)/ [] = どこにも送らない。
+   */
+  notifyApTargets: text('notify_ap_targets', { mode: 'json' }).$type<string[]>(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
