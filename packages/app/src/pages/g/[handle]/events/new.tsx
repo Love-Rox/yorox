@@ -1,6 +1,7 @@
 import { unstable_getRequest as getRequest, unstable_notFound as notFound, unstable_redirect as redirect } from 'waku/router/server';
 import { LoginRequired } from '../../../../components/login-required';
 import { HelpTip } from '../../../../components/help-tip';
+import { SurveyBuilder } from '../../../../components/survey-builder';
 import { getCurrentUser } from '../../../../server/current-user';
 import { getDb, getGroupByHandle } from '../../../../server/data';
 import { hasGroupPermission } from '../../../../server/route-auth';
@@ -154,6 +155,24 @@ export default async function NewEventPage({ handle }: { handle: string }) {
           <span className="mt-1 block text-sm text-neutral">
             実際に申込できるのは「連合参加可」に設定した枠だけです
           </span>
+        </fieldset>
+        <fieldset className="block">
+          <legend className="text-sm font-bold">申込アンケート(イベント共通)<HelpTip text="どの枠から申し込んでも聞く質問です。枠だけの追加質問は、枠を作るときに設定できます。回答は主催者だけが見られます。あとから編集画面でも変更できます。" /></legend>
+          <p className="mt-1 text-sm text-neutral">
+            申込時に聞く質問です。どの枠から申し込んでも表示されます。回答は主催者だけが確認できます。
+          </p>
+          <div className="mt-2">
+            <SurveyBuilder name="survey_json" />
+          </div>
+          <label className="mt-3 flex items-start gap-2">
+            <input type="checkbox" name="survey_remote_policy" value="block" />
+            <span>
+              必須アンケートがあるとき、Fediverse / Bluesky からのリモート申込を断る
+              <span className="mt-1 block text-sm text-neutral">
+                オフ(既定)なら、リモート申込は必須質問を免除して受け付けます(回答なしとして記録)。
+              </span>
+            </span>
+          </label>
         </fieldset>
         <button type="submit" className="btn cursor-pointer">
           下書きを作成

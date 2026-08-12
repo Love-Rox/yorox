@@ -4,6 +4,7 @@
  * 複数選択は同名 checkbox の配列(parseBody({ all: true }))。
  */
 import type { SurveyQuestion } from '../db/schema';
+import { RequiredCheckboxGroup } from './required-checkbox-group';
 
 export function SurveyFields({ questions }: { questions: SurveyQuestion[] }) {
   if (questions.length === 0) return null;
@@ -45,16 +46,20 @@ export function SurveyFields({ questions }: { questions: SurveyQuestion[] }) {
                 ))}
               </div>
             )}
-            {q.type === 'multiple' && (
-              <div className="mt-1 space-y-1">
-                {(q.options ?? []).map((opt, i) => (
-                  <label key={i} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name={fieldName} value={opt} />
-                    {opt}
-                  </label>
-                ))}
-              </div>
-            )}
+            {q.type === 'multiple' &&
+              (q.required ? (
+                // 「1つ以上必須」はネイティブ属性で表せないので送信前検証を JS で補う
+                <RequiredCheckboxGroup name={fieldName} options={q.options ?? []} />
+              ) : (
+                <div className="mt-1 space-y-1">
+                  {(q.options ?? []).map((opt, i) => (
+                    <label key={i} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" name={fieldName} value={opt} />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              ))}
           </div>
         );
       })}
