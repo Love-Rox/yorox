@@ -8,6 +8,7 @@ import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { buildNotificationBody, type NotificationContext } from './body';
 import type { Notification, NotificationDriver } from './driver';
+import { categoryOf, channelEnabled } from '../domain/notification-prefs';
 
 /**
  * 枠 ID からイベントの詳細を引く(本文に載せる用)。
@@ -158,9 +159,28 @@ export async function dispatchPendingEvents(
           bodyText: buildNotificationBody(bodyBase, ctx),
           eventType: event.type,
         };
-        // メール通知をオフにしているユーザーには email を渡さない(AP 通知等は届く)
-        if (user?.email !== undefined && user.emailNotifications) {
-          notification.email = user.email;
+        // 種別 × チャンネルのマトリクスで各チャンネルの可否を決める。
+        // 宛先がリモートアクター(users 行なし)のときは AP のみ有効にする
+        // (メンションが唯一の到達手段。設定は持てない)
+        const category = categoryOf(event.type);
+        if (user && category) {
+          if (channelEnabled(user, category, 'email') && user.email !== undefined) {
+            notification.email = user.email;
+          }
+          notification.allowDiscordDm = channelEnabled(user, category, 'discordDm');
+          notification.allowDiscordWebhook = channelEnabled(user, category, 'discordWebhook');
+          notification.allowAp = channelEnabled(user, category, 'ap');
+        } else if (user) {
+          // 未分類の種別(将来追加分)は握り潰さず、従来の既定で送る
+          if (user.emailNotifications && user.email !== undefined) {
+            notification.email = user.email;
+          }
+          notification.allowDiscordDm = user.discordDmNotifications;
+          notification.allowDiscordWebhook = !!user.discordWebhookUrl;
+          notification.allowAp = false;
+        } else {
+          // リモート宛(claim 前のエイリアス等):メンションのみ
+          notification.allowAp = true;
         }
         if (payload.slotId !== undefined) notification.slotId = payload.slotId;
         for (const driver of drivers) {

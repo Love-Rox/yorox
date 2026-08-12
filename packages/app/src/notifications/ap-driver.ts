@@ -6,13 +6,22 @@
  */
 import { activities, AS_CONTEXT, type ApObject } from '@yorox/ap';
 import { escapeHtml } from '../lib/html';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
 import { deliverWithRetry } from '../server/ap-delivery';
 import type { Notification, NotificationDriver } from './driver';
 
+type ActorRow = typeof schema.actors.$inferSelect;
+
+/**
+ * AP 通知ドライバ。
+ * - 宛先がリモート(Fediverse エイリアス)なら、そのアカウントへメンションで届ける
+ *   (メールを持たない参加者への唯一の到達手段)
+ * - 宛先がローカルユーザーで、連携 Fediverse への通知を有効にしているなら、
+ *   その人が連携(claim)したリモートアカウントへメンションで届ける
+ */
 export class ApNoteDriver implements NotificationDriver {
   readonly name = 'ap-note';
 
@@ -20,13 +29,23 @@ export class ApNoteDriver implements NotificationDriver {
 
   async send(n: Notification): Promise<void> {
     if (!n.slotId) return;
-    const recipient = await this.db.query.actors.findFirst({
+    if (!n.allowAp) return;
+    const actor = await this.db.query.actors.findFirst({
       where: eq(schema.actors.id, n.actorId),
     });
-    // ローカルアカウントはメール等の既存ドライバが担当する
-    if (!recipient || recipient.state === 'local') return;
-    const inboxUrl = recipient.sharedInboxUrl ?? recipient.inboxUrl;
-    if (!inboxUrl) return;
+    if (!actor) return;
+
+    // 届け先(inbox を持つリモートアクター)を決める
+    const recipients: ActorRow[] =
+      actor.state === 'local'
+        ? await this.db.query.actors.findMany({
+            where: and(
+              eq(schema.actors.claimedByActorId, actor.id),
+              isNotNull(schema.actors.domain),
+            ),
+          })
+        : [actor];
+    if (recipients.length === 0) return;
 
     const slot = await this.db.query.slots.findFirst({
       where: eq(schema.slots.id, n.slotId),
@@ -45,31 +64,36 @@ export class ApNoteDriver implements NotificationDriver {
     const eventUrl = group.handle
       ? `${origin}/g/${group.handle}/events/${event.id}`
       : `${origin}/events/${event.id}`;
-    const handle =
-      recipient.handle && recipient.domain
-        ? `@${recipient.handle}@${recipient.domain}`
-        : recipient.uri;
 
-    const note: ApObject = {
-      '@context': AS_CONTEXT,
-      id: `${origin}/events/${event.id}/replies/${ulid()}`,
-      type: 'Note',
-      attributedTo: group.uri,
-      to: [recipient.uri],
-      content: `<p><a href="${escapeHtml(recipient.uri)}" rel="noreferrer">${escapeHtml(handle)}</a> 【${escapeHtml(event.title)}】${escapeHtml(n.bodyText)}</p><p><a href="${escapeHtml(eventUrl)}" rel="noreferrer">${escapeHtml(eventUrl)}</a></p>`,
-      mediaType: 'text/html',
-      published: new Date().toISOString(),
-      tag: [{ type: 'Mention', href: recipient.uri, name: handle }],
-    };
-    const create = activities.create(group.uri, note, {
-      id: `${note.id}/activity`,
-      to: recipient.uri,
-      published: note.published as string,
-    });
-    await deliverWithRetry(this.db, {
-      signerActorId: group.id,
-      inboxUrl,
-      activity: create,
-    });
+    for (const recipient of recipients) {
+      const inboxUrl = recipient.sharedInboxUrl ?? recipient.inboxUrl;
+      if (!inboxUrl) continue;
+      const handle =
+        recipient.handle && recipient.domain
+          ? `@${recipient.handle}@${recipient.domain}`
+          : recipient.uri;
+
+      const note: ApObject = {
+        '@context': AS_CONTEXT,
+        id: `${origin}/events/${event.id}/replies/${ulid()}`,
+        type: 'Note',
+        attributedTo: group.uri,
+        to: [recipient.uri],
+        content: `<p><a href="${escapeHtml(recipient.uri)}" rel="noreferrer">${escapeHtml(handle)}</a> 【${escapeHtml(event.title)}】${escapeHtml(n.bodyText)}</p><p><a href="${escapeHtml(eventUrl)}" rel="noreferrer">${escapeHtml(eventUrl)}</a></p>`,
+        mediaType: 'text/html',
+        published: new Date().toISOString(),
+        tag: [{ type: 'Mention', href: recipient.uri, name: handle }],
+      };
+      const create = activities.create(group.uri, note, {
+        id: `${note.id}/activity`,
+        to: recipient.uri,
+        published: note.published as string,
+      });
+      await deliverWithRetry(this.db, {
+        signerActorId: group.id,
+        inboxUrl,
+        activity: create,
+      });
+    }
   }
 }

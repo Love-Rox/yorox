@@ -10,6 +10,7 @@ import { createAccessToken, revokeAccessToken } from '../domain/access-token';
 import { deleteAccount, exportUserData } from '../domain/account';
 import { escapeHtml } from '../lib/html';
 import { isDiscordWebhookUrl, sendDiscordDm, sendDiscordWebhook } from '../lib/discord';
+import { NOTIFICATION_CATEGORIES, parseNotificationPrefs } from '../domain/notification-prefs';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
@@ -305,12 +306,18 @@ profile.post('/profile/notifications', async (c) => {
   const form = await c.req.parseBody();
   // Discord Webhook は形式が正しいときだけ保存(SSRF 対策)
   const webhook = str(form.discord_webhook_url);
+  // 種別 × チャンネルのマトリクスを読む
+  const prefs = parseNotificationPrefs((field) => form[field] !== undefined);
+  // 従来のトグル(既定値・エクスポート表示用)はマトリクスの要約として同期する
+  const anyEmail = NOTIFICATION_CATEGORIES.some((c) => prefs[c.key]?.email);
+  const anyDiscordDm = NOTIFICATION_CATEGORIES.some((c) => prefs[c.key]?.discordDm);
   await db
     .update(schema.users)
     .set({
-      emailNotifications: form.email_notifications !== undefined,
-      discordDmNotifications: form.discord_dm_notifications !== undefined,
+      emailNotifications: anyEmail,
+      discordDmNotifications: anyDiscordDm,
       discordWebhookUrl: webhook && isDiscordWebhookUrl(webhook) ? webhook : null,
+      notificationPrefs: prefs,
     })
     .where(eq(schema.users.actorId, actorId));
   return c.redirect('/settings/profile?notify_saved=1#notifications', 302);

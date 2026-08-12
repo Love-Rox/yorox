@@ -190,6 +190,25 @@ export const eventManagers = sqliteTable(
   ],
 );
 
+/** 通知の種別カテゴリ(domain/notification-prefs.ts が定義を持つ) */
+export type NotificationCategory =
+  | 'participation'
+  | 'payment'
+  | 'reminder'
+  | 'event_change'
+  | 'social';
+
+/**
+ * ユーザーが選べる通知チャンネル。
+ * ap = 連携済み(claim 済み)ActivityPub アカウントへメンションで届ける。
+ */
+export type NotificationChannel = 'email' | 'discordDm' | 'discordWebhook' | 'ap';
+
+/** 種別 × チャンネルの受け取り可否。未指定セルは既定にフォールバック */
+export type NotificationPrefs = Partial<
+  Record<NotificationCategory, Partial<Record<NotificationChannel, boolean>>>
+>;
+
 /** ローカルユーザーの認証・連絡先情報(actors と 1:1) */
 export const users = sqliteTable('users', {
   actorId: text('actor_id')
@@ -212,6 +231,13 @@ export const users = sqliteTable('users', {
    * そのチャンネルにも届く。チャンネルの閲覧者に内容が見える点に注意。
    */
   discordWebhookUrl: text('discord_webhook_url'),
+  /**
+   * 通知の受け取り方(種別 × チャンネルのマトリクス)。
+   * 例: { participation: { email: true, discordDm: false }, reminder: {...} }。
+   * セルが未指定なら emailNotifications / discordDmNotifications / Webhook 有無から
+   * 既定を導く(domain/notification-prefs.ts)。
+   */
+  notificationPrefs: text('notification_prefs', { mode: 'json' }).$type<NotificationPrefs>(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

@@ -9,6 +9,11 @@ import { getCurrentUser } from '../../server/current-user';
 import { enabledProviders } from '../../auth/oauth';
 import { PasskeyRegisterButton } from '../../components/passkey-buttons';
 import { formatPasskeyLabel } from '../../lib/passkey-label';
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_CHANNELS,
+  effectivePrefs,
+} from '../../domain/notification-prefs';
 import { listClaimedAliases } from '../../server/claim';
 import { listAccessTokens } from '../../domain/access-token';
 import { getDb } from '../../server/data';
@@ -69,6 +74,14 @@ export default async function ProfileSettingsPage() {
     where: eq(schema.passkeys.userActorId, user.actorId),
   });
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
+  const discordLinked = oauthLinks.some((l) => l.provider === 'discord');
+  // 通知マトリクスの初期表示(未設定セルは従来設定から既定を導く)
+  const notifyPrefs = effectivePrefs({
+    emailNotifications: account?.emailNotifications ?? true,
+    discordDmNotifications: account?.discordDmNotifications ?? true,
+    discordWebhookUrl: account?.discordWebhookUrl ?? null,
+    notificationPrefs: account?.notificationPrefs ?? null,
+  });
 
   const tokens = await listAccessTokens(db, user.actorId);
 
@@ -445,25 +458,58 @@ export default async function ProfileSettingsPage() {
           </p>
         )}
         <form method="post" action="/profile/notifications" className="mt-3">
-          <label className="flex min-h-11 items-center gap-2">
-            <input
-              type="checkbox"
-              name="email_notifications"
-              defaultChecked={account?.emailNotifications ?? true}
-            />
-            <span>参加状況のお知らせをメール({account?.email})で受け取る</span>
-          </label>
-          <label className="mt-3 flex min-h-11 items-center gap-2">
-            <input
-              type="checkbox"
-              name="discord_dm_notifications"
-              defaultChecked={account?.discordDmNotifications ?? true}
-            />
-            <span>Discord の DM でも受け取る(アカウント連携済みの場合)</span>
-          </label>
-          <p className="mt-1 text-sm text-neutral">
-            Discord でログイン連携していると、Bot から DM が届きます。
+          <p className="text-sm text-neutral">
+            お知らせの種類ごとに、受け取るチャンネルを選べます。メールの宛先は{' '}
+            {account?.email} です。オフにしてもログイン用メールは届きます。
           </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border-b-2 border-ink p-2 text-left">お知らせの種類</th>
+                  {NOTIFICATION_CHANNELS.map((ch) => (
+                    <th key={ch.key} className="border-b-2 border-ink p-2 text-center">
+                      {ch.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {NOTIFICATION_CATEGORIES.map((cat) => (
+                  <tr key={cat.key}>
+                    <td className="border-b border-rule p-2">
+                      <span className="font-bold">{cat.label}</span>
+                      <span className="block text-sm text-neutral">{cat.description}</span>
+                    </td>
+                    {NOTIFICATION_CHANNELS.map((ch) => (
+                      <td key={ch.key} className="border-b border-rule p-2 text-center">
+                        <input
+                          type="checkbox"
+                          name={`notify_${cat.key}_${ch.key}`}
+                          defaultChecked={notifyPrefs[`${cat.key}_${ch.key}`]}
+                          aria-label={`${cat.label} を ${ch.label} で受け取る`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul className="mt-2 space-y-1 text-sm text-neutral">
+            <li>
+              <strong>Discord DM</strong> はアカウント連携が必要です
+              {!discordLinked && '(現在は未連携)'}。
+            </li>
+            <li>
+              <strong>Discord Webhook</strong> は下の URL を設定すると使えます。
+            </li>
+            <li>
+              <strong>連携 Fediverse</strong> は、連携(claim)した Misskey / Mastodon 等の
+              アカウント宛にメンションで届きます
+              {aliases.length === 0 && '(現在は連携アカウントなし)'}。
+            </li>
+          </ul>
           <div className="mt-2 border border-rule bg-paper-2 p-3 text-sm">
             <p className="font-bold">DM を受け取るには</p>
             <ol className="mt-1 list-inside list-decimal space-y-1 text-neutral">

@@ -26,13 +26,11 @@ export class DiscordDmDriver implements NotificationDriver {
       where: eq(schema.users.actorId, n.actorId),
     });
     if (!user) return;
-    // お知らせ全体をオフにしている人には送らない(メールと同じ扱い)
-    if (!user.emailNotifications) return;
 
     const content = `**${n.subject}**\n${n.bodyText}`;
 
-    // 1) Bot からの DM(本人が有効にしている場合のみ)
-    if (this.botToken && user.discordDmNotifications) {
+    // 1) Bot からの DM(この種別で DM チャンネルが有効なときのみ)
+    if (this.botToken && n.allowDiscordDm) {
       const link = await this.db.query.oauthAccounts.findFirst({
         where: and(
           eq(schema.oauthAccounts.userActorId, n.actorId),
@@ -42,8 +40,8 @@ export class DiscordDmDriver implements NotificationDriver {
       if (link) await sendDiscordDm(this.botToken, link.providerUserId, content);
     }
 
-    // 2) 個人の Webhook(設定していれば)
-    if (user.discordWebhookUrl) {
+    // 2) 個人の Webhook(URL 設定済み かつ この種別で有効なとき)
+    if (n.allowDiscordWebhook && user.discordWebhookUrl) {
       await sendDiscordWebhook(user.discordWebhookUrl, content);
     }
   }

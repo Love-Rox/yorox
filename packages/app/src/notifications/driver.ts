@@ -18,6 +18,14 @@ export interface Notification {
   eventType: string;
   /** 由来の枠 ID(あれば)。AP ドライバがイベント・主催グループの解決に使う */
   slotId?: string;
+  /**
+   * このユーザーの通知設定で許可されたチャンネル。dispatcher が種別 × チャンネルの
+   * マトリクスから解決して立てる。各ドライバはここを見て送るか決める。
+   * 宛先がリモートアクター(設定を持たない)のときは AP のみ true。
+   */
+  allowDiscordDm?: boolean;
+  allowDiscordWebhook?: boolean;
+  allowAp?: boolean;
 }
 
 export interface NotificationDriver {
