@@ -59,22 +59,88 @@ function isBlockedAddress(ip: string): boolean {
   return ip.includes(':') ? isBlockedIpv6(ip) : isBlockedIpv4(ip);
 }
 
+/** 名前解決の結果が内部アドレスだったことを示すエラー */
+class BlockedAddressError extends Error {
+  readonly code = 'EBLOCKEDADDR';
+}
+
+type LookupAddress = { address: string; family: number };
+type LookupCallback = (
+  err: NodeJS.ErrnoException | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+type LookupFn = (
+  hostname: string,
+  options: { all?: boolean; family?: number },
+  callback: LookupCallback,
+) => void;
+
 /**
- * 接続先として安全か。Node(セルフホスト)ではホスト名を実際に名前解決し、
- * 内部 IP に解決されるドメイン(DNS で 127.0.0.1 や 169.254.169.254 を返す等)も拒否する。
- * Workers の fetch はプライベートネットワークへ到達しないため、URL 検査のみで足りる。
+ * 接続時に使う名前解決関数。解決した全アドレスを検査し、内部アドレスが
+ * 1 つでも含まれれば接続させない。検査した結果そのものを接続に使うため、
+ * 検査と接続の間に DNS の応答を差し替える DNS リバインディングも防げる。
  */
-async function isSafeDestination(raw: string): Promise<boolean> {
-  if (!isPublicHttpUrl(raw)) return false;
-  if (__YOROX_TARGET__ !== 'node') return true;
-  try {
-    const { lookup } = await import('node:dns/promises');
-    const host = new URL(raw).hostname.replace(/^\[|\]$/g, '');
-    const addrs = await lookup(host, { all: true });
-    return addrs.length > 0 && addrs.every((a) => !isBlockedAddress(a.address));
-  } catch {
-    return false;
-  }
+export function createSafeLookup(dnsLookup: LookupFn): LookupFn {
+  return (hostname, options, callback) => {
+    dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
+      if (err) return callback(err, '');
+      const list = addresses as LookupAddress[];
+      if (list.length === 0 || list.some((a) => isBlockedAddress(a.address))) {
+        return callback(new BlockedAddressError(`blocked address for ${hostname}`), '');
+      }
+      if (options.all) return callback(null, list);
+      callback(null, list[0]!.address, list[0]!.family);
+    });
+  };
+}
+
+/** 本文を持てないステータス(Response のコンストラクタが本文付きを拒否する) */
+const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);
+
+/**
+ * Node 用の fetch。node:http(s) の lookup に createSafeLookup を渡し、
+ * 実際に接続する IP を検査済みのものに固定する。リダイレクトは追わない。
+ * 本文は文字列のみ対応(このモジュールの呼び出し元は JSON 文字列しか送らない)。
+ */
+export async function nodePinnedFetch(
+  url: string,
+  init: RequestInit = {},
+  lookup?: LookupFn,
+): Promise<Response> {
+  const target = new URL(url);
+  const http = await import(target.protocol === 'https:' ? 'node:https' : 'node:http');
+  const { Readable } = await import('node:stream');
+  const safeLookup = lookup ?? createSafeLookup((await import('node:dns')).lookup as LookupFn);
+  const headers = Object.fromEntries(new Headers(init.headers).entries());
+  const body = typeof init.body === 'string' ? init.body : undefined;
+  if (init.body != null && body === undefined) throw new TypeError('unsupported body type');
+
+  return new Promise<Response>((resolve, reject) => {
+    const req = http.request(
+      target,
+      {
+        method: init.method ?? 'GET',
+        headers,
+        lookup: safeLookup,
+        signal: init.signal ?? undefined,
+      },
+      (res: import('node:http').IncomingMessage) => {
+        const resHeaders = new Headers();
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (Array.isArray(v)) for (const item of v) resHeaders.append(k, item);
+          else if (v !== undefined) resHeaders.set(k, String(v));
+        }
+        const status = res.statusCode ?? 502;
+        const resBody = NULL_BODY_STATUS.has(status)
+          ? (res.resume(), null)
+          : (Readable.toWeb(res) as ReadableStream<Uint8Array>);
+        resolve(new Response(resBody, { status, statusText: res.statusMessage ?? '', headers: resHeaders }));
+      },
+    );
+    req.on('error', reject);
+    req.end(body);
+  });
 }
 
 /**
@@ -82,8 +148,8 @@ async function isSafeDestination(raw: string): Promise<boolean> {
  * 1 ホップごとに接続先を検証し直す(公開 URL から内部へのリダイレクトを防ぐ)。
  * 安全でない宛先なら null を返す。maxRedirects=0 ならリダイレクト応答をそのまま返す。
  *
- * 注: Node では検証後の接続時に改めて名前解決されるため、TTL 0 の DNS
- * リバインディングまでは防げない(検証と接続の間の入れ替え)。
+ * Workers の fetch はプライベートネットワークへ到達しないため URL 検査のみで足りる。
+ * Node(セルフホスト)では nodePinnedFetch で、接続に使う IP そのものを検査する。
  */
 export async function safeFetch(
   url: string,
@@ -92,10 +158,20 @@ export async function safeFetch(
 ): Promise<Response | null> {
   let current = url;
   for (let hop = 0; ; hop++) {
-    if (!(await isSafeDestination(current))) return null;
-    const res = await fetch(current, { ...init, redirect: 'manual' });
+    if (!isPublicHttpUrl(current)) return null;
+    let res: Response;
+    try {
+      res =
+        __YOROX_TARGET__ === 'node'
+          ? await nodePinnedFetch(current, init)
+          : await fetch(current, { ...init, redirect: 'manual' });
+    } catch (err) {
+      if (err instanceof BlockedAddressError) return null;
+      throw err;
+    }
     const location = res.headers.get('location');
     if (res.status < 300 || res.status >= 400 || !location || hop >= maxRedirects) return res;
+    await res.body?.cancel();
     current = new URL(location, current).toString();
   }
 }
