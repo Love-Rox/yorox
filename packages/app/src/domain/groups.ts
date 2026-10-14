@@ -5,7 +5,7 @@ import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from '../lib/ulid';
-import { hasAllPermissions, PRESET_ROLES } from './permissions';
+import { hasAllPermissions, PERMISSIONS, PRESET_ROLES } from './permissions';
 
 export class HandleTakenError extends Error {
   constructor(handle: string) {
@@ -130,7 +130,30 @@ export class PermissionEscalationError extends Error {
  * member.manage や全権限を書き込んでグループを乗っ取れてしまう。
  */
 function assertNoEscalation(requested: string[], granterPermissions: Set<string>): void {
-  if (requested.some((p) => !granterPermissions.has(p))) throw new PermissionEscalationError();
+  // 権限一覧に無い文字列(廃止された旧権限など)は効力を持たないので比較から外す
+  const known = requested.filter((p) => (PERMISSIONS as readonly string[]).includes(p));
+  if (known.some((p) => !granterPermissions.has(p))) throw new PermissionEscalationError();
+}
+
+/** グループ内でそのメンバーが持つ全権限の和集合(非メンバーは空) */
+export async function getMemberPermissions(
+  db: Db,
+  groupActorId: string,
+  memberActorId: string,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ permissions: schema.groupRoles.permissions })
+    .from(schema.groupMembers)
+    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
+    .where(
+      and(
+        eq(schema.groupMembers.groupActorId, groupActorId),
+        eq(schema.groupMembers.memberActorId, memberActorId),
+      ),
+    );
+  const perms = new Set<string>();
+  for (const r of rows) for (const p of r.permissions) perms.add(p);
+  return perms;
 }
 
 export class OutrankedMemberError extends Error {
@@ -150,17 +173,10 @@ async function assertCanManageMember(
   memberActorId: string,
   granterPermissions: Set<string>,
 ): Promise<void> {
-  const rows = await db
-    .select({ permissions: schema.groupRoles.permissions })
-    .from(schema.groupMembers)
-    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
-    .where(
-      and(
-        eq(schema.groupMembers.groupActorId, groupActorId),
-        eq(schema.groupMembers.memberActorId, memberActorId),
-      ),
-    );
-  if (rows.some((r) => r.permissions.some((p) => !granterPermissions.has(p)))) {
+  const target = await getMemberPermissions(db, groupActorId, memberActorId);
+  try {
+    assertNoEscalation([...target], granterPermissions);
+  } catch {
     throw new OutrankedMemberError();
   }
 }

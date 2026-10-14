@@ -18,7 +18,14 @@ import {
 import { renderMarkdownToHtml } from '../lib/markdown';
 import { buildActorOgSvg } from '../lib/ogp';
 import { ulid } from '../lib/ulid';
-import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
+import { saveImageUpload, type ImageUploadError } from '../storage/driver';
+
+const AVATAR_UPLOAD_ERRORS: Record<ImageUploadError, string> = {
+  uploads_disabled: 'このインスタンスではファイルアップロードが無効です',
+  no_file: 'ファイルが選択されていません',
+  too_large: 'ファイルサイズが上限を超えています',
+  bad_type: '対応していない画像形式です(PNG / JPEG / WebP / GIF)',
+};
 import { renderOgPngResponse } from './og';
 import { announceGroupPostDeleteNow, announceGroupPostNow } from './ap-delivery';
 import {
@@ -62,7 +69,7 @@ async function authorizeForGroup(
   handle: string,
   actorId: string,
   permission: Permission,
-): Promise<{ groupActorId: string } | null> {
+): Promise<{ groupActorId: string; permissions: Set<string> } | null> {
   const groupActor = await db.query.actors.findFirst({
     where: and(
       eq(schema.actors.handle, handle),
@@ -71,8 +78,8 @@ async function authorizeForGroup(
     ),
   });
   if (!groupActor) return null;
-  const allowed = await hasGroupPermission(db, groupActor.id, actorId, permission);
-  return allowed ? { groupActorId: groupActor.id } : null;
+  const permissions = await getGroupPermissions(db, groupActor.id, actorId);
+  return permissions.has(permission) ? { groupActorId: groupActor.id, permissions } : null;
 }
 
 function redirectWithError(c: Context, path: string, err: unknown): Response {
@@ -229,38 +236,26 @@ groups.post('/g/:handle/avatar', async (c) => {
   const ctx = await authorizeForGroup(db, handle, actorId, 'group.settings');
   if (!ctx) return c.text('権限がありません', 403);
 
-  const { enabled, maxBytes } = getUploadConfig(env);
-  const storage = getStorage(env);
-  if (!enabled || !storage) {
-    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('このインスタンスではファイルアップロードが無効です')}`, 302);
-  }
-
   const form = await c.req.parseBody();
-  const file = form.file;
-  if (!(file instanceof File) || file.size === 0) {
-    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('ファイルが選択されていません')}`, 302);
-  }
-  if (file.size > maxBytes) {
-    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('ファイルサイズが上限を超えています')}`, 302);
-  }
-  const ext = IMAGE_TYPES[file.type];
-  if (!ext) {
-    return c.redirect(`/g/${handle}/settings?error=${encodeURIComponent('対応していない画像形式です(PNG / JPEG / WebP / GIF)')}`, 302);
-  }
-
-  const key = `avatars/${ctx.groupActorId}/${ulid()}.${ext}`;
-  await storage.put(key, await file.arrayBuffer(), file.type);
-
   const current = await db.query.actors.findFirst({
     where: eq(schema.actors.id, ctx.groupActorId),
   });
-  if (current?.avatarUrl?.startsWith('/files/')) {
-    await storage.delete(current.avatarUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  const result = await saveImageUpload(
+    env,
+    `avatars/${ctx.groupActorId}`,
+    form.file,
+    current?.avatarUrl,
+  );
+  if (!result.ok) {
+    return c.redirect(
+      `/g/${handle}/settings?error=${encodeURIComponent(AVATAR_UPLOAD_ERRORS[result.error])}`,
+      302,
+    );
   }
 
   await db
     .update(schema.actors)
-    .set({ avatarUrl: `/files/${key}`, updatedAt: new Date() })
+    .set({ avatarUrl: result.url, updatedAt: new Date() })
     .where(eq(schema.actors.id, ctx.groupActorId));
   await recordAudit(db, {
     actorId,
@@ -555,7 +550,7 @@ groups.post('/g/:handle/members', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   const form = await c.req.parseBody();
-  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
+  const granter = ctx.permissions;
   try {
     await addMemberByHandle(
       db,
@@ -589,7 +584,7 @@ groups.post('/g/:handle/members/:actorId/role', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   const form = await c.req.parseBody();
-  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
+  const granter = ctx.permissions;
   try {
     await changeMemberRole(
       db,
@@ -623,7 +618,7 @@ groups.post('/g/:handle/members/:actorId/remove', async (c) => {
   const ctx = await authorizeForGroup(db, handle, actorId, 'member.manage');
   if (!ctx) return c.text('権限がありません', 403);
 
-  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
+  const granter = ctx.permissions;
   try {
     await removeMember(db, ctx.groupActorId, c.req.param('actorId'), granter);
     await recordAudit(db, {
@@ -652,7 +647,7 @@ groups.post('/g/:handle/roles', async (c) => {
 
   const form = await c.req.parseBody();
   const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
-  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
+  const granter = ctx.permissions;
   try {
     await createRole(db, ctx.groupActorId, str(form.name), permissions, granter);
     await recordAudit(db, {
@@ -681,7 +676,7 @@ groups.post('/g/:handle/roles/:roleId/update', async (c) => {
 
   const form = await c.req.parseBody();
   const permissions = PERMISSIONS.filter((p) => form[`perm_${p}`] === 'on');
-  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
+  const granter = ctx.permissions;
   try {
     await updateRole(
       db,

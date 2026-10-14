@@ -6,7 +6,7 @@
  * リモートもローカルと同じ actors 行(state='remote_unclaimed')になる。
  */
 import { eq } from 'drizzle-orm';
-import { AP_MEDIA_TYPE, signRequest, type ApActor } from '@yorox/ap';
+import { AP_MEDIA_TYPE, signRequest, type ApActor, type ApPublicKey } from '@yorox/ap';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from './ulid';
@@ -32,23 +32,44 @@ export interface FetchSigner {
 export async function fetchRemoteActor(
   uri: string,
   signer?: FetchSigner,
+  preferredKeyId?: string,
 ): Promise<ApActor | null> {
   const doc = await fetchActorDocument(uri, signer);
   if (!doc) return null;
-  if (doc.id === uri) return isSelfConsistent(doc) ? doc : null;
+  if (doc.id === uri) return isSelfConsistent(doc, preferredKeyId) ? doc : null;
   const canonical = await fetchActorDocument(doc.id!, signer);
   if (!canonical || canonical.id !== doc.id) return null;
-  return isSelfConsistent(canonical) ? canonical : null;
+  return isSelfConsistent(canonical, preferredKeyId) ? canonical : null;
 }
 
-/** 鍵がそのアクター自身のもの(owner 一致・同一オリジン)であること */
-function isSelfConsistent(doc: ApActor): boolean {
-  if (!doc.publicKey) return true;
-  if (doc.publicKey.owner && doc.publicKey.owner !== doc.id) return false;
+/**
+ * 鍵がそのアクター自身のもの(owner 一致・同一オリジン)であること。
+ * 実装によっては publicKey を配列で公開するため、本人の鍵を 1 つ選んで
+ * doc.publicKey に正規化する(該当が無ければ鍵なしとして扱う)。
+ */
+function isSelfConsistent(doc: ApActor, preferredKeyId?: string): boolean {
+  const raw: unknown = doc.publicKey;
+  if (!raw) return true;
+  const keys = (Array.isArray(raw) ? raw : [raw]) as Partial<ApPublicKey>[];
+  // 単一の鍵が他人のものなら拒否(他人の鍵を主張するなりすまし)
+  if (!Array.isArray(raw) && isForeignKey(doc.id!, keys[0]!)) return false;
+  const usable = keys.filter(
+    (k) => typeof k?.publicKeyPem === 'string' && !isForeignKey(doc.id!, k),
+  );
+  const own = usable.find((k) => k.id === preferredKeyId) ?? usable[0];
+  if (own) doc.publicKey = own as ApPublicKey;
+  else delete doc.publicKey;
+  return true;
+}
+
+/** owner が別アクター、または鍵 id が別オリジンの鍵か */
+function isForeignKey(actorId: string, key: Partial<ApPublicKey>): boolean {
+  if (key?.owner && key.owner !== actorId) return true;
+  if (!key?.id) return false;
   try {
-    return new URL(doc.publicKey.id).origin === new URL(doc.id!).origin;
+    return new URL(key.id).origin !== new URL(actorId).origin;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -169,7 +190,7 @@ export async function resolveRemoteActorByKeyId(
   // ローカルアクターは常に DB が正(再フェッチしない)
   if (cached?.state === 'local') return cached;
   if (!opts.forceRefresh && cached?.publicKeyPem) return cached;
-  const doc = await fetchRemoteActor(actorUri, opts.signer);
+  const doc = await fetchRemoteActor(actorUri, opts.signer, keyId);
   if (!doc) return null;
   // なりすまし防止: 取得したアクターは、フェッチ先 URL(= keyId のアクター)
   // 自身であり、鍵の id が keyId と一致していなければならない。
