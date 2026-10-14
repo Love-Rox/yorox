@@ -329,12 +329,15 @@ export async function updateRole(
   if (!role) throw new Error('ロールが見つかりません');
   if (role.isPreset) throw new Error('プリセットロールは編集できません');
   if (!name.trim()) throw new Error('ロール名は必須です');
-  // 新たに追加される権限だけを検査する(名前変更・権限削減は妨げない)
-  const existing = new Set(role.permissions);
-  assertNoEscalation(
-    permissions.filter((p) => !existing.has(p)),
-    granterPermissions,
-  );
+  // 自分の権限に収まらないロールは編集できない。権限を削る変更でも、
+  // そのロールを持つ上位メンバーを実質的に降格できてしまうため
+  // (changeMemberRole / removeMember の OutrankedMemberError と同じ境界)
+  try {
+    assertNoEscalation(role.permissions, granterPermissions);
+  } catch {
+    throw new Error('自分が持っていない権限を含むロールは編集できません');
+  }
+  assertNoEscalation(permissions, granterPermissions);
 
   // 変更後の状態で全権限持ちが残るかを検証する
   if (hasAllPermissions(role.permissions) && !hasAllPermissions(permissions)) {

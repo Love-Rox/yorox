@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { isPublicHttpUrl } from './safe-fetch';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isPublicHttpUrl, safeFetch } from './safe-fetch';
+
+vi.mock('node:dns/promises', () => ({
+  lookup: async (host: string) =>
+    host === 'internal.example'
+      ? [{ address: '127.0.0.1', family: 4 }]
+      : [{ address: '93.184.216.34', family: 4 }],
+}));
 
 describe('isPublicHttpUrl', () => {
   it('公開 https/http を許可する', () => {
@@ -42,5 +49,46 @@ describe('isPublicHttpUrl', () => {
   it('壊れた URL を拒否する', () => {
     expect(isPublicHttpUrl('not a url')).toBe(false);
     expect(isPublicHttpUrl('')).toBe(false);
+  });
+});
+
+describe('safeFetch', () => {
+  const redirectTo = (location: string) =>
+    new Response(null, { status: 302, headers: { location } });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('公開 URL 間のリダイレクトは 1 ホップずつ追う', async () => {
+    vi.stubGlobal('__YOROX_TARGET__', 'cloudflare');
+    const fetchMock = vi.fn(async (url: string) =>
+      url === 'https://a.example/x' ? redirectTo('https://b.example/y') : new Response('ok'),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await safeFetch('https://a.example/x');
+    expect(await res?.text()).toBe('ok');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('内部アドレスへのリダイレクトは追わずに null を返す', async () => {
+    vi.stubGlobal('__YOROX_TARGET__', 'cloudflare');
+    const fetchMock = vi.fn(async () => redirectTo('http://169.254.169.254/latest/meta-data'));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await safeFetch('https://a.example/x')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('maxRedirects=0 ならリダイレクト応答をそのまま返す', async () => {
+    vi.stubGlobal('__YOROX_TARGET__', 'cloudflare');
+    vi.stubGlobal('fetch', vi.fn(async () => redirectTo('https://b.example/')));
+    expect((await safeFetch('https://a.example/', {}, 0))?.status).toBe(302);
+  });
+
+  it('Node では内部 IP に解決されるホスト名を拒否し、公開 IP なら通す', async () => {
+    vi.stubGlobal('__YOROX_TARGET__', 'node');
+    const fetchMock = vi.fn(async () => new Response('ok'));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await safeFetch('https://internal.example/')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect((await safeFetch('https://public.example/'))?.ok).toBe(true);
   });
 });

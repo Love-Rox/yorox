@@ -49,7 +49,12 @@ import { enqueueMail } from '../mail/queue';
 import { getSlotCoordinator } from './coordinator';
 import { sendReplyNote } from './remote-join';
 import { listDiscordAccounts, listManageParticipations } from './data';
-import { getSessionActorId, hasEventPermission, hasGroupPermission } from './route-auth';
+import {
+  canManageEventManagers,
+  getSessionActorId,
+  hasEventPermission,
+  hasGroupPermission,
+} from './route-auth';
 import { buildJoinDeps } from './join-deps';
 import { isDiscordSnowflake } from '../lib/discord';
 
@@ -622,7 +627,9 @@ events.post('/events/:id/managers', async (c) => {
   if (!actorId) return c.redirect('/login', 302);
 
   const ctx = await canEditEvent(db, c.req.param('id'), actorId);
-  if (!ctx) return c.text('権限がありません', 403);
+  if (!ctx || !(await canManageEventManagers(db, ctx.event, actorId))) {
+    return c.text('権限がありません', 403);
+  }
   const manageUrl = `/g/${ctx.handle}/events/${ctx.event.id}/manage`;
 
   const form = await c.req.parseBody();
@@ -659,7 +666,9 @@ events.post('/events/:id/managers/:actorId/remove', async (c) => {
   if (!actorId) return c.redirect('/login', 302);
 
   const ctx = await canEditEvent(db, c.req.param('id'), actorId);
-  if (!ctx) return c.text('権限がありません', 403);
+  if (!ctx || !(await canManageEventManagers(db, ctx.event, actorId))) {
+    return c.text('権限がありません', 403);
+  }
   await db
     .delete(schema.eventManagers)
     .where(

@@ -233,15 +233,16 @@ stripe.post('/webhooks/stripe', async (c) => {
       }
     }
   } else if (evt.type === 'charge.refunded') {
-    // providerRef(session id)ではなく payment_intent 経由の返金。
-    // ここでは metadata に payment_id があれば返金反映する
-    const paymentId = (obj.metadata as Record<string, string> | undefined)?.payment_id;
-    if (paymentId && systemActorId) {
+    // 支払い済みの payment は providerRef に payment_intent を控えてある。
+    // metadata の payment_id は送信元(任意の接続アカウント)が自由に書けるため信用せず、
+    // payment_intent で引き当てる。全額返金(refunded=true)のときだけ反映する。
+    const pi = obj.payment_intent;
+    if (typeof pi === 'string' && obj.refunded === true && systemActorId) {
       const payment = await db.query.payments.findFirst({
-        where: eq(schema.payments.id, paymentId),
+        where: and(eq(schema.payments.provider, 'stripe'), eq(schema.payments.providerRef, pi)),
       });
       if (payment && payment.status === 'paid') {
-        await markPayment(db, paymentId, 'refunded', systemActorId);
+        await markPayment(db, payment.id, 'refunded', systemActorId);
       }
     }
   }

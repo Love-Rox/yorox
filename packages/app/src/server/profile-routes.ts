@@ -25,7 +25,7 @@ import {
   listClaimedAliases,
   unlinkRemoteAlias,
 } from './claim';
-import { isSecureRequest } from './http';
+import { isSecureRequest, requestOrigin } from './http';
 import { getSessionActorId } from './route-auth';
 
 async function getEnv(): Promise<Env> {
@@ -403,7 +403,7 @@ profile.post('/profile/claim-relme', async (c) => {
 
   const form = await c.req.parseBody();
   const remoteRef = str(form.remote_account);
-  const origin = new URL(c.req.url).origin;
+  const origin = await requestOrigin(c);
   const result = await claimByRelMe(db, actorId, remoteRef, [
     `${origin}/u/${me.handle}`,
     `${origin}/@${me.handle}`,
@@ -428,7 +428,7 @@ profile.post('/profile/claim-bsky', async (c) => {
   if (!me?.handle) return c.redirect('/settings/profile', 302);
 
   const form = await c.req.parseBody();
-  const origin = new URL(c.req.url).origin;
+  const origin = await requestOrigin(c);
   const result = await claimBluesky(db, actorId, str(form.bsky_handle), [
     `${origin}/u/${me.handle}`,
     `${origin}/@${me.handle}`,

@@ -10,7 +10,7 @@ import { AP_MEDIA_TYPE, signRequest, type ApActor, type ApPublicKey } from '@yor
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
 import { ulid } from './ulid';
-import { isPublicHttpUrl } from './safe-fetch';
+import { isPublicHttpUrl, safeFetch } from './safe-fetch';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -94,12 +94,11 @@ async function fetchActorDocument(
         }),
       );
     }
-    const res = await fetch(uri, {
+    const res = await safeFetch(uri, {
       headers,
-      redirect: 'follow',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
     const doc = (await res.json()) as ApActor;
     if (!doc.id || !doc.inbox) return null;
     return doc;

@@ -44,6 +44,22 @@ const EVENT_MANAGER_PERMISSIONS: Permission[] = [
   'lottery.run',
 ];
 
+/**
+ * イベント共同管理者を追加・削除できるか。共同管理者には
+ * EVENT_MANAGER_PERMISSIONS が付与されるため、付与者自身がそれらすべてを
+ * グループの役割で持っていなければならない(共同管理者本人は不可)。
+ * これを欠くと event.edit だけのメンバーが自分を共同管理者に追加して
+ * 抽選・出欠・支払い(返金)の権限を得られてしまう。
+ */
+export async function canManageEventManagers(
+  db: Db,
+  event: { groupActorId: string },
+  actorId: string,
+): Promise<boolean> {
+  const perms = await getMemberPermissions(db, event.groupActorId, actorId);
+  return EVENT_MANAGER_PERMISSIONS.every((p) => perms.has(p));
+}
+
 /** そのイベントの共同管理者か */
 export async function isEventManager(
   db: Db,

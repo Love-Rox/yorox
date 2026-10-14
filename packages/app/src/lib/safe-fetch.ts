@@ -53,3 +53,49 @@ export function isPublicHttpUrl(raw: string): boolean {
   if (host.includes(':') && isBlockedIpv6(host)) return false;
   return true;
 }
+
+/** IP アドレス(リテラル)が内部向けか */
+function isBlockedAddress(ip: string): boolean {
+  return ip.includes(':') ? isBlockedIpv6(ip) : isBlockedIpv4(ip);
+}
+
+/**
+ * 接続先として安全か。Node(セルフホスト)ではホスト名を実際に名前解決し、
+ * 内部 IP に解決されるドメイン(DNS で 127.0.0.1 や 169.254.169.254 を返す等)も拒否する。
+ * Workers の fetch はプライベートネットワークへ到達しないため、URL 検査のみで足りる。
+ */
+async function isSafeDestination(raw: string): Promise<boolean> {
+  if (!isPublicHttpUrl(raw)) return false;
+  if (__YOROX_TARGET__ !== 'node') return true;
+  try {
+    const { lookup } = await import('node:dns/promises');
+    const host = new URL(raw).hostname.replace(/^\[|\]$/g, '');
+    const addrs = await lookup(host, { all: true });
+    return addrs.length > 0 && addrs.every((a) => !isBlockedAddress(a.address));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 外部 URL への fetch(SSRF 防御つき)。リダイレクトは自動で追わず、
+ * 1 ホップごとに接続先を検証し直す(公開 URL から内部へのリダイレクトを防ぐ)。
+ * 安全でない宛先なら null を返す。maxRedirects=0 ならリダイレクト応答をそのまま返す。
+ *
+ * 注: Node では検証後の接続時に改めて名前解決されるため、TTL 0 の DNS
+ * リバインディングまでは防げない(検証と接続の間の入れ替え)。
+ */
+export async function safeFetch(
+  url: string,
+  init: RequestInit = {},
+  maxRedirects = 5,
+): Promise<Response | null> {
+  let current = url;
+  for (let hop = 0; ; hop++) {
+    if (!(await isSafeDestination(current))) return null;
+    const res = await fetch(current, { ...init, redirect: 'manual' });
+    const location = res.headers.get('location');
+    if (res.status < 300 || res.status >= 400 || !location || hop >= maxRedirects) return res;
+    current = new URL(location, current).toString();
+  }
+}
