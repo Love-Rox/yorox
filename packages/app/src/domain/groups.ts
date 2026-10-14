@@ -133,12 +133,45 @@ function assertNoEscalation(requested: string[], granterPermissions: Set<string>
   if (requested.some((p) => !granterPermissions.has(p))) throw new PermissionEscalationError();
 }
 
+export class OutrankedMemberError extends Error {
+  constructor() {
+    super('自分より多くの権限を持つメンバーは変更・削除できません');
+    this.name = 'OutrankedMemberError';
+  }
+}
+
+/**
+ * 対象メンバーの現在の権限が、操作者の権限の範囲内かを検証する。
+ * member.manage だけを委任されたメンバーがオーナーを降格・削除するのを防ぐ。
+ */
+async function assertCanManageMember(
+  db: Db,
+  groupActorId: string,
+  memberActorId: string,
+  granterPermissions: Set<string>,
+): Promise<void> {
+  const rows = await db
+    .select({ permissions: schema.groupRoles.permissions })
+    .from(schema.groupMembers)
+    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
+    .where(
+      and(
+        eq(schema.groupMembers.groupActorId, groupActorId),
+        eq(schema.groupMembers.memberActorId, memberActorId),
+      ),
+    );
+  if (rows.some((r) => r.permissions.some((p) => !granterPermissions.has(p)))) {
+    throw new OutrankedMemberError();
+  }
+}
+
 /** ローカルユーザーを handle で探してメンバー追加する */
 export async function addMemberByHandle(
   db: Db,
   groupActorId: string,
   handle: string,
   roleId: string,
+  granterPermissions: Set<string>,
   now: Date = new Date(),
 ): Promise<void> {
   // 個人グループ(本人1人=本人)は他メンバーを追加できない。
@@ -173,6 +206,8 @@ export async function addMemberByHandle(
     where: and(eq(schema.groupRoles.id, roleId), eq(schema.groupRoles.groupActorId, groupActorId)),
   });
   if (!role) throw new Error('ロールが見つかりません');
+  // 自分が持っていない権限のロールでは追加できない(共犯アカウントへのオーナー付与防止)
+  assertNoEscalation(role.permissions, granterPermissions);
 
   await db.insert(schema.groupMembers).values({
     groupActorId,
@@ -182,12 +217,17 @@ export async function addMemberByHandle(
   });
 }
 
-/** ロール変更(全権限を失う場合は最終オーナー保護) */
+/**
+ * ロール変更(全権限を失う場合は最終オーナー保護)。
+ * 付与するロール・対象メンバーの現ロールとも、操作者の権限の範囲内に限る
+ * (これを欠くと member.manage だけのメンバーが自分にオーナーを付与できる)。
+ */
 export async function changeMemberRole(
   db: Db,
   groupActorId: string,
   memberActorId: string,
   newRoleId: string,
+  granterPermissions: Set<string>,
 ): Promise<void> {
   const newRole = await db.query.groupRoles.findFirst({
     where: and(
@@ -196,6 +236,8 @@ export async function changeMemberRole(
     ),
   });
   if (!newRole) throw new Error('ロールが見つかりません');
+  assertNoEscalation(newRole.permissions, granterPermissions);
+  await assertCanManageMember(db, groupActorId, memberActorId, granterPermissions);
 
   if (!hasAllPermissions(newRole.permissions)) {
     await assertNotLastOwner(db, groupActorId, memberActorId);
@@ -211,12 +253,14 @@ export async function changeMemberRole(
     );
 }
 
-/** メンバー削除(最終オーナー保護) */
+/** メンバー削除(最終オーナー保護・自分より上位のメンバーは不可) */
 export async function removeMember(
   db: Db,
   groupActorId: string,
   memberActorId: string,
+  granterPermissions: Set<string>,
 ): Promise<void> {
+  await assertCanManageMember(db, groupActorId, memberActorId, granterPermissions);
   await assertNotLastOwner(db, groupActorId, memberActorId);
   await db
     .delete(schema.groupMembers)

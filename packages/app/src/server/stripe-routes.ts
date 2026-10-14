@@ -194,7 +194,15 @@ stripe.post('/webhooks/stripe', async (c) => {
   // システム操作の記録用アクター(インスタンスアクター)
   const systemActorId = await resolveSystemActorId(db, await requestOrigin(c));
 
-  if (evt.type === 'checkout.session.completed' || evt.type === 'checkout.session.async_payment_succeeded') {
+  // checkout.session.completed は「決済フォームの送信完了」であり入金完了ではない。
+  // コンビニ・銀行振込など遅延決済では payment_status='unpaid' で届き、実際の
+  // 入金は後続の async_payment_succeeded で通知される。unpaid のまま確定させると
+  // 支払わずに参加が確定してしまうため、入金済みのときだけ確定する
+  // (async_payment_failed / expired は支払い待ちのまま据え置く。再決済できる)。
+  const settled =
+    (evt.type === 'checkout.session.completed' && obj.payment_status === 'paid') ||
+    evt.type === 'checkout.session.async_payment_succeeded';
+  if (settled) {
     const paymentId =
       (obj.client_reference_id as string | undefined) ??
       ((obj.metadata as Record<string, string> | undefined)?.payment_id);

@@ -94,8 +94,11 @@ export async function saveImageUpload(
   const key = `${prefix}/${ulid()}.${ext}`;
   await storage.put(key, await file.arrayBuffer(), file.type);
 
-  if (prevUrl?.startsWith('/files/')) {
-    await storage.delete(prevUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  // 消すのは同じ名前空間の旧ファイルだけ。prevUrl が利用者の入力に由来する
+  // 場合(イベントの thumbnail_url 等)に他人のファイルを消させないため
+  const prevKey = prevUrl?.startsWith('/files/') ? prevUrl.slice('/files/'.length) : null;
+  if (prevKey && prevKey.startsWith(`${prefix}/`) && !prevKey.includes('..')) {
+    await storage.delete(prevKey).catch(() => undefined);
   }
   return { ok: true, url: `/files/${key}` };
 }
