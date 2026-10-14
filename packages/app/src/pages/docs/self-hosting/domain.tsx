@@ -38,6 +38,12 @@ export default async function SelfHostingDomainPage() {
           DNS でドメインをサーバーに向けたうえで、以下のいずれかで HTTPS を
           終端し、コンテナの 8080 番へ転送します。
         </p>
+        <p className="mt-2">
+          どの方法でも、環境変数 <span className="meta-mono">PUBLIC_ORIGIN</span> に公開 URL
+          (例: <span className="meta-mono">https://events.example.com</span>)を必ず設定してください。
+          未設定だとログイン用リンクなどがリクエストのヘッダから組み立てられ、
+          第三者にリンク先を書き換えられるおそれがあります。
+        </p>
       </section>
 
       <section className="mt-8">

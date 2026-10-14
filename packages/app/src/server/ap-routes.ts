@@ -202,7 +202,10 @@ async function verifyInboxRequest(c: Context, body: string) {
       if (signer.state !== 'local' && Date.now() - signer.updatedAt.getTime() > STALE_MS) {
         deferWork(c, 
           fetchRemoteActor(signer.uri, fetchSigner)
-            .then((doc) => (doc ? upsertRemoteActor(db, doc).then(() => undefined) : undefined))
+            .then((doc) =>
+              // 署名者本人の文書でなければ取り込まない(他人の行の上書き防止)
+              doc?.id === signer.uri ? upsertRemoteActor(db, doc).then(() => undefined) : undefined,
+            )
             .catch(() => undefined),
         );
       }

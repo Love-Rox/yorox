@@ -64,6 +64,18 @@ function assertSameOrigin(c: Context): boolean {
   return origin === new URL(c.req.url).origin;
 }
 
+/**
+ * サムネイル URL の入力値を検証する。外部 URL(http/https)か、
+ * そのイベント自身のアップロード(/files/thumbnails/<eventId>/)のみ受け付ける。
+ * 他人の /files/ パスを指せると、差し替え時の旧ファイル削除で消されてしまう。
+ */
+function thumbnailUrlInput(v: unknown, eventId?: string): string | undefined {
+  const url = str(v);
+  if (/^https?:\/\//.test(url)) return url;
+  if (eventId && url.startsWith(`/files/thumbnails/${eventId}/`) && !url.includes('..')) return url;
+  return undefined;
+}
+
 function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
@@ -142,7 +154,7 @@ events.post('/g/:handle/events', async (c) => {
       title: str(form.title),
       descriptionMd: str(form.description_md) || undefined,
       participantInfoMd: str(form.participant_info_md) || undefined,
-      thumbnailUrl: str(form.thumbnail_url) || undefined,
+      thumbnailUrl: thumbnailUrlInput(form.thumbnail_url),
       hashtags: parseHashtags(str(form.hashtags)),
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
@@ -227,7 +239,7 @@ events.post('/events/:id/update', async (c) => {
       title: str(form.title),
       descriptionMd: str(form.description_md) || undefined,
       participantInfoMd: str(form.participant_info_md) || undefined,
-      thumbnailUrl: str(form.thumbnail_url) || undefined,
+      thumbnailUrl: thumbnailUrlInput(form.thumbnail_url, ctx.event.id),
       hashtags: parseHashtags(str(form.hashtags)),
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),

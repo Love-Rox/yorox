@@ -23,8 +23,36 @@ export interface FetchSigner {
  * リモートのアクター文書を取得する(失敗時 null)。
  * signer を渡すと署名付き GET(signed fetch)になる。Threads や
  * Mastodon の認証フェッチモードはこれを要求する。
+ *
+ * 返す文書は必ず「自分の id から取得したもの」に限る(なりすまし防止)。
+ * 取得先と doc.id が異なる(プロフィール URL を渡された等)場合は doc.id を
+ * 取り直し、そこで同じ id が返ったときだけ採用する。これを怠ると、悪意ある
+ * サーバーが他人の id と自分の鍵を主張する文書で既存行を上書きできてしまう。
  */
 export async function fetchRemoteActor(
+  uri: string,
+  signer?: FetchSigner,
+): Promise<ApActor | null> {
+  const doc = await fetchActorDocument(uri, signer);
+  if (!doc) return null;
+  if (doc.id === uri) return isSelfConsistent(doc) ? doc : null;
+  const canonical = await fetchActorDocument(doc.id!, signer);
+  if (!canonical || canonical.id !== doc.id) return null;
+  return isSelfConsistent(canonical) ? canonical : null;
+}
+
+/** 鍵がそのアクター自身のもの(owner 一致・同一オリジン)であること */
+function isSelfConsistent(doc: ApActor): boolean {
+  if (!doc.publicKey) return true;
+  if (doc.publicKey.owner && doc.publicKey.owner !== doc.id) return false;
+  try {
+    return new URL(doc.publicKey.id).origin === new URL(doc.id!).origin;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchActorDocument(
   uri: string,
   signer?: FetchSigner,
 ): Promise<ApActor | null> {

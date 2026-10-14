@@ -555,12 +555,14 @@ groups.post('/g/:handle/members', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   const form = await c.req.parseBody();
+  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
   try {
     await addMemberByHandle(
       db,
       ctx.groupActorId,
       str(form.member_handle).replace(/^@/, '').toLowerCase(),
       str(form.role_id),
+      granter,
     );
     await recordAudit(db, {
       actorId,
@@ -587,8 +589,15 @@ groups.post('/g/:handle/members/:actorId/role', async (c) => {
   if (!ctx) return c.text('権限がありません', 403);
 
   const form = await c.req.parseBody();
+  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
   try {
-    await changeMemberRole(db, ctx.groupActorId, c.req.param('actorId'), str(form.role_id));
+    await changeMemberRole(
+      db,
+      ctx.groupActorId,
+      c.req.param('actorId'),
+      str(form.role_id),
+      granter,
+    );
     await recordAudit(db, {
       actorId,
       action: 'member.role',
@@ -614,8 +623,9 @@ groups.post('/g/:handle/members/:actorId/remove', async (c) => {
   const ctx = await authorizeForGroup(db, handle, actorId, 'member.manage');
   if (!ctx) return c.text('権限がありません', 403);
 
+  const granter = await getGroupPermissions(db, ctx.groupActorId, actorId);
   try {
-    await removeMember(db, ctx.groupActorId, c.req.param('actorId'));
+    await removeMember(db, ctx.groupActorId, c.req.param('actorId'), granter);
     await recordAudit(db, {
       actorId,
       action: 'member.remove',

@@ -5,7 +5,10 @@
  * リバースプロキシ(Docker + Caddy/nginx で TLS 終端)の背後では
  * c.req.url が http://内部ホスト になり、Origin 検証・Secure cookie・
  * マジックリンク/OAuth コールバック URL がすべて壊れる。
- * PUBLIC_ORIGIN(明示)→ x-forwarded-* → c.req.url の順で解決する。
+ * PUBLIC_ORIGIN(明示)→ x-forwarded-*(TRUST_PROXY=1 のときのみ)→ c.req.url
+ * の順で解決する。x-forwarded-* はクライアントが自由に付けられるため既定では
+ * 信用しない。信用するとマジックリンク・OAuth コールバック URL を攻撃者の
+ * ホストに向けられ、ログイントークンを盗まれる。
  */
 import type { Context } from 'hono';
 
@@ -19,12 +22,19 @@ async function getEnvSafe(): Promise<Env | null> {
 }
 
 let cachedPublicOrigin: string | null | undefined;
+let cachedTrustProxy: boolean | undefined;
 
 async function publicOriginFromEnv(): Promise<string | null> {
   if (cachedPublicOrigin !== undefined) return cachedPublicOrigin;
   const env = await getEnvSafe();
   const raw = env?.PUBLIC_ORIGIN?.trim();
   cachedPublicOrigin = raw ? raw.replace(/\/$/, '') : null;
+  cachedTrustProxy = env?.TRUST_PROXY === '1';
+  if (!cachedPublicOrigin && __YOROX_TARGET__ === 'node') {
+    console.warn(
+      '[yorox] PUBLIC_ORIGIN が未設定です。メール内リンク等が Host ヘッダから組み立てられるため、本番では必ず設定してください。',
+    );
+  }
   return cachedPublicOrigin;
 }
 
@@ -33,6 +43,7 @@ export async function requestOrigin(c: Context): Promise<string> {
   const explicit = await publicOriginFromEnv();
   if (explicit) return explicit;
   const url = new URL(c.req.url);
+  if (!cachedTrustProxy) return url.origin;
   const proto = c.req.header('x-forwarded-proto')?.split(',')[0]?.trim() || url.protocol.replace(':', '');
   const host = c.req.header('x-forwarded-host')?.split(',')[0]?.trim() || url.host;
   return `${proto}://${host}`;
