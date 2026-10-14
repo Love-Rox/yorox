@@ -199,8 +199,11 @@ stripe.post('/webhooks/stripe', async (c) => {
   // 入金は後続の async_payment_succeeded で通知される。unpaid のまま確定させると
   // 支払わずに参加が確定してしまうため、入金済みのときだけ確定する
   // (async_payment_failed / expired は支払い待ちのまま据え置く。再決済できる)。
+  // 100% クーポン等で支払いが不要になった場合は no_payment_required で届き、
+  // 後続イベントは来ないので completed の時点で確定する。
   const settled =
-    (evt.type === 'checkout.session.completed' && obj.payment_status === 'paid') ||
+    (evt.type === 'checkout.session.completed' &&
+      (obj.payment_status === 'paid' || obj.payment_status === 'no_payment_required')) ||
     evt.type === 'checkout.session.async_payment_succeeded';
   if (settled) {
     const paymentId =

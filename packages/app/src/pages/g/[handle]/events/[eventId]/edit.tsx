@@ -13,6 +13,7 @@ import { getUploadConfig } from '../../../../../storage/driver';
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: '入力内容を確認してください(タイトルと開始日時は必須です)。',
+  invalid_thumbnail_url: 'サムネイル URL は http:// または https:// で始まる URL を指定してください。',
   uploads_disabled: 'このインスタンスではファイルアップロードが無効です。',
   no_file: 'ファイルが選択されていません。',
   too_large: 'ファイルサイズが上限を超えています。',

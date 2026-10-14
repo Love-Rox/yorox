@@ -12,13 +12,12 @@ import { escapeHtml } from '../lib/html';
 import { isDiscordWebhookUrl, sendDiscordDm, sendDiscordWebhook } from '../lib/discord';
 import { NOTIFICATION_CATEGORIES, parseNotificationPrefs } from '../domain/notification-prefs';
 import { buildActorOgSvg } from '../lib/ogp';
-import { ulid } from '../lib/ulid';
 import { renderOgPngResponse } from './og';
 import { confirmEmailChange, requestEmailChange } from '../auth/email-change';
 import { followActor, unfollowActor } from '../domain/follow';
 import { clearSessionCookieHeader } from '../auth/session';
 import { createDirectSender } from '../mail/send';
-import { getStorage, getUploadConfig, IMAGE_TYPES } from '../storage/driver';
+import { saveImageUpload } from '../storage/driver';
 import {
   claimBluesky,
   claimByRelMe,
@@ -462,36 +461,16 @@ profile.post('/profile/avatar', async (c) => {
   const actorId = await getSessionActorId(db, c);
   if (!actorId) return c.redirect('/login', 302);
 
-  const { enabled, maxBytes } = getUploadConfig(env);
-  const storage = getStorage(env);
-  if (!enabled || !storage) {
-    return c.redirect('/settings/profile?error=uploads_disabled', 302);
-  }
-
   const form = await c.req.parseBody();
-  const file = form.file;
-  if (!(file instanceof File) || file.size === 0) {
-    return c.redirect('/settings/profile?error=no_file', 302);
-  }
-  if (file.size > maxBytes) {
-    return c.redirect('/settings/profile?error=too_large', 302);
-  }
-  const ext = IMAGE_TYPES[file.type];
-  if (!ext) {
-    return c.redirect('/settings/profile?error=bad_type', 302);
-  }
-
-  const key = `avatars/${actorId}/${ulid()}.${ext}`;
-  await storage.put(key, await file.arrayBuffer(), file.type);
-
   const me = await db.query.actors.findFirst({ where: eq(schema.actors.id, actorId) });
-  if (me?.avatarUrl?.startsWith('/files/')) {
-    await storage.delete(me.avatarUrl.replace(/^\/files\//, '')).catch(() => undefined);
+  const result = await saveImageUpload(env, `avatars/${actorId}`, form.file, me?.avatarUrl);
+  if (!result.ok) {
+    return c.redirect(`/settings/profile?error=${result.error}`, 302);
   }
 
   await db
     .update(schema.actors)
-    .set({ avatarUrl: `/files/${key}`, updatedAt: new Date() })
+    .set({ avatarUrl: result.url, updatedAt: new Date() })
     .where(eq(schema.actors.id, actorId));
 
   return c.redirect('/settings/profile', 302);

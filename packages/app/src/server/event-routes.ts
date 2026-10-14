@@ -64,16 +64,30 @@ function assertSameOrigin(c: Context): boolean {
   return origin === new URL(c.req.url).origin;
 }
 
+class InvalidThumbnailUrlError extends Error {}
+
 /**
- * サムネイル URL の入力値を検証する。外部 URL(http/https)か、
- * そのイベント自身のアップロード(/files/thumbnails/<eventId>/)のみ受け付ける。
- * 他人の /files/ パスを指せると、差し替え時の旧ファイル削除で消されてしまう。
+ * サムネイル URL の入力値を検証する。空・外部 URL(http/https)・現在の値
+ * (複製元のアップロードを共有している場合を含む)・そのイベント自身の
+ * アップロード(/files/thumbnails/<eventId>/)のみ受け付け、それ以外は拒否する。
+ * 任意の /files/ パスを指せると、差し替え時の旧ファイル削除で他人のファイルを消せてしまう。
  */
-function thumbnailUrlInput(v: unknown, eventId?: string): string | undefined {
+function thumbnailUrlInput(
+  v: unknown,
+  event?: { id: string; thumbnailUrl: string | null },
+): string | undefined {
   const url = str(v);
+  if (!url) return undefined;
   if (/^https?:\/\//.test(url)) return url;
-  if (eventId && url.startsWith(`/files/thumbnails/${eventId}/`) && !url.includes('..')) return url;
-  return undefined;
+  if (event) {
+    if (url === event.thumbnailUrl) return url;
+    if (url.startsWith(`/files/thumbnails/${event.id}/`) && !url.includes('..')) return url;
+  }
+  throw new InvalidThumbnailUrlError();
+}
+
+function formErrorCode(err: unknown): string {
+  return err instanceof InvalidThumbnailUrlError ? 'invalid_thumbnail_url' : 'invalid_input';
 }
 
 function str(v: unknown): string {
@@ -179,8 +193,8 @@ events.post('/g/:handle/events', async (c) => {
     }
 
     return c.redirect(`/g/${handle}/events/${eventId}`, 302);
-  } catch {
-    return c.redirect(`/g/${handle}/events/new?error=invalid_input`, 302);
+  } catch (err) {
+    return c.redirect(`/g/${handle}/events/new?error=${formErrorCode(err)}`, 302);
   }
 });
 
@@ -239,7 +253,7 @@ events.post('/events/:id/update', async (c) => {
       title: str(form.title),
       descriptionMd: str(form.description_md) || undefined,
       participantInfoMd: str(form.participant_info_md) || undefined,
-      thumbnailUrl: thumbnailUrlInput(form.thumbnail_url, ctx.event.id),
+      thumbnailUrl: thumbnailUrlInput(form.thumbnail_url, ctx.event),
       hashtags: parseHashtags(str(form.hashtags)),
       startsAt,
       endsAt: parseLocalDateTime(form.ends_at),
@@ -264,8 +278,8 @@ events.post('/events/:id/update', async (c) => {
       deferWork(c, announceEventUpdateNow(db, ctx.event.id));
     }
     return c.redirect(`/g/${ctx.handle}/events/${ctx.event.id}`, 302);
-  } catch {
-    return c.redirect(`${editUrl}?error=invalid_input`, 302);
+  } catch (err) {
+    return c.redirect(`${editUrl}?error=${formErrorCode(err)}`, 302);
   }
 });
 

@@ -60,3 +60,19 @@ describe('fetchRemoteActor', () => {
     expect(await fetchRemoteActor(id)).toBeNull();
   });
 });
+
+describe('fetchRemoteActor: publicKey の形の揺れ', () => {
+  const id = 'https://ap.example/users/carol';
+  const key = (n: string) => ({ id: `${id}#${n}`, owner: id, publicKeyPem: `PEM-${n}` });
+
+  it('配列の publicKey から本人の鍵を選ぶ(優先 keyId があればそれ)', async () => {
+    serve({ [id]: { ...actor(id), publicKey: [key('a'), key('b')] as never } });
+    expect((await fetchRemoteActor(id))?.publicKey?.publicKeyPem).toBe('PEM-a');
+    expect((await fetchRemoteActor(id, undefined, `${id}#b`))?.publicKey?.publicKeyPem).toBe('PEM-b');
+  });
+
+  it('id の無い鍵も owner が本人なら受け付ける', async () => {
+    serve({ [id]: { ...actor(id), publicKey: { owner: id, publicKeyPem: 'PEM' } as never } });
+    expect((await fetchRemoteActor(id))?.publicKey?.publicKeyPem).toBe('PEM');
+  });
+});

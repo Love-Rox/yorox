@@ -34,7 +34,9 @@ export default async function NewEventPage({ handle }: { handle: string }) {
       </p>
       {error && (
         <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
-          入力内容を確認してください(タイトルと開始日時は必須です)。
+          {error === 'invalid_thumbnail_url'
+            ? 'サムネイル URL は http:// または https:// で始まる URL を指定してください。'
+            : '入力内容を確認してください(タイトルと開始日時は必須です)。'}
         </p>
       )}
       <form

@@ -3,7 +3,7 @@
  * - GET /files/* : R2 から配信(キーは ULID 入りで不変 → 長期キャッシュ)
  * - POST /events/:id/thumbnail : サムネイル画像のアップロード(event.edit 権限)
  */
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import { createDb, schema } from '../db/client';
@@ -65,11 +65,22 @@ files.post('/events/:id/thumbnail', async (c) => {
 
   const editUrl = `/g/${groupActor.handle}/events/${event.id}/edit`;
   const form = await c.req.parseBody();
+  // 複製したイベントは複製元と同じファイルを参照する。他のイベントがまだ
+  // 使っている旧サムネイルは消さない(消すと複製側の画像が壊れる)
+  const sharedWith = event.thumbnailUrl
+    ? await db.query.events.findFirst({
+        columns: { id: true },
+        where: and(
+          eq(schema.events.thumbnailUrl, event.thumbnailUrl),
+          ne(schema.events.id, event.id),
+        ),
+      })
+    : undefined;
   const result = await saveImageUpload(
     env,
     `thumbnails/${event.id}`,
     form.file,
-    event.thumbnailUrl,
+    sharedWith ? null : event.thumbnailUrl,
   );
   if (!result.ok) {
     return c.redirect(`${editUrl}?error=${result.error}`, 302);

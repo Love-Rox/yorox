@@ -7,7 +7,8 @@ import { getCookie } from 'hono/cookie';
 import { getSessionUserActorId, SESSION_COOKIE } from '../auth/session';
 import type { Db } from '../db/client';
 import { schema } from '../db/client';
-import { hasPermission, type Permission } from '../domain/permissions';
+import { getMemberPermissions } from '../domain/groups';
+import type { Permission } from '../domain/permissions';
 
 /** cookie からログイン中ユーザーの actorId を得る。未ログインなら null */
 export async function getSessionActorId(db: Db, c: Context): Promise<string | null> {
@@ -24,17 +25,7 @@ export async function hasGroupPermission(
   memberActorId: string,
   permission: Permission,
 ): Promise<boolean> {
-  const rows = await db
-    .select({ permissions: schema.groupRoles.permissions })
-    .from(schema.groupMembers)
-    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
-    .where(
-      and(
-        eq(schema.groupMembers.groupActorId, groupActorId),
-        eq(schema.groupMembers.memberActorId, memberActorId),
-      ),
-    );
-  return rows.some((r) => hasPermission(r.permissions, permission));
+  return (await getMemberPermissions(db, groupActorId, memberActorId)).has(permission);
 }
 
 /** グループ内でそのメンバーが持つ全権限の和集合(非メンバーは空) */
@@ -43,19 +34,7 @@ export async function getGroupPermissions(
   groupActorId: string,
   memberActorId: string,
 ): Promise<Set<string>> {
-  const rows = await db
-    .select({ permissions: schema.groupRoles.permissions })
-    .from(schema.groupMembers)
-    .innerJoin(schema.groupRoles, eq(schema.groupMembers.roleId, schema.groupRoles.id))
-    .where(
-      and(
-        eq(schema.groupMembers.groupActorId, groupActorId),
-        eq(schema.groupMembers.memberActorId, memberActorId),
-      ),
-    );
-  const perms = new Set<string>();
-  for (const r of rows) for (const p of r.permissions) perms.add(p);
-  return perms;
+  return getMemberPermissions(db, groupActorId, memberActorId);
 }
 
 /** イベント共同管理者に与える運用権限(グループ設定・メンバー管理は含めない) */

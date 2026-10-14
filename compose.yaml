@@ -8,8 +8,14 @@ services:
     volumes:
       - yorox-data:/data
     environment:
-      # 公開 URL(本番では必須。メール内のログインリンク・OAuth コールバックに使う)
+      # 公開 URL(本番では必須。メール内のログインリンク・OAuth コールバック・
+      # CSRF の Origin 検証に使う)。リバースプロキシ(Caddy / nginx / Cloudflare Tunnel)
+      # の背後で未設定だと、ログインやフォーム送信ができません。
+      # X-Forwarded-* ヘッダは既定では信用しません(偽装によるリンク乗っ取り対策)。
       # PUBLIC_ORIGIN: 'https://events.example.com'
+      # PUBLIC_ORIGIN を使えない場合のみ: クライアントの X-Forwarded-* を必ず上書きする
+      # プロキシの背後で '1' にすると、それらのヘッダから公開 URL を組み立てる
+      # TRUST_PROXY: '1'
       # ファイルアップロード(アバター・サムネイル)を有効化
       FILE_UPLOADS: '1'
       MAX_UPLOAD_MB: '5'
