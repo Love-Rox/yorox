@@ -3,7 +3,7 @@
  * 送信元アクターの秘密鍵で HTTP Signatures を付けて inbox へ POST する。
  */
 import { AP_MEDIA_TYPE, signRequest, type ApActivity } from '@yorox/ap';
-import { isPublicHttpUrl } from './safe-fetch';
+import { isPublicHttpUrl, safeFetch } from './safe-fetch';
 
 export interface DeliverInput {
   activity: ApActivity;
@@ -27,7 +27,8 @@ export async function deliverActivity(input: DeliverInput): Promise<boolean> {
     privateKeyPem: input.privateKeyPem,
   });
   try {
-    const res = await fetch(input.inboxUrl, {
+    // inbox はリダイレクトしない前提(署名付き POST を別宛先へ転送させない)
+    const res = await safeFetch(input.inboxUrl, {
       method: 'POST',
       headers: {
         'content-type': AP_MEDIA_TYPE,
@@ -39,7 +40,8 @@ export async function deliverActivity(input: DeliverInput): Promise<boolean> {
       },
       body,
       signal: AbortSignal.timeout(10_000),
-    });
+    }, 0);
+    if (!res) return false;
     // 応答本文は読み捨てる(コネクション解放)
     await res.body?.cancel();
     return res.ok;

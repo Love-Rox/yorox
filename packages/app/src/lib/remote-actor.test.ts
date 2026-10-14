@@ -3,6 +3,7 @@ import type { ApActor } from '@yorox/ap';
 import { fetchRemoteActor } from './remote-actor';
 
 vi.stubGlobal('__YOROX_VERSION__', 'test');
+vi.stubGlobal('__YOROX_TARGET__', 'cloudflare');
 
 function actor(id: string, keyOwner = id): ApActor {
   return {
@@ -28,6 +29,7 @@ function serve(docs: Record<string, ApActor>) {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.stubGlobal('__YOROX_VERSION__', 'test');
+  vi.stubGlobal('__YOROX_TARGET__', 'cloudflare');
 });
 
 describe('fetchRemoteActor', () => {

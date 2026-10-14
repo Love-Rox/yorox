@@ -128,14 +128,11 @@ export default async function ManagePage({
     'attendance.manage',
   );
   const canLottery = await hasEventPermission(db, detail.event, user.actorId, 'lottery.run');
-  // 共同管理者の追加/削除は主催者(グループの event.edit)のみに見せる
-  const { hasGroupPermission } = await import('../../../../../server/route-auth');
-  const canManageManagers = await hasGroupPermission(
-    db,
-    detail.event.groupActorId,
-    user.actorId,
-    'event.edit',
+  // 共同管理者の追加/削除は、付与する権限をすべてグループの役割で持つ主催者のみに見せる
+  const { canManageEventManagers, hasGroupPermission } = await import(
+    '../../../../../server/route-auth'
   );
+  const canManageManagers = await canManageEventManagers(db, detail.event, user.actorId);
   const canBlock = await hasGroupPermission(
     db,
     detail.event.groupActorId,

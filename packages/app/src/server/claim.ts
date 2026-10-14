@@ -18,7 +18,7 @@ import { ulid } from '../lib/ulid';
 import { fetchBskyProfile } from '../lib/bluesky';
 import { getInstanceActorSigner } from '../lib/instance-actor';
 import { fetchRemoteActor, upsertRemoteActor } from '../lib/remote-actor';
-import { isPublicHttpUrl } from '../lib/safe-fetch';
+import { isPublicHttpUrl, safeFetch } from '../lib/safe-fetch';
 
 const CODE_TTL_MS = 30 * 60 * 1000;
 /** 投稿本文から拾うコード形式 */
@@ -103,11 +103,11 @@ async function resolveAcct(handle: string, domain: string): Promise<string | nul
   const webfingerUrl = `https://${domain}/.well-known/webfinger?resource=${encodeURIComponent(`acct:${handle}@${domain}`)}`;
   if (!isPublicHttpUrl(webfingerUrl)) return null;
   try {
-    const res = await fetch(webfingerUrl, {
+    const res = await safeFetch(webfingerUrl, {
       headers: { accept: 'application/jrd+json, application/json' },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
     const jrd = (await res.json()) as {
       links?: { rel: string; type?: string; href?: string }[];
     };

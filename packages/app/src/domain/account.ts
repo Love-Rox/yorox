@@ -284,6 +284,9 @@ export async function deleteAccount(
     await db.delete(schema.loginTokens).where(eq(schema.loginTokens.email, user.email));
   }
   await db.delete(schema.claimCodes).where(eq(schema.claimCodes.userActorId, userActorId));
+  // アクセストークン(PAT)。users を参照するため、残すと手順5の削除が失敗し
+  // 退会が途中で止まったうえ PAT も有効なまま残る
+  await db.delete(schema.accessTokens).where(eq(schema.accessTokens.userActorId, userActorId));
 
   // 3. 他グループ(非個人)のメンバーシップとイベント管理者権限を解除。
   //    個人グループの後始末は手順6で行う
