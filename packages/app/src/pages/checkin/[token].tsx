@@ -129,7 +129,7 @@ function Result({
     <div className="mx-auto max-w-md py-10 text-center">
       <title>{`${title} - Yorox`}</title>
       <div
-        className={`border-2 p-6 ${tone === 'ok' ? 'border-accent-2' : 'border-accent'}`}
+        className={`rounded-ui-lg border-2 p-6 ${tone === 'ok' ? 'border-success bg-success/5' : 'border-danger bg-danger/5'}`}
         style={{ boxShadow: 'var(--yorox-offset-shadow)' }}
       >
         <p className="t-2xl" aria-hidden>

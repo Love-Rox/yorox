@@ -22,7 +22,7 @@ export default async function McpGuidePage() {
       </p>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">エンドポイント</h2>
+        <h2 className="section-title">エンドポイント</h2>
         <p className="mt-3">
           トランスポートは <strong>Streamable HTTP</strong>(MCP 仕様 2026-07-28。
           旧版クライアントとも相互運用)です。MCP クライアントに「リモート MCP
@@ -34,7 +34,7 @@ export default async function McpGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">認証(書き込み操作)</h2>
+        <h2 className="section-title">認証(書き込み操作)</h2>
         <p className="mt-3">
           <strong>読み取り</strong>ツール(イベント検索・取得)は認証不要です。
           <strong>書き込み</strong>ツール(作成・参加・キャンセル)には
@@ -59,7 +59,7 @@ export default async function McpGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">使えるツール</h2>
+        <h2 className="section-title">使えるツール</h2>
 
         <h3 className="mt-5 font-bold">読み取り(認証不要)</h3>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
@@ -97,7 +97,7 @@ export default async function McpGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">設定例</h2>
+        <h2 className="section-title">設定例</h2>
         <p className="mt-3">
           クライアントによって設定方法は異なりますが、リモート MCP サーバー(Streamable
           HTTP)として URL と認証ヘッダを指定する形が一般的です。例(JSON 設定の場合):

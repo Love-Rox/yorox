@@ -28,7 +28,7 @@ export default async function SelfHostingSettingsPage() {
       </p>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           メール送信(SMTP)— 推奨
         </h2>
         <p className="mt-3">
@@ -50,14 +50,14 @@ export default async function SelfHostingSettingsPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">画像アップロード</h2>
+        <h2 className="section-title">画像アップロード</h2>
         <Cmd>{`environment:
   FILE_UPLOADS: '1'     # アバター・サムネイルのアップロードを有効化
   MAX_UPLOAD_MB: '5'    # 1ファイルの上限(MB)`}</Cmd>
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           OAuth ログイン(任意)
         </h2>
         <p className="mt-3">
@@ -79,11 +79,11 @@ export default async function SelfHostingSettingsPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">設定一覧</h2>
+        <h2 className="section-title">設定一覧</h2>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-ink text-left">
+              <tr className="border-b border-rule-strong text-left">
                 <th className="py-1.5 pr-3">変数</th>
                 <th className="py-1.5">説明</th>
               </tr>

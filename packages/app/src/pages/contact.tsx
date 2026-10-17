@@ -23,16 +23,16 @@ export default async function ContactPage() {
       </p>
 
       {sent && (
-        <p role="status" className="mt-4 border-2 border-accent-2 p-3 text-sm text-accent-2">
+        <p role="status" className="mt-4 notice notice-success">
           送信しました。お問い合わせありがとうございます。順次確認いたします。
         </p>
       )}
       {error === 'turnstile' ? (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           bot 対策の確認に失敗しました。ページを再読み込みして、もう一度お試しください。
         </p>
       ) : error ? (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           メールアドレスの形式、または本文(5文字以上)をご確認ください。
         </p>
       ) : null}

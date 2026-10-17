@@ -29,7 +29,7 @@ export default async function LoginPage() {
       {error && (
         <p
           role="alert"
-          className="mt-4 border-2 border-accent p-3 text-sm text-accent"
+          className="mt-4 notice notice-error"
         >
           {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>

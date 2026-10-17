@@ -22,7 +22,7 @@ export default async function FaqPage() {
       <h1 className="display mt-2 t-xl">よくある質問</h1>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">アカウント・ログイン</h2>
+        <h2 className="section-title">アカウント・ログイン</h2>
         <div className="mt-2">
           <Faq q="パスワードはないのですか?">
             <p>
@@ -40,7 +40,7 @@ export default async function FaqPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">参加・キャンセル</h2>
+        <h2 className="section-title">参加・キャンセル</h2>
         <div className="mt-2">
           <Faq q="先着と抽選はどう違いますか?">
             <p>
@@ -78,7 +78,7 @@ export default async function FaqPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">当日・出欠</h2>
+        <h2 className="section-title">当日・出欠</h2>
         <div className="mt-2">
           <Faq q="受付はどうすればいいですか?">
             <p>
@@ -97,7 +97,7 @@ export default async function FaqPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">Fediverse 連携</h2>
+        <h2 className="section-title">Fediverse 連携</h2>
         <div className="mt-2">
           <Faq q="Misskey / Mastodon から参加できますか?">
             <p>
@@ -128,7 +128,7 @@ export default async function FaqPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">主催者向け</h2>
+        <h2 className="section-title">主催者向け</h2>
         <div className="mt-2">
           <Faq q="参加枠の「5つの要素」とは何ですか?">
             <p>

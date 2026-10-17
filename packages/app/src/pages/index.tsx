@@ -1,5 +1,6 @@
 import { Link } from 'waku';
 import { ActorKindMark } from '../components/actor-kind';
+import { getCurrentUser } from '../server/current-user';
 import { getDb, listUpcomingEvents } from '../server/data';
 
 const DATE_FMT = new Intl.DateTimeFormat('ja-JP', {
@@ -22,7 +23,10 @@ const TOP_EVENT_LIMIT = 12;
 
 export default async function HomePage() {
   const db = await getDb();
-  const upcoming = await listUpcomingEvents(db, TOP_EVENT_LIMIT);
+  const [upcoming, user] = await Promise.all([
+    listUpcomingEvents(db, TOP_EVENT_LIMIT),
+    getCurrentUser(),
+  ]);
 
   return (
     <div>
@@ -70,66 +74,34 @@ export default async function HomePage() {
         }}
       />
 
-      {/* サービスの名称と目的(トップに明示) */}
-      <section className="mb-10">
-        <h1 className="display t-xl">Yorox</h1>
-        <p className="mt-2 text-neutral">
-          コミュニティのための、分散型イベント管理プラットフォーム
+      {/* サービスの名称と目的(トップに明示。詳しい説明はページ下部「Yorox について」) */}
+      <section className="mb-12">
+        <p className="eyebrow">コミュニティのための、分散型イベント管理プラットフォーム</p>
+        <h1 className="display t-display mt-2 leading-none">Yorox</h1>
+        <p className="mt-4 max-w-2xl t-md leading-relaxed">
+          告知・申込・抽選・決済・当日の QR チェックインまで。
+          コミュニティのイベント運営を、自分たちの手でひとつに。
         </p>
-        <p className="mt-3 leading-relaxed text-neutral">
-          <strong className="text-ink">Yorox</strong>{' '}
-          は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
-          分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき
-          (Google・GitHub・Discord のアカウントでもログインできます)、
-          イベントの告知・参加申込(先着 / 抽選 / 補欠の繰上)・有料イベントの決済・
-          当日の QR チェックインまでを一つで行えます。
-        </p>
-        <p className="mt-3 leading-relaxed text-neutral">
-          主催はグループ単位で権限を分けて共同運営でき、参加者にはメールや Discord で
-          リマインダーが届き、カレンダー(ics)にも取り込めます。
-          ActivityPub による連合に対応しているので、Fediverse の他サーバーからも参加できます。
-          使い方は{' '}
-          <Link to="/docs" className="link">
-            ガイド
-          </Link>
-          をご覧ください。
-        </p>
-        {/*
-          英語の要約。日本語だけだと目的が伝わらない読み手(海外からの利用者や
-          OAuth 審査の担当者)に向けて、名称と目的・Google ログインの用途を示す。
-        */}
-        <p lang="en" className="mt-4 border-t border-rule pt-3 text-sm leading-relaxed text-neutral">
-          <strong className="text-ink">Yorox</strong> is a decentralized event management
-          platform for communities. Organizers can publish events, manage registration
-          (first-come, lottery, and waitlist promotion), collect payments, and check
-          attendees in with a QR code. Sign-in with Google is used only to authenticate
-          you and create your Yorox account — we never access your Gmail, Calendar, or
-          Drive. See our{' '}
-          <Link to="/legal/privacy" className="link">
-            Privacy Policy
-          </Link>{' '}
-          and{' '}
-          <Link to="/legal/terms" className="link">
-            Terms of Service
-          </Link>
-          .
-        </p>
+        {!user && (
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/login" className="btn">
+              はじめる(無料)
+            </Link>
+            <Link to="/docs" className="btn-quiet">
+              使い方を見る
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Index-First: 導入は一行、以降はリストが主役 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="meta-mono text-sm text-neutral">
-          今後のイベント(直近{TOP_EVENT_LIMIT}件)
-        </p>
-        <span className="flex gap-4 text-sm">
-          <Link to="/docs" className="link">
-            使い方
-          </Link>
-        </span>
-      </div>
+      <h2 className="section-title flex items-baseline justify-between gap-3">
+        今後のイベント
+        <span className="text-sm font-normal text-neutral">直近 {TOP_EVENT_LIMIT} 件</span>
+      </h2>
 
       {upcoming.length === 0 ? (
-        <p className="mt-6 text-neutral">
+        <p className="mt-4 rounded-ui-lg border border-dashed border-rule-strong p-6 text-center text-neutral">
           公開中のイベントはまだありません。グループを作って最初のイベントを立てましょう。
         </p>
       ) : (
@@ -138,7 +110,7 @@ export default async function HomePage() {
             <li key={event.id} className="min-w-0">
               <Link
                 to={`/g/${event.groupHandle}/events/${event.id}`}
-                className="group block h-full border-2 border-ink bg-paper transition-shadow hover:shadow-[4px_4px_0_var(--yorox-accent)]"
+                className="group block h-full overflow-hidden rounded-ui-lg border border-rule bg-surface transition-[border-color,box-shadow] hover:border-ink hover:shadow-[0_8px_24px_-14px_color-mix(in_oklch,var(--yorox-ink)_50%,transparent)]"
               >
                 {event.thumbnailUrl ? (
                   <img
@@ -188,9 +160,9 @@ export default async function HomePage() {
 
       {/* ---- Yorox の使い方 ---- */}
       <section className="mt-14">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">Yorox の使い方</h2>
+        <h2 className="section-title">Yorox の使い方</h2>
         <ol className="mt-4 grid gap-4 sm:grid-cols-3">
-          <li className="border border-rule p-4">
+          <li className="panel">
             <p className="meta-mono text-sm text-neutral">STEP 1</p>
             <p className="mt-1 font-bold">メールだけで登録</p>
             <p className="mt-1 text-sm leading-relaxed">
@@ -198,7 +170,7 @@ export default async function HomePage() {
               決めれば完了です。
             </p>
           </li>
-          <li className="border border-rule p-4">
+          <li className="panel">
             <p className="meta-mono text-sm text-neutral">STEP 2</p>
             <p className="mt-1 font-bold">イベントを見つけて申し込む</p>
             <p className="mt-1 text-sm leading-relaxed">
@@ -206,7 +178,7 @@ export default async function HomePage() {
               お知らせします。キャンセルもワンクリックです。
             </p>
           </li>
-          <li className="border border-rule p-4">
+          <li className="panel">
             <p className="meta-mono text-sm text-neutral">STEP 3</p>
             <p className="mt-1 font-bold">当日は QR でチェックイン</p>
             <p className="mt-1 text-sm leading-relaxed">
@@ -216,9 +188,9 @@ export default async function HomePage() {
           </li>
         </ol>
 
-        <div className="mt-6 border-2 border-ink bg-paper-2 p-4">
-          <h3 className="font-bold">アカウントとグループの違い</h3>
-          <p className="mt-2 text-sm leading-relaxed">
+        <div className="mt-6 notice notice-neutral">
+          <h3 className="notice-title">アカウントとグループの違い</h3>
+          <p className="mt-1">
             <strong>アカウント</strong>はあなた個人のものです(イベントへの参加・
             プロフィールに使います)。登録すると同じハンドルの
             <strong>個人グループ</strong>も自動で作られ、イベントの主催は
@@ -239,6 +211,49 @@ export default async function HomePage() {
             FAQ
           </Link>
           へ。
+        </p>
+      </section>
+
+      {/* ---- Yorox について(名称と目的の詳しい説明。OAuth 審査で参照される) ---- */}
+      <section className="mt-14">
+        <h2 className="section-title">Yorox について</h2>
+        <p className="mt-4 leading-relaxed text-neutral">
+          <strong className="text-ink">Yorox</strong>{' '}
+          は、コミュニティが中央のサービスに頼らず自分たちで運営できる、
+          分散型のイベント管理プラットフォームです。メールアドレスだけで登録でき
+          (Google・GitHub・Discord のアカウントでもログインできます)、
+          イベントの告知・参加申込(先着 / 抽選 / 補欠の繰上)・有料イベントの決済・
+          当日の QR チェックインまでを一つで行えます。
+        </p>
+        <p className="mt-3 leading-relaxed text-neutral">
+          主催はグループ単位で権限を分けて共同運営でき、参加者にはメールや Discord で
+          リマインダーが届き、カレンダー(ics)にも取り込めます。
+          ActivityPub による連合に対応しているので、Fediverse の他サーバーからも参加できます。
+          使い方は{' '}
+          <Link to="/docs" className="link">
+            ガイド
+          </Link>
+          をご覧ください。
+        </p>
+        {/*
+          英語の要約。日本語だけだと目的が伝わらない読み手(海外からの利用者や
+          OAuth 審査の担当者)に向けて、名称と目的・Google ログインの用途を示す。
+        */}
+        <p lang="en" className="mt-4 border-t border-rule pt-3 text-sm leading-relaxed text-neutral">
+          <strong className="text-ink">Yorox</strong> is a decentralized event management
+          platform for communities. Organizers can publish events, manage registration
+          (first-come, lottery, and waitlist promotion), collect payments, and check
+          attendees in with a QR code. Sign-in with Google is used only to authenticate
+          you and create your Yorox account — we never access your Gmail, Calendar, or
+          Drive. See our{' '}
+          <Link to="/legal/privacy" className="link">
+            Privacy Policy
+          </Link>{' '}
+          and{' '}
+          <Link to="/legal/terms" className="link">
+            Terms of Service
+          </Link>
+          .
         </p>
       </section>
     </div>

@@ -209,41 +209,45 @@ export default async function EventPage({
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="description" content={ogDescription} />
 
-      <p className="flex items-center gap-2">
-        <span className="meta-mono border border-ink px-2 py-0.5 text-sm text-neutral">
-          主催
-        </span>
+      <p className="flex items-center gap-2 text-sm">
+        <span className="text-neutral">主催</span>
         <Link to={`/g/${handle}`} className="link inline-flex items-center gap-1.5 font-bold">
           <ActorKindMark kind="group" isPersonal={groupRow?.isPersonal} size={15} />
           {groupActor?.displayName}
         </Link>
       </p>
 
-      {/* ---- ヘッダー: 日付を主役に ---- */}
-      <header className="mt-3 flex flex-wrap items-start gap-x-8 gap-y-4">
-        <div className="shrink-0 border-b-4 border-accent pb-2">
-          <div className="meta-mono text-sm text-neutral">{YEAR_FMT.format(event.startsAt)}</div>
-          <div className="display t-display mt-1 leading-none">
-            {MD_FMT.format(event.startsAt)}
-            <span className="ml-2 text-[0.4em] text-neutral">
-              ({WD_FMT.format(event.startsAt)})
+      {/* ---- ヘッダー: タイトル → 日時・会場 → 操作 の順に一列で読ませる ---- */}
+      <header className="mt-2">
+        <h1 className="display t-xl">{event.title}</h1>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <p className="flex flex-wrap items-baseline gap-x-2 border-l-4 border-accent pl-3">
+            <span className="meta-mono text-sm text-neutral">{YEAR_FMT.format(event.startsAt)}</span>
+            <span className="display t-lg leading-none">
+              {MD_FMT.format(event.startsAt)}
+              <span className="ml-1 text-base text-neutral">({WD_FMT.format(event.startsAt)})</span>
             </span>
-          </div>
-          <div className="meta-mono mt-2 font-bold">
-            {TIME_FMT.format(event.startsAt)}
-            {event.endsAt && (
-              <>
-                {' – '}
-                {sameDay
-                  ? TIME_FMT.format(event.endsAt)
-                  : `${MD_FMT.format(event.endsAt)} ${TIME_FMT.format(event.endsAt)}`}
-              </>
-            )}
-          </div>
+            <span className="meta-mono font-bold">
+              {TIME_FMT.format(event.startsAt)}
+              {event.endsAt && (
+                <>
+                  {' – '}
+                  {sameDay
+                    ? TIME_FMT.format(event.endsAt)
+                    : `${MD_FMT.format(event.endsAt)} ${TIME_FMT.format(event.endsAt)}`}
+                </>
+              )}
+            </span>
+          </p>
+          {(event.venueName || event.onlineUrl) && (
+            <a href="#venue" className="text-sm text-neutral hover:text-ink">
+              {event.venueName ?? 'オンライン'}
+              {event.venueName && event.onlineUrl && ' + オンライン'}
+            </a>
+          )}
         </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="display t-xl">{event.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-3">
+        <div>
+          <div className="mt-5 flex flex-wrap gap-2">
             {isViewable(event.visibility) && (
               <Menu label="カレンダーに追加">
                 <a
@@ -405,12 +409,12 @@ export default async function EventPage({
           referrerPolicy="no-referrer"
           src={event.thumbnailUrl}
           alt=""
-          className="mt-6 max-h-96 w-full border border-rule object-cover"
+          className="mt-6 max-h-96 w-full rounded-ui-lg border border-rule object-cover"
         />
       )}
 
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {(error === 'condition' || error === 'survey') && errorReason
             ? errorReason
             : (ERROR_MESSAGES[error] ?? 'エラーが発生しました。')}
@@ -418,13 +422,13 @@ export default async function EventPage({
       )}
 
       {canEdit && event.visibility === 'draft' && (
-        <div className="mt-6 border-2 border-ink bg-paper-2 p-4">
+        <div className="mt-6 notice notice-warning">
           <p className="font-bold">これは下書きです(主催メンバーにのみ表示)</p>
           <p className="mt-1 text-sm text-neutral">
             参加枠を設定してから公開してください。公開すると一覧に載り、申込を受け付けます。
           </p>
           {event.publishAt && (
-            <div className="mt-3 flex flex-wrap items-center gap-3 border-2 border-accent-2 p-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-ui border border-accent-2/40 bg-surface p-3">
               <p className="text-sm font-bold text-accent-2">
                 予約公開: {FULL_FMT.format(event.publishAt)}
                 <span className="ml-2 font-normal text-neutral">
@@ -488,11 +492,11 @@ export default async function EventPage({
 
       {/* ---- 主催者: イベントの中止 ---- */}
       {canEdit && !event.cancelledAt && isViewable(event.visibility) && (
-        <details className="mt-6 border-2 border-rule">
-          <summary className="cursor-pointer p-3 text-sm font-bold text-neutral">
+        <details className="disclosure mt-6">
+          <summary>
             イベントを中止する
           </summary>
-          <div className="border-t border-rule p-4">
+          <div className="p-4">
             <p className="text-sm text-neutral">
               中止すると、申込済み・補欠の方全員にお知らせが届き、以後の新規申込を
               締め切ります。支払い済みの参加者は管理コンソールに「要返金」として
@@ -515,7 +519,7 @@ export default async function EventPage({
               </label>
               <button
                 type="submit"
-                className="min-h-11 cursor-pointer border-2 border-accent px-4 font-bold text-accent hover:bg-accent hover:text-paper"
+                className="btn-danger"
               >
                 このイベントを中止する
               </button>
@@ -525,8 +529,8 @@ export default async function EventPage({
       )}
 
       {event.cancelledAt && (
-        <div className="mt-6 border-2 border-accent bg-paper-2 p-4">
-          <p className="display t-md text-accent">このイベントは中止されました</p>
+        <div className="mt-6 notice notice-error">
+          <p className="display t-md text-danger">このイベントは中止されました</p>
           {event.cancelReason && (
             <p className="mt-2 text-sm leading-relaxed">{event.cancelReason}</p>
           )}
@@ -546,7 +550,7 @@ export default async function EventPage({
 
       {/* ---- 限定公開の案内(主催メンバー向け)---- */}
       {canEdit && event.visibility === 'unlisted' && (
-        <div className="mt-6 border-2 border-accent-2 bg-paper-2 p-4">
+        <div className="mt-6 notice">
           <p className="font-bold text-accent-2">これは限定公開です</p>
           <p className="mt-1 text-sm text-neutral">
             下の共有リンクを知っている人だけが閲覧・申込できます。一覧・検索・
@@ -561,8 +565,8 @@ export default async function EventPage({
       )}
 
       {/* ---- 目次(ページ内リンク) ---- */}
-      <nav aria-label="目次" className="mt-6 overflow-x-auto border-b border-rule pb-3">
-        <ul className="flex w-max gap-2 text-sm">
+      <nav aria-label="目次" className="mt-8">
+        <ul className="tabs">
           {[
             event.descriptionMd && { href: '#overview', label: 'イベント概要' },
             { href: '#slots', label: '参加枠' },
@@ -580,10 +584,7 @@ export default async function EventPage({
             .filter((item): item is { href: string; label: string } => Boolean(item))
             .map((item) => (
               <li key={item.href}>
-                <a
-                  href={item.href}
-                  className="block whitespace-nowrap border border-ink px-3 py-1.5 font-bold hover:bg-paper-2"
-                >
+                <a href={item.href}>
                   {item.label}
                 </a>
               </li>
@@ -595,15 +596,15 @@ export default async function EventPage({
       <div className="mt-8 flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
         {/* ---- サイドバー: 申込 + 会場 ---- */}
         <aside className="order-1 space-y-8 lg:order-2">
-          <section id="slots" className="scroll-mt-4 border-2 border-ink">
-            <h2 className="display border-b-2 border-ink p-3 t-md">参加枠</h2>
+          <section id="slots" className="scroll-mt-4 overflow-hidden rounded-ui-lg border border-rule-strong bg-surface">
+            <h2 className="panel-title border-b border-rule px-4 py-3">参加枠</h2>
             {event.totalCapacity != null && (
-              <p className="border-b border-rule p-3 text-sm text-neutral">
+              <p className="border-b border-rule px-4 py-3 text-sm text-neutral">
                 合計定員 {event.totalCapacity} 名
                 {(() => {
                   const held = [...slotStats.values()].reduce((n, s) => n + s.accepted, 0);
                   return held >= event.totalCapacity! ? (
-                    <span className="ml-2 font-bold text-accent">— 満員(以降は補欠)</span>
+                    <span className="ml-2 font-bold text-danger">— 満員(以降は補欠)</span>
                   ) : (
                     <span className="ml-1">(現在 {held} 名)</span>
                   );
@@ -611,14 +612,14 @@ export default async function EventPage({
               </p>
             )}
             {slots.length === 0 ? (
-              <p className="p-3 text-sm text-neutral">参加枠は未設定です。</p>
+              <p className="px-4 py-3 text-sm text-neutral">参加枠は未設定です。</p>
             ) : (
               <ul>
                 {slots.map((slot) => {
                   const stats = slotStats.get(slot.id);
                   const own = ownParticipations.get(slot.id);
                   return (
-                    <li key={slot.id} className="border-b border-rule p-3 last:border-b-0">
+                    <li key={slot.id} className="border-b border-rule px-4 py-4 last:border-b-0">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="font-bold">{slot.name}</div>
@@ -641,12 +642,12 @@ export default async function EventPage({
                           {(slot.isSpeakerSlot || slot.allowRemote) && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {slot.isSpeakerSlot && (
-                                <span className="inline-block border border-accent-2 px-1.5 py-0.5 text-sm text-accent-2">
+                                <span className="badge badge-accent">
                                   登壇枠
                                 </span>
                               )}
                               {slot.allowRemote && (
-                                <span className="inline-block border border-neutral px-1.5 py-0.5 text-sm text-neutral">
+                                <span className="badge">
                                   Fediverse 参加可
                                 </span>
                               )}
@@ -657,7 +658,7 @@ export default async function EventPage({
                           {canEdit && slot.method === 'lottery' && !slot.lotteryAt && (
                             <p
                               role="alert"
-                              className="mt-1 border-2 border-accent p-2 text-sm text-accent"
+                              className="mt-1 notice notice-error"
                             >
                               抽選日時が未設定です。このままでは自動抽選が実行されず、
                               申込者は「抽選待ち」のままになります。枠を編集して抽選日時を設定するか、
@@ -688,10 +689,8 @@ export default async function EventPage({
                           {own ? (
                             <div className="flex flex-wrap items-center gap-3">
                               <span
-                                className={`border-2 px-3 py-1.5 text-sm font-bold ${
-                                  own.status === 'payment_pending'
-                                    ? 'border-accent text-accent'
-                                    : 'border-accent-2 text-accent-2'
+                                className={`badge px-3 py-1 text-sm ${
+                                  own.status === 'payment_pending' ? 'badge-danger' : 'badge-accent'
                                 }`}
                               >
                                 {STATUS_LABEL[own.status] ?? own.status}
@@ -798,21 +797,21 @@ export default async function EventPage({
             {isViewable(event.visibility) &&
               (event.remoteJoinMethods ?? []).includes('reply') &&
               slots.some((s) => s.allowRemote) && (
-                <p className="border-t border-rule p-3 text-sm text-neutral">
+                <p className="border-t border-rule px-4 py-3 text-sm text-neutral">
                   Fediverse(Misskey / Mastodon 等)からは、主催グループをフォローして
                   このイベントの告知に「参加」とリプライすると申込できます。
                   キャンセルは「キャンセル」とリプライしてください。
                 </p>
               )}
             {canEdit && (
-              <details className="border-t-2 border-ink">
-                <summary className="cursor-pointer p-3 text-sm font-bold">
+              <details className="disclosure-flat">
+                <summary>
                   枠を追加(主催)
                 </summary>
                 <form
                   method="post"
                   action={`/events/${event.id}/slots`}
-                  className="space-y-4 border-t border-rule p-3"
+                  className="space-y-4 border-t border-rule p-4"
                 >
                   <SlotFormFields
                     groupDiscordGuildId={groupRow?.discordGuildId}
@@ -828,7 +827,7 @@ export default async function EventPage({
 
           {(event.venueName || event.venueAddress || event.onlineUrl) && (
             <section id="venue" className="scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">会場・配信</h2>
+              <h2 className="section-title">会場・配信</h2>
               {(event.venueName || event.venueAddress) && (
                 <div className="mt-3">
                   <div className="font-bold">{event.venueName}</div>
@@ -887,7 +886,7 @@ export default async function EventPage({
         <div className="order-2 min-w-0 lg:order-1 [&>section:first-child]:mt-0">
           {event.descriptionMd && (
             <section id="overview" className="mt-8 scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">イベント概要</h2>
+              <h2 className="section-title">イベント概要</h2>
               <div className="mt-3">
                 <Markdown source={event.descriptionMd} />
               </div>
@@ -897,7 +896,7 @@ export default async function EventPage({
           {event.participantInfoMd &&
             (canEdit ||
               [...ownParticipations.values()].some((p) => p.status === 'accepted')) && (
-              <section className="mt-8 border-2 border-accent-2 p-4">
+              <section className="mt-8 panel border-accent-2/50">
                 <h2 className="display t-md text-accent-2">参加者への案内</h2>
                 <p className="meta-mono mt-0.5 text-sm text-neutral">
                   参加確定者にのみ表示されています
@@ -910,7 +909,7 @@ export default async function EventPage({
 
           {sessions.length > 0 && (
             <section id="sessions" className="mt-10 scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">{sessionsLabel}</h2>
+              <h2 className="section-title">{sessionsLabel}</h2>
               <ul>
                 {sessions.map((session) => (
                   <li
@@ -962,7 +961,7 @@ export default async function EventPage({
 
           {/* ---- 主催 ---- */}
           <section id="organizers" className="mt-10 scroll-mt-4">
-            <h2 className="display border-b-2 border-ink pb-2 t-md">主催</h2>
+            <h2 className="section-title">主催</h2>
             <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
               <li className="font-bold">
                 <Link to={`/g/${handle}`} className="link">
@@ -988,7 +987,7 @@ export default async function EventPage({
           {/* ---- 登壇 ---- */}
           {speakers.length > 0 && (
             <section id="speakers" className="mt-10 scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">登壇</h2>
+              <h2 className="section-title">登壇</h2>
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {speakers.map((sp) => (
                   <li key={`${sp.name}-${sp.url ?? ''}`}>
@@ -1013,7 +1012,7 @@ export default async function EventPage({
 
           {materials.length > 0 && (
             <section id="materials" className="mt-10 scroll-mt-4">
-              <h2 className="display border-b-2 border-ink pb-2 t-md">資料</h2>
+              <h2 className="section-title">資料</h2>
               <ul className="mt-3 space-y-2">
                 {materials.map((material) => (
                   <li key={material.id}>
@@ -1028,7 +1027,7 @@ export default async function EventPage({
 
           {event.participantListPublic && participants.length > 0 && (
             <section id="participants" className="mt-10 scroll-mt-4">
-              <h2 className="display flex items-baseline justify-between border-b-2 border-ink pb-2 t-md">
+              <h2 className="section-title flex items-baseline justify-between">
                 参加者
                 <Link
                   to={`/g/${handle}/events/${eventId}/participants`}

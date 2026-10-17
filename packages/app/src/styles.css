@@ -12,6 +12,13 @@
   --color-accent: var(--yorox-accent);
   --color-accent-2: var(--yorox-accent-2);
   --color-focus: var(--yorox-focus);
+  --color-surface: var(--yorox-surface);
+  --color-rule-strong: var(--yorox-rule-strong);
+  --color-danger: var(--yorox-danger);
+  --color-success: var(--yorox-success);
+  --color-warning: var(--yorox-warning);
+  --radius-ui: var(--yorox-radius);
+  --radius-ui-lg: var(--yorox-radius-lg);
   --font-display: var(--yorox-font-display);
   --font-body: var(--yorox-font-body);
   --font-mono: var(--yorox-font-mono);
@@ -40,12 +47,34 @@ body {
   outline-offset: 2px;
 }
 
+/* 部品クラスは components レイヤーに置き、Tailwind ユーティリティで上書きできるようにする */
+@layer components {
 /* ---- 見出し ---- */
 .display {
   font-family: var(--yorox-font-display);
   font-weight: var(--yorox-font-display-weight, 700);
-  letter-spacing: 0.01em;
-  line-height: 1.25;
+  /* 和文の見出しは字面の余白を詰める(本文は可読性のため詰めない) */
+  font-feature-settings: 'palt';
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+/* ---- セクション見出し(ページ内の大見出し。罫線は細く、文字で階層を出す) ---- */
+.section-title {
+  font-family: var(--yorox-font-display);
+  font-weight: var(--yorox-font-display-weight, 700);
+  font-feature-settings: 'palt';
+  font-size: var(--yorox-text-md);
+  line-height: 1.3;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--yorox-rule);
+}
+/* 小見出し(セクション内のまとまり・一覧のラベル) */
+.eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--yorox-neutral);
 }
 
 /* タイプスケールのユーティリティ(Tailwind の text-[var(...)] は
@@ -71,15 +100,20 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- ボタン(8状態。リソの版ズレシャドウが署名) ---- */
+/* ---- ボタン ----
+ * 階層は3段: .btn(主操作。版ズレシャドウはこれだけの署名)/ .btn-quiet(二次操作)
+ * / .btn-danger(取り消せない操作)。1画面に .btn は原則ひとつ。 */
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
   font-family: var(--yorox-font-body);
   font-weight: 700;
   font-size: var(--yorox-text-base);
   color: var(--yorox-paper);
   background: var(--yorox-ink);
-  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  border: var(--yorox-rule-w-strong) solid var(--yorox-ink);
   border-radius: var(--yorox-radius);
   padding: 0.625rem 1.5rem;
   min-height: 44px;
@@ -110,33 +144,64 @@ body {
   pointer-events: none;
 }
 .btn[data-state='error'] {
-  border-color: var(--yorox-accent);
-  background: var(--yorox-paper);
-  color: var(--yorox-accent);
+  border-color: var(--yorox-danger);
+  background: var(--yorox-surface);
+  color: var(--yorox-danger);
 }
 .btn[data-state='success'] {
-  background: var(--yorox-accent-2);
-  border-color: var(--yorox-accent-2);
+  background: var(--yorox-success);
+  border-color: var(--yorox-success);
 }
 
-/* 控えめな二次ボタン(アウトライン) */
+/* 二次ボタン(面 + 細い輪郭) */
 .btn-quiet {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
   font-weight: 700;
   color: var(--yorox-ink);
-  background: transparent;
-  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  background: var(--yorox-surface);
+  border: 1px solid var(--yorox-rule-strong);
   border-radius: var(--yorox-radius);
-  padding: 0.5rem 1.25rem;
+  padding: 0.5rem 1.125rem;
   min-height: 44px;
   white-space: nowrap;
-  transition: background-color var(--yorox-dur-base) var(--yorox-ease-out);
+  transition:
+    background-color var(--yorox-dur-base) var(--yorox-ease-out),
+    border-color var(--yorox-dur-base) var(--yorox-ease-out);
 }
 .btn-quiet:hover {
   background: var(--yorox-paper-2);
+  border-color: var(--yorox-ink);
 }
 .btn-quiet:active {
   background: var(--yorox-rule);
+}
+.btn-quiet:disabled {
+  color: var(--yorox-neutral);
+  border-color: var(--yorox-rule);
+  cursor: not-allowed;
+}
+
+/* 削除・取り消しなど戻せない操作 */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--yorox-danger);
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--yorox-radius);
+  padding: 0.5rem 1.125rem;
+  min-height: 44px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--yorox-dur-base) var(--yorox-ease-out);
+}
+.btn-danger:hover {
+  background: color-mix(in oklch, var(--yorox-danger) 10%, transparent);
 }
 
 /* ---- 入力欄 ---- */
@@ -145,18 +210,26 @@ body {
   font-family: var(--yorox-font-body);
   font-size: var(--yorox-text-base);
   color: var(--yorox-ink);
-  background: var(--yorox-paper);
-  border: var(--yorox-rule-w) solid var(--yorox-ink);
+  background: var(--yorox-surface);
+  border: 1px solid var(--yorox-rule-strong);
   border-radius: var(--yorox-radius);
   padding: 0.625rem 0.875rem;
   min-height: 44px;
-  transition: border-color var(--yorox-dur-base) var(--yorox-ease-out);
+  transition:
+    border-color var(--yorox-dur-base) var(--yorox-ease-out),
+    box-shadow var(--yorox-dur-base) var(--yorox-ease-out);
 }
 .input::placeholder {
   color: var(--yorox-neutral);
+  opacity: 0.8;
 }
 .input:hover {
+  border-color: var(--yorox-ink);
+}
+.input:focus {
   border-color: var(--yorox-accent-2);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--yorox-accent-2) 22%, transparent);
+  outline: none;
 }
 .input:disabled {
   background: var(--yorox-paper-2);
@@ -164,7 +237,225 @@ body {
   cursor: not-allowed;
 }
 .input[aria-invalid='true'] {
-  border-color: var(--yorox-accent);
+  border-color: var(--yorox-danger);
+}
+select.input {
+  cursor: pointer;
+}
+
+/* フォームのラベルと補足 */
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.field-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--yorox-neutral);
+}
+
+/* ---- 面(パネル)----
+ * 関連する操作・情報のまとまり。罫線は細く、紙より一段明るい面で浮かせる */
+.panel {
+  background: var(--yorox-surface);
+  border: 1px solid var(--yorox-rule);
+  border-radius: var(--yorox-radius-lg);
+  padding: 1.25rem;
+}
+@media (max-width: 40rem) {
+  .panel {
+    padding: 1rem;
+  }
+}
+.panel-title {
+  font-family: var(--yorox-font-display);
+  font-weight: var(--yorox-font-display-weight, 700);
+  font-feature-settings: 'palt';
+  font-size: var(--yorox-text-md);
+  line-height: 1.3;
+}
+
+/* ---- お知らせ(状態を伝える帯)----
+ * 文字は常にインク色で読みやすく、意味は左の色帯と淡い地色で伝える */
+.notice {
+  --notice-color: var(--yorox-accent-2);
+  border: 1px solid color-mix(in oklch, var(--notice-color) 35%, transparent);
+  border-left: 4px solid var(--notice-color);
+  border-radius: var(--yorox-radius);
+  background: color-mix(in oklch, var(--notice-color) 8%, var(--yorox-surface));
+  color: var(--yorox-ink);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.notice-error {
+  --notice-color: var(--yorox-danger);
+}
+.notice-success {
+  --notice-color: var(--yorox-success);
+}
+.notice-warning {
+  --notice-color: var(--yorox-warning);
+}
+.notice-neutral {
+  --notice-color: var(--yorox-rule-strong);
+}
+.notice-title {
+  font-weight: 700;
+}
+
+/* ---- 小さなラベル(状態バッジ) ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--yorox-rule-strong);
+  border-radius: 999px;
+  padding: 0.0625rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--yorox-neutral);
+  background: var(--yorox-surface);
+  white-space: nowrap;
+}
+.badge-accent {
+  color: var(--yorox-accent-2);
+  border-color: color-mix(in oklch, var(--yorox-accent-2) 45%, transparent);
+}
+.badge-danger {
+  color: var(--yorox-danger);
+  border-color: color-mix(in oklch, var(--yorox-danger) 45%, transparent);
+}
+
+/* ---- 折りたたみ(<details class="disclosure">)---- */
+.disclosure {
+  background: var(--yorox-surface);
+  border: 1px solid var(--yorox-rule);
+  border-radius: var(--yorox-radius-lg);
+}
+.disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.625rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--yorox-radius-lg);
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary::before {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  rotate: -45deg;
+  transition: rotate var(--yorox-dur-base) var(--yorox-ease-out);
+}
+.disclosure[open] > summary::before {
+  rotate: 45deg;
+}
+.disclosure > summary:hover {
+  background: var(--yorox-paper-2);
+}
+.disclosure[open] > summary {
+  border-bottom: 1px solid var(--yorox-rule);
+  border-radius: var(--yorox-radius-lg) var(--yorox-radius-lg) 0 0;
+}
+.disclosure-body {
+  padding: 1rem;
+}
+/* 面の中に入れる折りたたみ(外枠なし、上罫線で区切る) */
+.disclosure-flat {
+  border-top: 1px solid var(--yorox-rule);
+}
+.disclosure-flat > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.disclosure-flat > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure-flat > summary::before {
+  content: '+';
+  font-family: var(--yorox-font-mono);
+  color: var(--yorox-accent-2);
+}
+.disclosure-flat[open] > summary::before {
+  content: '−';
+}
+.disclosure-flat > summary:hover {
+  background: var(--yorox-paper-2);
+}
+
+/* ---- ページ内タブ(アンカーで節へ飛ぶ。ボタンに見せない) ---- */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--yorox-rule);
+  scrollbar-width: none;
+}
+.tabs > li {
+  flex: none;
+}
+.tabs a {
+  flex: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--yorox-neutral);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  text-decoration: none;
+  transition:
+    color var(--yorox-dur-fast) var(--yorox-ease-out),
+    border-color var(--yorox-dur-fast) var(--yorox-ease-out);
+}
+.tabs a:hover,
+.tabs a[aria-current='page'],
+.tabs a[aria-current='true'] {
+  color: var(--yorox-ink);
+  border-bottom-color: var(--yorox-accent);
+}
+
+/* ---- 表 ---- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.table th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--yorox-neutral);
+  border-bottom: 1px solid var(--yorox-rule-strong);
+  padding: 0.5rem;
+}
+.table td {
+  border-bottom: 1px solid var(--yorox-rule);
+  padding: 0.5rem;
+  vertical-align: top;
 }
 
 /*
@@ -239,9 +530,10 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
   max-width: min(18rem, 80vw);
   translate: -50% 0;
   padding: 0.5rem 0.75rem;
-  border: var(--yorox-rule-w) solid var(--yorox-ink);
-  background: var(--yorox-paper);
-  box-shadow: 3px 3px 0 var(--yorox-accent);
+  border: 1px solid var(--yorox-rule-strong);
+  border-radius: var(--yorox-radius);
+  background: var(--yorox-surface);
+  box-shadow: 0 6px 20px -8px color-mix(in oklch, var(--yorox-ink) 35%, transparent);
   font-size: var(--yorox-text-sm, 0.875rem);
   font-weight: normal;
   line-height: 1.5;
@@ -272,12 +564,10 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
 /* ---- マストヘッドの二重罫線(版ズレ: ピンク + 青) ---- */
 .rule-duo {
   border: none;
-  height: calc(var(--yorox-rule-w) * 2 + 2px);
+  height: 5px;
   background:
-    linear-gradient(var(--yorox-accent), var(--yorox-accent)) 0 0 / 100% var(--yorox-rule-w)
-      no-repeat,
-    linear-gradient(var(--yorox-accent-2), var(--yorox-accent-2)) 3px 100% / 100%
-      var(--yorox-rule-w) no-repeat;
+    linear-gradient(var(--yorox-accent), var(--yorox-accent)) 0 0 / 100% 2px no-repeat,
+    linear-gradient(var(--yorox-accent-2), var(--yorox-accent-2)) 3px 100% / 100% 2px no-repeat;
 }
 
 /* ---- イベント一覧の行 ---- */
@@ -325,8 +615,9 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
 }
 .markdown h2 {
   font-size: var(--yorox-text-md);
-  border-bottom: 1px solid var(--yorox-rule);
-  padding-bottom: 0.25em;
+}
+.markdown > :first-child {
+  margin-top: 0;
 }
 .markdown h3 {
   font-size: var(--yorox-text-base);
@@ -374,6 +665,7 @@ input[type='datetime-local'].input::-webkit-calendar-picker-indicator:hover {
   padding-inline-start: 1em;
   color: var(--yorox-neutral);
   margin-block: 1em;
+}
 }
 
 @media (prefers-reduced-motion: reduce) {

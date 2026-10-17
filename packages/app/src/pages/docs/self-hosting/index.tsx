@@ -27,7 +27,7 @@ export default async function SelfHostingIndexPage() {
       </p>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">必要なもの</h2>
+        <h2 className="section-title">必要なもの</h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
           <li>
             <strong>Docker が動くサーバー</strong> — VPS(月数百円のもので十分)や
@@ -46,7 +46,7 @@ export default async function SelfHostingIndexPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">全体の流れ</h2>
+        <h2 className="section-title">全体の流れ</h2>
         <ol className="mt-3 space-y-3">
           {GUIDE_STEPS.filter((s) => s.slug).map((s) => (
             <li key={s.slug} className="border border-rule p-3">
@@ -64,7 +64,7 @@ export default async function SelfHostingIndexPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">ソースコード</h2>
+        <h2 className="section-title">ソースコード</h2>
         <p className="mt-3">
           <a
             href="https://github.com/Love-Rox/yorox"

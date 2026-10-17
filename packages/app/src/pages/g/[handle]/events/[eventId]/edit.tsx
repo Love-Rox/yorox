@@ -64,13 +64,13 @@ export default async function EditEventPage({
       </p>
       <h1 className="display mt-2 t-lg">イベントを編集</h1>
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>
       )}
 
       {uploads.enabled && (
-        <section className="mt-6 border-2 border-ink p-4">
+        <section className="mt-6 panel">
           <h2 className="text-sm font-bold">サムネイル画像をアップロード</h2>
           {event.thumbnailUrl && (
             <img

@@ -35,7 +35,7 @@ export default async function TimelinePage() {
       </p>
 
       {items.length === 0 ? (
-        <div className="mt-8 border-2 border-rule p-6">
+        <div className="mt-8 rounded-ui-lg border border-rule p-6">
           <p>まだ表示できる活動がありません。</p>
           <p className="mt-2 text-sm text-neutral">
             ユーザーやグループのページにある「フォロー」ボタンを押すと、

@@ -87,13 +87,13 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       <h1 className="display mt-2 t-lg">設定: {actor.displayName}</h1>
 
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {decodeURIComponent(error)}
         </p>
       )}
 
       {notice && (
-        <p role="status" className="mt-4 border-2 border-rule p-3 text-sm">
+        <p role="status" className="mt-4 rounded-ui-lg border border-rule p-3 text-sm">
           {decodeURIComponent(notice)}
         </p>
       )}
@@ -103,7 +103,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- グループ情報 ---- */}
       {canSettings && (
         <section id="info" className="mt-8 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">グループ情報</h2>
+          <h2 className="section-title">グループ情報</h2>
           {uploads.enabled && (
             <div className="mt-4 border border-rule p-4">
               <h3 className="text-sm font-bold">グループアイコン</h3>
@@ -237,7 +237,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- Stripe 決済 ---- */}
       {canSettings && stripeAvailable && (
         <section id="stripe" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             Stripe 決済
             <HelpTip text="接続すると、有料枠で事前決済を受け付けられます。売上はこのグループの Stripe アカウントに直接入金され、Yorox は決済を仲介しません。決済完了は自動で参加確定になります。" />
           </h2>
@@ -275,13 +275,13 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- 特定商取引法に基づく表記 ---- */}
       {canSettings && (
         <section id="tokushoho" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             特定商取引法に基づく表記
             <HelpTip text="有料イベントを開催する場合、通信販売の事業者として表記の義務があります。ここで設定するとグループの公開ページに表示されます。" />
           </h2>
 
-          <div className="mt-3 border-2 border-accent p-3 text-sm">
-            <p className="font-bold text-accent">これはテンプレート(雛形)です</p>
+          <div className="mt-3 notice notice-warning">
+            <p className="notice-title">これはテンプレート(雛形)です</p>
             <p className="mt-1">
               入力欄には一般的な例をあらかじめ入れてありますが、
               <strong>そのままで法的要件を満たすことを保証するものではありません</strong>。
@@ -346,7 +346,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- Bluesky クロスポスト ---- */}
       {canSettings && (
         <section id="bluesky" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             Bluesky クロスポスト
             <HelpTip text="連携すると、イベント公開時にこのグループの Bluesky アカウントへ告知が自動投稿されます。通常のパスワードではなく、Bluesky の設定で発行できる App Password(いつでも失効可能)を使ってください。" />
           </h2>
@@ -413,7 +413,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- メンバー管理 ---- */}
       {canMembers && (
         <section id="members" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">メンバー</h2>
+          <h2 className="section-title">メンバー</h2>
           <ul className="mt-2">
             {members.map((m) => (
               <li
@@ -450,7 +450,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                   <form method="post" action={`/g/${handle}/members/${m.actorId}/remove`}>
                     <button
                       type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                     >
                       削除
                     </button>
@@ -461,7 +461,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
           </ul>
 
           {group.isPersonal ? (
-            <p className="mt-4 border-2 border-rule bg-paper-2 p-3 text-sm text-neutral">
+            <p className="mt-4 rounded-ui-lg border border-rule bg-paper-2 p-3 text-sm text-neutral">
               個人グループは、あなた1人のためのグループです。他のメンバーは追加できません。
               仲間と共同で運営したい場合は、
               <Link to="/groups/new" className="link">
@@ -470,12 +470,12 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
               してください。
             </p>
           ) : (
-            <details className="mt-4 border-2 border-ink">
-              <summary className="cursor-pointer p-3 text-sm font-bold">メンバーを追加</summary>
+            <details className="disclosure mt-4">
+              <summary>メンバーを追加</summary>
               <form
                 method="post"
                 action={`/g/${handle}/members`}
-                className="flex flex-wrap items-end gap-3 border-t-2 border-ink p-4"
+                className="flex flex-wrap items-end gap-3 p-4"
               >
                 <label className="block min-w-48 flex-1">
                   <span className="text-sm font-bold">ハンドル</span>
@@ -513,7 +513,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- 参加者ブロック ---- */}
       {canMembers && (
         <section id="blocks" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             参加者ブロック
             <HelpTip text="ブロックした相手は、このグループのイベントへ申し込めなくなります。Fediverse 連携済みのアカウントには本人・連携先の双方に効きます。" />
           </h2>
@@ -523,7 +523,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
           </p>
 
           {blockError && (
-            <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+            <p role="alert" className="mt-3 notice notice-error">
               {blockError}
             </p>
           )}
@@ -562,14 +562,14 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
             <p className="mt-4 text-sm text-neutral">ブロック中のアカウントはありません。</p>
           )}
 
-          <details className="mt-4 border-2 border-ink">
-            <summary className="cursor-pointer p-3 text-sm font-bold">
+          <details className="disclosure mt-4">
+            <summary>
               ハンドルでブロックを追加
             </summary>
             <form
               method="post"
               action={`/g/${handle}/blocks`}
-              className="flex flex-wrap items-end gap-3 border-t-2 border-ink p-4"
+              className="flex flex-wrap items-end gap-3 p-4"
             >
               <label className="block min-w-48 flex-1">
                 <span className="text-sm font-bold">ハンドル(このインスタンスのユーザー)</span>
@@ -599,7 +599,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- ロール管理 ---- */}
       {canSettings && (
         <section id="roles" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">ロール</h2>
+          <h2 className="section-title">ロール</h2>
           <ul className="mt-2">
             {roles.map((r) => (
               <li
@@ -609,7 +609,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                 <div className="min-w-0">
                   <span className="font-bold">{r.name}</span>
                   {r.isPreset && (
-                    <span className="meta-mono ml-2 border border-neutral px-1.5 py-0.5 text-sm text-neutral">
+                    <span className="badge ml-2">
                       プリセット
                     </span>
                   )}
@@ -625,7 +625,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
                   <form method="post" action={`/g/${handle}/roles/${r.id}/delete`}>
                     <button
                       type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                     >
                       削除
                     </button>
@@ -680,14 +680,14 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
             ))}
           </ul>
 
-          <details className="mt-4 border-2 border-ink">
-            <summary className="cursor-pointer p-3 text-sm font-bold">
+          <details className="disclosure mt-4">
+            <summary>
               カスタムロールを作成
             </summary>
             <form
               method="post"
               action={`/g/${handle}/roles`}
-              className="space-y-4 border-t-2 border-ink p-4"
+              className="space-y-4 p-4"
             >
               <label className="block">
                 <span className="text-sm font-bold">ロール名 *</span>
@@ -722,7 +722,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
       {/* ---- 監査ログ ---- */}
       {canMembers && (
         <section id="audit" className="mt-10 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             監査ログ
             <HelpTip text="このグループで行われた管理操作(メンバー・ロール・ブロック・イベント公開・支払いなど)の履歴です。直近50件を表示します。" />
           </h2>
@@ -730,7 +730,7 @@ export default async function GroupSettingsPage({ handle }: { handle: string }) 
             <div className="mt-3 overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-ink text-left">
+                  <tr className="border-b border-rule-strong text-left">
                     <th className="py-1.5 pr-3">日時</th>
                     <th className="py-1.5 pr-3">操作</th>
                     <th className="py-1.5 pr-3">操作者</th>

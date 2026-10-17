@@ -21,14 +21,14 @@ export default async function TermsPage() {
       </p>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第1条(適用)</h2>
+        <h2 className="section-title">第1条(適用)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           本規約は、利用者と運営者との間の本サービスの利用に関わる一切の関係に適用されます。
         </p>
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第2条(アカウント)</h2>
+        <h2 className="section-title">第2条(アカウント)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           利用者はメールアドレス等により登録します。登録情報は正確なものとし、
           第三者に利用させないものとします。
@@ -36,7 +36,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第3条(未成年者)</h2>
+        <h2 className="section-title">第3条(未成年者)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           未成年者が本サービスを利用する場合は、あらかじめ親権者等の法定代理人の
           同意を得るものとします。とくに有料イベントへの申込は、法定代理人の同意の
@@ -45,7 +45,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           第4条(イベントと決済)
         </h2>
         <p className="mt-2 text-sm leading-relaxed">
@@ -60,7 +60,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第5条(禁止事項)</h2>
+        <h2 className="section-title">第5条(禁止事項)</h2>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
           <li>法令または公序良俗に違反する行為</li>
           <li>他の利用者・第三者の権利を侵害する行為</li>
@@ -70,7 +70,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           第6条(アカウントの停止・削除)
         </h2>
         <p className="mt-2 text-sm leading-relaxed">
@@ -81,7 +81,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第7条(免責)</h2>
+        <h2 className="section-title">第7条(免責)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           運営者は、本サービスの内容や利用者間・主催者との取引について、
           法令で許容される範囲で一切の責任を負いません。本サービスは現状有姿で
@@ -90,7 +90,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第8条(規約の変更)</h2>
+        <h2 className="section-title">第8条(規約の変更)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           運営者は必要に応じて本規約を変更できます。変更後の規約は本ページに掲示した
           時点から効力を生じます。
@@ -98,7 +98,7 @@ export default async function TermsPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           第9条(準拠法・裁判管轄)
         </h2>
         <p className="mt-2 text-sm leading-relaxed">

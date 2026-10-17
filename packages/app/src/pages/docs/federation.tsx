@@ -12,7 +12,7 @@ export default async function FederationGuidePage() {
       <h1 className="display mt-2 t-xl">分散型のしくみ</h1>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           中央のサービスに頼らない、ということ
         </h2>
         <p className="mt-3">
@@ -25,7 +25,7 @@ export default async function FederationGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           ActivityPub による連合
         </h2>
         <p className="mt-3">
@@ -54,7 +54,7 @@ export default async function FederationGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           インスタンスをまたいでも壊れない設計
         </h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
@@ -74,7 +74,7 @@ export default async function FederationGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">オープンソース</h2>
+        <h2 className="section-title">オープンソース</h2>
         <p className="mt-3">
           Yorox のソースコードは{' '}
           <a

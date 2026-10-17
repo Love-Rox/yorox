@@ -91,11 +91,11 @@ export function DocsNav({
         <NavList pathname={pathname} guideEnabled={guideEnabled} />
       </nav>
       {/* 狭い画面: 畳める目次 */}
-      <details className="border-2 border-ink lg:hidden">
-        <summary className="cursor-pointer px-3 py-2 text-sm font-bold">
+      <details className="disclosure lg:hidden">
+        <summary>
           ドキュメント目次
         </summary>
-        <div className="border-t-2 border-ink p-2">
+        <div className="p-2">
           <NavList pathname={pathname} guideEnabled={guideEnabled} />
         </div>
       </details>

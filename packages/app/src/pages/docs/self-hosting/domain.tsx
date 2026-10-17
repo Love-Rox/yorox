@@ -20,8 +20,8 @@ export default async function SelfHostingDomainPage() {
       </p>
       <h1 className="display mt-2 t-xl">STEP 2: 公開する(ドメインと HTTPS)</h1>
 
-      <div className="mt-6 border-2 border-accent p-4">
-        <p className="font-bold text-accent">最重要: ドメインは一度決めたら変えられません</p>
+      <div className="mt-6 notice notice-warning">
+        <p className="notice-title">最重要: ドメインは一度決めたら変えられません</p>
         <p className="mt-1 text-sm">
           ドメインはアカウントやイベントの Fediverse 上の住所(URI)に焼き込まれます。
           運用開始後に変えると、フォロワーや連合先との関係がすべて壊れます。
@@ -29,7 +29,7 @@ export default async function SelfHostingDomainPage() {
       </div>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">なぜ HTTPS が必要か</h2>
+        <h2 className="section-title">なぜ HTTPS が必要か</h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
           <li>Fediverse 連合(フォロー・リプライ参加)は HTTPS が前提です</li>
           <li>パスキーは HTTPS(または localhost)でしか動きません</li>
@@ -47,7 +47,7 @@ export default async function SelfHostingDomainPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           方法A: Caddy(いちばん簡単)
         </h2>
         <p className="mt-3">証明書の取得・更新まで全自動です。Caddyfile はこれだけ:</p>
@@ -57,7 +57,7 @@ export default async function SelfHostingDomainPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">方法B: nginx + certbot</h2>
+        <h2 className="section-title">方法B: nginx + certbot</h2>
         <Cmd>{`server {
     server_name events.example.com;
     location / {
@@ -70,7 +70,7 @@ export default async function SelfHostingDomainPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           方法C: Cloudflare Tunnel(ポート開放なし)
         </h2>
         <p className="mt-3">
@@ -82,7 +82,7 @@ cloudflared tunnel run --url http://localhost:8080 yorox`}</Cmd>
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">動作確認</h2>
+        <h2 className="section-title">動作確認</h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
           <li>
             <span className="meta-mono">https://あなたのドメイン</span> で Yorox が開く
