@@ -88,7 +88,7 @@ export function ActorKindBadge({
   const { label } = kindMeta(kind, isPersonal);
   return (
     <span
-      className={`inline-flex items-center gap-1 border border-rule px-2 py-0.5 text-sm text-neutral ${className ?? ''}`}
+      className={`badge ${className ?? ''}`}
     >
       <ActorKindMark kind={kind} isPersonal={isPersonal} size={14} />
       {label}

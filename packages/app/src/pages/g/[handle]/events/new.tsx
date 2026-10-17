@@ -33,7 +33,7 @@ export default async function NewEventPage({ handle }: { handle: string }) {
         まず下書きとして保存されます。参加枠を設定してから公開してください。
       </p>
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {error === 'invalid_thumbnail_url'
             ? 'サムネイル URL は http:// または https:// で始まる URL を指定してください。'
             : '入力内容を確認してください(タイトルと開始日時は必須です)。'}

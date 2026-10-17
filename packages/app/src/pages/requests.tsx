@@ -57,7 +57,7 @@ export default async function RequestsPage() {
       ) : (
         <ul className="mt-6 space-y-4">
           {items.map(({ request, slot, event, groupHandle }) => (
-            <li key={request.id} className="border-2 border-ink p-4">
+            <li key={request.id} className="panel">
               <div className="font-bold">補欠から繰り上がれます</div>
               <div className="mt-1 text-sm text-neutral">
                 {event && groupHandle ? (

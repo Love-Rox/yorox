@@ -21,7 +21,7 @@ export default async function SelfHostingSetupPage() {
       <h1 className="display mt-2 t-xl">STEP 1: 起動する</h1>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">1. 取得して起動</h2>
+        <h2 className="section-title">1. 取得して起動</h2>
         <Cmd>{`git clone https://github.com/Love-Rox/yorox.git
 cd yorox
 docker compose up -d`}</Cmd>
@@ -34,7 +34,7 @@ docker compose up -d`}</Cmd>
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           2. 最初のアカウントを作る
         </h2>
         <p className="mt-3">
@@ -52,7 +52,7 @@ docker compose up -d`}</Cmd>
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">3. データの場所</h2>
+        <h2 className="section-title">3. データの場所</h2>
         <p className="mt-3">
           すべてのデータは Docker ボリューム
           <span className="meta-mono"> yorox-data</span>(コンテナ内

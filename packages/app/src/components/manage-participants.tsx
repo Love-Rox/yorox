@@ -120,8 +120,8 @@ export function ManageParticipants({
 
       {/* ---- 参加者へメッセージ(宛先ごとに個別配送、相互に宛先は見えない) ---- */}
       {canAttendance && selectable.length > 0 && (
-        <details className="mt-4 border-2 border-ink">
-          <summary className="cursor-pointer p-3 text-sm font-bold">
+        <details className="disclosure mt-4">
+          <summary>
             参加者へメッセージを送る
             {selected.size > 0 && (
               <span className="meta-mono ml-2 font-normal text-neutral">
@@ -132,7 +132,7 @@ export function ManageParticipants({
           <form
             method="post"
             action={`/events/${eventId}/message`}
-            className="space-y-3 border-t border-rule p-3"
+            className="space-y-3 p-4"
           >
             <p className="text-sm text-neutral">
               下のリストで宛先にチェックを入れてください。ローカルの参加者にはメール、
@@ -183,7 +183,7 @@ export function ManageParticipants({
         const appliedCount = slotRows.filter((r) => r.status === 'applied').length;
         return (
           <section key={slot.id} className="mt-10">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule-strong pb-2">
               <h2 className="display t-md">{slot.name}</h2>
               <div className="meta-mono text-sm text-neutral">
                 {SLOT_METHOD_LABEL[slot.method]}
@@ -320,10 +320,10 @@ export function ManageParticipants({
                         {/* 支払い管理 */}
                         {p.paymentId && p.paymentStatus && (
                           <span
-                            className={`border px-2 py-1 text-sm font-bold ${
+                            className={`badge text-sm ${
                               p.paymentStatus === 'paid' || p.paymentStatus === 'waived' || p.paymentStatus === 'refunded' || p.paymentStatus === 'no_refund'
-                                ? 'border-accent-2 text-accent-2'
-                                : 'border-accent text-accent'
+                                ? 'badge-accent'
+                                : 'badge-danger'
                             }`}
                           >
                             {PAYMENT_LABEL[p.paymentStatus]}
@@ -412,7 +412,7 @@ export function ManageParticipants({
                             />
                             <button
                               type="submit"
-                              className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                              className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                             >
                               ブロック
                             </button>

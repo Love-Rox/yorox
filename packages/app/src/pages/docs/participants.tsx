@@ -12,7 +12,7 @@ export default async function ParticipantsGuidePage() {
       <h1 className="display mt-2 t-xl">参加者向けガイド</h1>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">アカウント作成</h2>
+        <h2 className="section-title">アカウント作成</h2>
         <p className="mt-3">
           メールアドレスだけで登録できます。「ログイン」からメールアドレスを入力すると
           ログインリンクが届きます(パスワードは不要です)。初回はハンドルと表示名を
@@ -26,7 +26,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">イベントに申し込む</h2>
+        <h2 className="section-title">イベントに申し込む</h2>
         <p className="mt-3">
           イベントページの「参加枠」から申し込みます。枠には2つの方式があります:
         </p>
@@ -61,7 +61,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">フォローとタイムライン</h2>
+        <h2 className="section-title">フォローとタイムライン</h2>
         <p className="mt-3">
           ユーザーやグループのページにある「フォロー」ボタンを押すと、ヘッダの
           メニューにある<strong>タイムライン</strong>に、その相手の公開活動
@@ -76,7 +76,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">参加費のあるイベント</h2>
+        <h2 className="section-title">参加費のあるイベント</h2>
         <p className="mt-3">
           有料イベントでは枠に金額と支払方法(現地払い / 事前決済)が表示されます。
           「支払い確認で確定」の枠では、支払いが確認されるまで「支払い待ち」と表示されます
@@ -85,7 +85,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">キャンセルと公開設定</h2>
+        <h2 className="section-title">キャンセルと公開設定</h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
           <li>キャンセルはイベントページの参加状態の横からいつでもできます</li>
           <li>
@@ -102,7 +102,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           カレンダー連携
         </h2>
         <p className="mt-3">
@@ -114,7 +114,7 @@ export default async function ParticipantsGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           データと退会
         </h2>
         <p className="mt-3">

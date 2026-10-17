@@ -6,10 +6,13 @@ export function FollowButton({
   targetActorId,
   following,
   backPath,
+  quiet = false,
 }: {
   targetActorId: string;
   following: boolean;
   backPath: string;
+  /** 同じ画面に別の主操作があるときは二次ボタンにする */
+  quiet?: boolean;
 }) {
   return (
     <form
@@ -27,7 +30,7 @@ export function FollowButton({
           フォロー中
         </button>
       ) : (
-        <button type="submit" className="btn cursor-pointer text-sm">
+        <button type="submit" className={`${quiet ? 'btn-quiet' : 'btn'} cursor-pointer text-sm`}>
           フォロー
         </button>
       )}

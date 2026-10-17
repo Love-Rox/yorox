@@ -90,12 +90,13 @@ export default async function GroupPage({ handle }: { handle: string }) {
             </p>
           )}
         </div>
-        <span className="flex gap-3">
+        <span className="flex flex-wrap gap-2">
           {user && (
             <FollowButton
               targetActorId={actor.id}
               following={following}
               backPath={`/g/${handle}`}
+              quiet={canCreate}
             />
           )}
           {canSettings && (
@@ -158,7 +159,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
       {/* ---- タイムライン(お知らせ投稿) ---- */}
       {(posts.length > 0 || canCreate) && (
         <section id="timeline" className="mt-8 scroll-mt-4">
-          <h2 className="meta-mono border-b-2 border-ink pb-2 text-sm text-neutral">
+          <h2 className="meta-mono border-b border-rule-strong pb-2 text-sm text-neutral">
             タイムライン
           </h2>
           {canCreate && (
@@ -189,7 +190,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
                       <form method="post" action={`/g/${handle}/posts/${post.id}/delete`}>
                         <button
                           type="submit"
-                          className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                          className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                         >
                           削除
                         </button>
@@ -214,7 +215,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
         </p>
       )}
 
-      <p className="meta-mono mt-10 border-b-2 border-ink pb-2 text-sm text-neutral">
+      <p className="meta-mono mt-10 border-b border-rule-strong pb-2 text-sm text-neutral">
         イベント · {events.length}件
       </p>
       {events.length === 0 ? (
@@ -228,7 +229,7 @@ export default async function GroupPage({ handle }: { handle: string }) {
                   {event.title}
                 </Link>
                 {event.visibility === 'draft' && (
-                  <span className="ml-2 border border-neutral px-2 py-0.5 text-sm text-neutral">
+                  <span className="badge ml-2 align-middle">
                     下書き
                   </span>
                 )}

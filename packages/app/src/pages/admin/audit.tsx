@@ -28,7 +28,7 @@ export default async function AdminAuditPage() {
         <div className="mt-6 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-ink text-left">
+              <tr className="border-b border-rule-strong text-left">
                 <th className="py-1.5 pr-3">日時</th>
                 <th className="py-1.5 pr-3">操作</th>
                 <th className="py-1.5 pr-3">操作者</th>

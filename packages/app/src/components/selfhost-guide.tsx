@@ -12,7 +12,7 @@ export const GUIDE_STEPS = [
 /** ガイド各ページ共通のヘッダー+ステップナビ */
 export function GuideNav({ current }: { current: string }) {
   return (
-    <nav className="mt-4 border-2 border-ink">
+    <nav className="mt-4 overflow-hidden rounded-ui-lg border border-rule bg-surface">
       <ol className="flex flex-wrap">
         {GUIDE_STEPS.map((s) => {
           const href = s.slug ? `/docs/self-hosting/${s.slug}` : '/docs/self-hosting';

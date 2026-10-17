@@ -37,12 +37,12 @@ export function PasskeyLoginButton() {
         type="button"
         onClick={login}
         disabled={state === 'busy'}
-        className="btn w-full cursor-pointer disabled:opacity-50"
+        className="btn-quiet w-full cursor-pointer disabled:opacity-50"
       >
         {state === 'busy' ? '確認中…' : 'パスキーでログイン'}
       </button>
       {state === 'error' && (
-        <p role="alert" className="mt-2 text-sm text-accent">
+        <p role="alert" className="mt-2 text-sm text-danger">
           パスキーでのログインに失敗しました。メールでログインしてから、設定画面で
           パスキーを登録し直せます。
         </p>
@@ -115,7 +115,7 @@ export function PasskeyRegisterButton() {
         {state === 'busy' ? '確認中…' : 'このデバイスでパスキーを登録'}
       </button>
       {state === 'error' && (
-        <p role="alert" className="mt-2 text-sm text-accent">
+        <p role="alert" className="mt-2 text-sm text-danger">
           登録に失敗しました。ブラウザがパスキーに対応しているかご確認ください。
         </p>
       )}

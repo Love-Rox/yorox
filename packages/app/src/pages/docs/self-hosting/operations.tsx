@@ -17,14 +17,14 @@ export default async function SelfHostingOperationsPage() {
       <h1 className="display mt-2 t-xl">STEP 4: 運用する</h1>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">更新</h2>
+        <h2 className="section-title">更新</h2>
         <Cmd>{`git pull
 docker compose build
 docker compose up -d   # データベースの変更(マイグレーション)は起動時に自動適用`}</Cmd>
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">バックアップ</h2>
+        <h2 className="section-title">バックアップ</h2>
         <p className="mt-3">
           守るべきものは <span className="meta-mono">/data</span> ボリュームだけです:
         </p>
@@ -42,7 +42,7 @@ docker run --rm -v yorox-data:/data -v "$PWD":/backup alpine \\
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">ログの見方</h2>
+        <h2 className="section-title">ログの見方</h2>
         <Cmd>{`docker compose logs -f yorox
 # [mail:console] … ログインリンク(SMTP 未設定時にここへ出力)
 # [scheduled] … 5分毎の定期ジョブ(抽選・通知・リマインダー・予約公開・連合配信・メール送信)
@@ -51,7 +51,7 @@ docker run --rm -v yorox-data:/data -v "$PWD":/backup alpine \\
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">よくあるトラブル</h2>
+        <h2 className="section-title">よくあるトラブル</h2>
         <div className="mt-3 space-y-4">
           <div className="border border-rule p-3">
             <p className="font-bold">ログインリンクのメールが届かない</p>
@@ -91,7 +91,7 @@ docker run --rm -v yorox-data:/data -v "$PWD":/backup alpine \\
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">困ったら</h2>
+        <h2 className="section-title">困ったら</h2>
         <p className="mt-3">
           <a
             href="https://github.com/Love-Rox/yorox/issues"

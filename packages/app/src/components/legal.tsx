@@ -22,7 +22,7 @@ export async function instanceInfo() {
 export function OperatorNotice({ configured }: { configured: boolean }) {
   if (configured) return null;
   return (
-    <p className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+    <p className="mt-4 notice notice-error">
       これはテンプレートです。インスタンス運営者は法務を確認のうえ、内容と
       運営者情報(<span className="meta-mono">INSTANCE_NAME / LEGAL_OPERATOR</span> と、
       連絡先として <span className="meta-mono">LEGAL_CONTACT</span> または問い合わせ

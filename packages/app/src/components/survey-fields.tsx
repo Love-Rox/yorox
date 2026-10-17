@@ -16,7 +16,7 @@ export function SurveyFields({ questions }: { questions: SurveyQuestion[] }) {
           <div key={q.id}>
             <span className="block text-sm font-bold">
               {q.label}
-              {q.required && <span className="ml-1 text-accent">*</span>}
+              {q.required && <span className="ml-1 text-danger">*</span>}
             </span>
             {q.type === 'text' &&
               (q.multiline ? (

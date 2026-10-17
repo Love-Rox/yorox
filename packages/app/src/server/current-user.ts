@@ -12,6 +12,7 @@ export interface CurrentUser {
   actorId: string;
   handle: string | null;
   displayName: string;
+  avatarUrl: string | null;
 }
 
 function readSessionToken(): string | undefined {
@@ -36,5 +37,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     actorId: actor.id,
     handle: actor.handle,
     displayName: actor.displayName,
+    avatarUrl: actor.avatarUrl,
   };
 }

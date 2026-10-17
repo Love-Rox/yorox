@@ -191,18 +191,18 @@ export default async function ManagePage({
       )}
 
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {decodeURIComponent(error)}
         </p>
       )}
       {messageSent && (
-        <p role="status" className="mt-4 border-2 border-accent-2 p-3 text-sm text-accent-2">
+        <p role="status" className="mt-4 notice notice-success">
           {messageSent}名にメッセージを送信しました(メールは数分以内に配送されます)。
         </p>
       )}
 
       {/* ---- エクスポート ---- */}
-      <section className="mt-8 flex flex-wrap items-center gap-3 border-2 border-ink p-4">
+      <section className="mt-8 flex flex-wrap items-center gap-3 panel">
         <h2 className="display t-md">参加者のエクスポート</h2>
         <span className="flex flex-wrap gap-3 text-sm">
           <Link to={`/g/${handle}/events/${eventId}/print`} className="btn-quiet">
@@ -224,7 +224,7 @@ export default async function ManagePage({
 
       {/* ---- QR チェックイン ---- */}
       {canAttendance && (
-        <section className="mt-8 border-2 border-ink p-4">
+        <section className="mt-8 panel">
           <h2 className="display t-md">QR チェックイン</h2>
           {event.checkinToken ? (
             (() => {
@@ -273,7 +273,7 @@ export default async function ManagePage({
                     <form method="post" action={`/events/${event.id}/checkin/disable`}>
                       <button
                         type="submit"
-                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                         title="チェックインを停止します。掲示済みの QR は使えなくなります"
                       >
                         チェックインを停止
@@ -337,7 +337,7 @@ export default async function ManagePage({
       {/* ---- 共同管理者(イベント単位) ---- */}
       {canManageManagers && (
         <section id="managers" className="mt-12 scroll-mt-4">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">
+          <h2 className="section-title">
             このイベントの共同管理者
           </h2>
           <p className="mt-2 text-sm text-neutral">
@@ -369,7 +369,7 @@ export default async function ManagePage({
                   >
                     <button
                       type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                     >
                       外す
                     </button>
@@ -400,7 +400,7 @@ export default async function ManagePage({
       {/* ---- セッション管理 ---- */}
       {canEdit && (
         <section className="mt-12">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">セッション</h2>
+          <h2 className="section-title">セッション</h2>
           {sessions.length > 0 && (
             <ul className="mt-2">
               {sessions.map((s) => (
@@ -421,7 +421,7 @@ export default async function ManagePage({
                     <form method="post" action={`/sessions/${s.id}/delete`}>
                       <button
                         type="submit"
-                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                        className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                       >
                         削除
                       </button>
@@ -446,12 +446,12 @@ export default async function ManagePage({
               ))}
             </ul>
           )}
-          <details className="mt-4 border-2 border-ink">
-            <summary className="cursor-pointer p-3 font-bold">セッションを追加</summary>
+          <details className="disclosure mt-4">
+            <summary>セッションを追加</summary>
             <form
               method="post"
               action={`/events/${event.id}/sessions`}
-              className="space-y-4 border-t-2 border-ink p-4"
+              className="space-y-4 p-4"
             >
               <SessionFormFields />
               <button type="submit" className="btn cursor-pointer">
@@ -465,7 +465,7 @@ export default async function ManagePage({
       {/* ---- 資料管理 ---- */}
       {canEdit && (
         <section className="mt-12">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">資料</h2>
+          <h2 className="section-title">資料</h2>
           {materials.length > 0 && (
             <ul className="mt-2">
               {materials.map((m) => (
@@ -479,7 +479,7 @@ export default async function ManagePage({
                   <form method="post" action={`/materials/${m.id}/delete`}>
                     <button
                       type="submit"
-                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                      className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                     >
                       削除
                     </button>
@@ -488,12 +488,12 @@ export default async function ManagePage({
               ))}
             </ul>
           )}
-          <details className="mt-4 border-2 border-ink">
-            <summary className="cursor-pointer p-3 font-bold">資料を追加(外部リンク)</summary>
+          <details className="disclosure mt-4">
+            <summary>資料を追加(外部リンク)</summary>
             <form
               method="post"
               action={`/events/${event.id}/materials`}
-              className="space-y-4 border-t-2 border-ink p-4"
+              className="space-y-4 p-4"
             >
               <label className="block">
                 <span className="text-sm font-bold">タイトル *</span>

@@ -17,7 +17,7 @@ export default async function NewGroupPage() {
         イベントはグループから開催します。あなたがオーナーになり、あとから運営メンバーを追加できます。
       </p>
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {decodeURIComponent(error)}
         </p>
       )}

@@ -56,7 +56,7 @@ export default async function ParticipantsPage({
         if (slotParticipants.length === 0) return null;
         return (
           <section key={slot.id} className="mt-8">
-            <h2 className="display border-b-2 border-ink pb-2 t-md">
+            <h2 className="section-title">
               {slot.name}
               <span className="meta-mono ml-3 text-sm font-normal text-neutral">
                 {slotParticipants.length}名
@@ -70,7 +70,7 @@ export default async function ParticipantsPage({
                 >
                   <Avatar avatarUrl={p.avatarUrl} displayName={p.displayName} />
                   {STATUS_LABEL[p.status] && (
-                    <span className="meta-mono shrink-0 border border-rule px-1.5 py-0.5 text-sm text-neutral">
+                    <span className="badge shrink-0">
                       {STATUS_LABEL[p.status]}
                     </span>
                   )}

@@ -44,9 +44,9 @@ export function SectionNavLayout({
           <p className="px-3 pb-2 text-xs font-bold tracking-wide text-neutral">{title}</p>
           <NavLinks items={items} />
         </nav>
-        <details className="border-2 border-ink lg:hidden">
-          <summary className="cursor-pointer px-3 py-2 text-sm font-bold">{title}の項目</summary>
-          <div className="border-t-2 border-ink p-2">
+        <details className="disclosure lg:hidden">
+          <summary>{title}の項目</summary>
+          <div className="p-2">
             <NavLinks items={items} />
           </div>
         </details>

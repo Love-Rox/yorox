@@ -18,10 +18,13 @@ export function Menu({
   label,
   children,
   align = 'left',
+  variant = 'button',
 }: {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   align?: 'left' | 'right';
+  /** ghost: 枠なし(ヘッダーのアカウントメニュー用) */
+  variant?: 'button' | 'ghost';
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -64,7 +67,11 @@ export function Menu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
-        className="btn-quiet inline-flex cursor-pointer items-center gap-1"
+        className={
+          variant === 'ghost'
+            ? 'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-ui px-2 hover:bg-paper-2'
+            : 'btn-quiet cursor-pointer gap-1'
+        }
       >
         {label}
         <span aria-hidden="true" className="text-xs">
@@ -75,7 +82,7 @@ export function Menu({
         <div
           id={panelId}
           onClick={() => setOpen(false)}
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} z-10 mt-1 min-w-56 border-2 border-ink bg-paper p-1 shadow-[var(--yorox-offset-shadow)]`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} z-20 mt-1 min-w-56 overflow-hidden rounded-ui-lg border border-rule-strong bg-surface p-1 shadow-[0_10px_30px_-12px_color-mix(in_oklch,var(--yorox-ink)_45%,transparent)] [&_a]:rounded-ui [&_button]:rounded-ui`}
         >
           {children}
         </div>

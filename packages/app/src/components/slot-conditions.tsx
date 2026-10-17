@@ -34,7 +34,7 @@ export function SlotConditionBadges({
       {items.map((label) => (
         <span
           key={label}
-          className="inline-block border border-rule px-1.5 py-0.5 text-sm text-neutral"
+          className="badge"
         >
           参加条件: {label}
         </span>

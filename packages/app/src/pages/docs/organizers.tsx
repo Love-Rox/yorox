@@ -12,7 +12,7 @@ export default async function OrganizersGuidePage() {
       <h1 className="display mt-2 t-xl">主催者向けガイド</h1>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">グループを作る</h2>
+        <h2 className="section-title">グループを作る</h2>
         <p className="mt-3">
           イベントは必ずグループから開催します。ひとりで主催するなら、登録時に自動で
           作られる<strong>個人グループ</strong>(あなたと同じハンドル)がそのまま使えます。
@@ -32,7 +32,7 @@ export default async function OrganizersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">イベントを作る</h2>
+        <h2 className="section-title">イベントを作る</h2>
         <p className="mt-3">
           グループページの「イベント作成」から下書きを作り、参加枠を設定してから
           公開します。本文は Markdown で書け、サムネイル画像・会場(住所から地図を
@@ -42,7 +42,7 @@ export default async function OrganizersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">参加枠のポリシー</h2>
+        <h2 className="section-title">参加枠のポリシー</h2>
         <p className="mt-3">枠ごとに次の5つを選べます:</p>
         <ol className="mt-2 list-inside list-decimal space-y-1">
           <li>
@@ -173,7 +173,7 @@ export default async function OrganizersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           当日の受付(QR チェックイン)
         </h2>
         <p className="mt-3">
@@ -242,7 +242,7 @@ export default async function OrganizersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">運営あれこれ</h2>
+        <h2 className="section-title">運営あれこれ</h2>
         <p className="mt-3">
           管理コンソールでは他に、抽選の実行(締切前でも手動実行可)・手動選定・
           無断欠席の記録・支払いの確認/返金・参加者への一斉/個別メッセージ送信が

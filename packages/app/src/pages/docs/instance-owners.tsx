@@ -16,7 +16,7 @@ export default async function InstanceOwnersGuidePage() {
       </p>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">構成</h2>
+        <h2 className="section-title">構成</h2>
         <p className="mt-3">
           Yorox は<strong>2つの動かし方</strong>があります。手軽なのは Docker で、
           1コンテナ(SQLite にデータを保存)で完結します —{' '}
@@ -39,7 +39,7 @@ export default async function InstanceOwnersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">セットアップの流れ</h2>
+        <h2 className="section-title">セットアップの流れ</h2>
         <ol className="mt-3 list-inside list-decimal space-y-1">
           <li>リポジトリを取得し、依存をインストール(pnpm install)</li>
           <li>wrangler d1 create でデータベースを作成し、wrangler.jsonc に ID を設定</li>
@@ -54,7 +54,7 @@ export default async function InstanceOwnersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">インスタンス設定</h2>
+        <h2 className="section-title">インスタンス設定</h2>
         <p className="mt-3">主な設定(環境変数 / シークレット):</p>
         <ul className="mt-2 list-inside list-disc space-y-1">
           <li>
@@ -81,7 +81,7 @@ export default async function InstanceOwnersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">見た目のカスタマイズ</h2>
+        <h2 className="section-title">見た目のカスタマイズ</h2>
         <p className="mt-3">
           UI はデザイントークン(CSS カスタムプロパティ)だけで全面的に着せ替えられます。
           色・フォント・角丸などを自分のコミュニティの雰囲気に合わせてください。
@@ -90,7 +90,7 @@ export default async function InstanceOwnersGuidePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">運営者の責任</h2>
+        <h2 className="section-title">運営者の責任</h2>
         <ul className="mt-3 list-inside list-disc space-y-1">
           <li>アカウント登録の窓口とユーザーサポート</li>
           <li>通報対応(イベント内の問題は主催へ、主催自体の問題は管理者へ)</li>

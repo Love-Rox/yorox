@@ -103,7 +103,7 @@ export function SurveyBuilder({
       )}
       <ol className="space-y-3">
         {rows.map((r, i) => (
-          <li key={r.key} className="border-2 border-ink p-3">
+          <li key={r.key} className="rounded-ui-lg border border-rule bg-surface p-3">
             <div className="flex items-start gap-2">
               <span className="meta-mono mt-2 text-neutral">{i + 1}.</span>
               <div className="flex-1 space-y-2">
@@ -186,7 +186,7 @@ export function SurveyBuilder({
                 <button
                   type="button"
                   onClick={() => remove(r.key)}
-                  className="cursor-pointer px-2 text-neutral hover:text-accent"
+                  className="cursor-pointer px-2 text-neutral hover:text-danger"
                   aria-label={`${baseId}-remove`}
                 >
                   ✕

@@ -217,7 +217,7 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
 
       {memberships.length > 0 && (
         <section className="mt-10">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule-strong pb-2">
             <h2 className="display t-md">グループ</h2>
             {isSelf && (
               <Link to="/groups/new" className="btn-quiet">
@@ -248,7 +248,7 @@ export default async function UserProfilePage({ handle }: { handle: string }) {
 
       {participations.length > 0 && (
         <section className="mt-10">
-          <h2 className="display border-b-2 border-ink pb-2 t-md">参加イベント</h2>
+          <h2 className="section-title">参加イベント</h2>
           <ul>
             {participations.map((p) => (
               <li key={p.eventId} className="border-b border-rule py-3">

@@ -21,7 +21,7 @@ export default async function PrivacyPage() {
       </p>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">取得する情報</h2>
+        <h2 className="section-title">取得する情報</h2>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
           <li>メールアドレス(ログイン・お知らせのため)</li>
           <li>表示名・ハンドル・プロフィール・アバター画像</li>
@@ -31,7 +31,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">
+        <h2 className="section-title">
           ソーシャルログインで取得する情報
         </h2>
         <p className="mt-2 text-sm leading-relaxed">
@@ -77,7 +77,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">利用目的</h2>
+        <h2 className="section-title">利用目的</h2>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
           <li>本サービスの提供・本人確認・お知らせの送信</li>
           <li>イベント運営(主催者への参加者情報の提供を含む)</li>
@@ -86,7 +86,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">Cookie の利用</h2>
+        <h2 className="section-title">Cookie の利用</h2>
         <p className="mt-2 text-sm leading-relaxed">
           ログイン状態の維持のために、必要不可欠な Cookie(セッション Cookie)を
           使用します。広告目的や外部トラッキングのための Cookie は使用しません。
@@ -94,7 +94,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">委託先(外部サービス)</h2>
+        <h2 className="section-title">委託先(外部サービス)</h2>
         <p className="mt-2 text-sm leading-relaxed">
           本サービスの提供のため、次の外部サービスを利用します:
         </p>
@@ -110,7 +110,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">第三者提供・連合</h2>
+        <h2 className="section-title">第三者提供・連合</h2>
         <p className="mt-2 text-sm leading-relaxed">
           本サービスは ActivityPub による分散型連合に対応します。イベントを公開した場合や
           Fediverse アカウントで参加した場合、<strong>公開情報(表示名・投稿・参加など)は
@@ -121,7 +121,7 @@ export default async function PrivacyPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="display border-b-2 border-ink pb-2 t-md">保管・削除・エクスポート</h2>
+        <h2 className="section-title">保管・削除・エクスポート</h2>
         <p className="mt-2 text-sm leading-relaxed">
           情報は利用目的の達成に必要な期間保管します。利用者はプロフィール設定の
           「データと退会」から、自身のデータのエクスポート(JSON)およびアカウントの

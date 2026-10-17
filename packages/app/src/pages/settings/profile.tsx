@@ -108,7 +108,7 @@ export default async function ProfileSettingsPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 border-2 border-accent p-3 text-sm text-accent">
+        <p role="alert" className="mt-4 notice notice-error">
           {ERROR_MESSAGES[error] ?? 'エラーが発生しました。'}
         </p>
       )}
@@ -116,7 +116,7 @@ export default async function ProfileSettingsPage() {
       <div className="mt-6">
         <SectionNavLayout title="設定" items={sections}>
       {/* ---- アバター ---- */}
-      <section id="avatar" className="scroll-mt-4 border-2 border-ink p-4">
+      <section id="avatar" className="scroll-mt-4 panel">
         <h2 className="text-sm font-bold">アバター</h2>
         <div className="mt-3 flex items-center gap-4">
           <Avatar avatarUrl={me.avatarUrl} displayName={me.displayName} size="lg" />
@@ -194,18 +194,18 @@ export default async function ProfileSettingsPage() {
       </form>
 
       {/* ---- ログイン方法(OAuth) ---- */}
-      <section id="oauth" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+      <section id="oauth" className="mt-10 scroll-mt-4 panel">
         <h2 className="display t-md">
           ログイン方法
           <HelpTip text="メールでのログインリンクは常に使えます。外部サービスを連携すると、そのアカウントのボタン一つでログインできるようになります。連携を解除してもメールでログインできるため安全です。" />
         </h2>
         {oauthOk && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             連携しました。
           </p>
         )}
         {oauthError && (
-          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+          <p role="alert" className="mt-3 notice notice-error">
             {oauthError}
           </p>
         )}
@@ -214,18 +214,18 @@ export default async function ProfileSettingsPage() {
         </p>
 
         {emailSent && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             新しいアドレスへ確認メールを送りました。メール内のリンクを開くと変更が確定します
             (30分間有効)。
           </p>
         )}
         {emailChanged && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             メールアドレスを変更しました。
           </p>
         )}
         {emailError && (
-          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+          <p role="alert" className="mt-3 notice notice-error">
             {decodeURIComponent(emailError)}
           </p>
         )}
@@ -379,13 +379,13 @@ export default async function ProfileSettingsPage() {
 
       {/* ---- お知らせ設定 ---- */}
       {/* ---- 参加予定カレンダー(ics 購読) ---- */}
-      <section id="calendar" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+      <section id="calendar" className="mt-10 scroll-mt-4 panel">
         <h2 className="display t-md">
           参加予定カレンダー
           <HelpTip text="参加確定したイベントが自動で入るカレンダーを、Google カレンダーや Apple カレンダーで購読できます。以後の参加・キャンセルも自動で反映されます。URL は秘密にしてください(知っている人はあなたの参加予定を見られます)。" />
         </h2>
         {calSaved && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             発行しました。
           </p>
         )}
@@ -447,13 +447,13 @@ export default async function ProfileSettingsPage() {
         )}
       </section>
 
-      <section id="notifications" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+      <section id="notifications" className="mt-10 scroll-mt-4 panel">
         <h2 className="display t-md">
           お知らせの受け取り
           <HelpTip text="参加確定・補欠繰上・抽選結果などのお知らせの届け方です。オフにしてもログイン用メール(マジックリンク)は届きます。Fediverse 連携アカウントで参加した分は、そのアカウント宛のメンションで届きます。" />
         </h2>
         {notifySaved && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             保存しました。
           </p>
         )}
@@ -466,9 +466,9 @@ export default async function ProfileSettingsPage() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="border-b-2 border-ink p-2 text-left">お知らせの種類</th>
+                  <th className="border-b border-rule-strong p-2 text-left">お知らせの種類</th>
                   {NOTIFICATION_CHANNELS.map((ch) => (
-                    <th key={ch.key} className="border-b-2 border-ink p-2 text-center">
+                    <th key={ch.key} className="border-b border-rule-strong p-2 text-center">
                       {ch.label}
                     </th>
                   ))}
@@ -574,7 +574,7 @@ export default async function ProfileSettingsPage() {
               placeholder="https://discord.com/api/webhooks/…"
             />
           </label>
-          <p className="mt-1 border-2 border-accent p-2 text-sm text-accent">
+          <p className="mt-1 notice notice-error">
             注意: Webhook を設定すると、あなた宛の通知(参加確定・抽選結果など)が
             そのチャンネルに投稿されます。<strong>チャンネルを見られる人全員に内容が見えます</strong>。
             自分だけのプライベートチャンネルを使うことを強くおすすめします。
@@ -586,7 +586,7 @@ export default async function ProfileSettingsPage() {
         </form>
 
         {discordTest && (
-          <p role="status" className="mt-4 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-4 notice notice-success">
             {discordTest}
           </p>
         )}
@@ -599,7 +599,7 @@ export default async function ProfileSettingsPage() {
       </section>
 
       {/* ---- Fediverse アカウント連携(claim) ---- */}
-      <section id="fediverse" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+      <section id="fediverse" className="mt-10 scroll-mt-4 panel">
         <h2 className="display t-md">Fediverse アカウント連携</h2>
         <p className="mt-2 text-sm text-neutral">
           Misskey / Mastodon などのアカウントを紐付けると、そのアカウントからの
@@ -608,12 +608,12 @@ export default async function ProfileSettingsPage() {
         </p>
 
         {claimOk && (
-          <p role="status" className="mt-3 border-2 border-accent-2 p-3 text-sm text-accent-2">
+          <p role="status" className="mt-3 notice notice-success">
             連携が完了しました。
           </p>
         )}
         {claimError && (
-          <p role="alert" className="mt-3 border-2 border-accent p-3 text-sm text-accent">
+          <p role="alert" className="mt-3 notice notice-error">
             {claimError}
           </p>
         )}
@@ -711,7 +711,7 @@ export default async function ProfileSettingsPage() {
       </section>
 
       {/* ---- アクセストークン(API / MCP) ---- */}
-      <section id="tokens" className="mt-10 scroll-mt-4 border-2 border-ink p-4">
+      <section id="tokens" className="mt-10 scroll-mt-4 panel">
         <h2 className="display t-md">
           アクセストークン
           <HelpTip text="MCP クライアントや API から Yorox をあなたとして操作するための鍵です。発行時に一度だけ表示されるので安全に保管してください。不要になったら失効できます。" />
@@ -741,7 +741,7 @@ export default async function ProfileSettingsPage() {
                 <form method="post" action={`/profile/tokens/${t.id}/revoke`}>
                   <button
                     type="submit"
-                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-accent"
+                    className="min-h-11 cursor-pointer text-sm text-neutral underline underline-offset-3 hover:text-danger"
                   >
                     失効
                   </button>
@@ -776,8 +776,8 @@ export default async function ProfileSettingsPage() {
       </section>
 
       {/* ---- データと退会(危険な操作) ---- */}
-      <section id="danger" className="mt-10 scroll-mt-4 border-2 border-accent p-4">
-        <h2 className="display t-md text-accent">データと退会</h2>
+      <section id="danger" className="mt-10 scroll-mt-4 panel border-danger">
+        <h2 className="display t-md text-danger">データと退会</h2>
 
         <div className="mt-4">
           <h3 className="text-sm font-bold">データのエクスポート</h3>
@@ -790,7 +790,7 @@ export default async function ProfileSettingsPage() {
         </div>
 
         <div className="mt-6 border-t border-rule pt-6">
-          <h3 className="text-sm font-bold text-accent">アカウントの削除(退会)</h3>
+          <h3 className="text-sm font-bold text-danger">アカウントの削除(退会)</h3>
           <p className="mt-1 text-sm text-neutral">
             退会すると、メールアドレス・ログイン情報・連携アカウントは削除され、
             進行中の申込はキャンセルされます。過去の参加・出欠の記録は、主催者側の
@@ -809,7 +809,7 @@ export default async function ProfileSettingsPage() {
             </label>
             <button
               type="submit"
-              className="mt-3 min-h-11 cursor-pointer border-2 border-accent px-4 font-bold text-accent hover:bg-accent hover:text-paper"
+              className="mt-3 btn-danger"
             >
               退会する
             </button>

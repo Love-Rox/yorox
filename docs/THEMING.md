@@ -43,10 +43,28 @@ Yorox の UI は CSS カスタムプロパティ(デザイントークン)だけ
 | ワードマーク | Dela Gothic One(欧文「Yorox」のみ) | 同左 |
 | 本文 | Zen Kaku Gothic New | 同左 |
 | メタ情報 | Space Mono(日付・コロフォンのみ) | 同左 |
-| 署名的ディテール | ボタンの「版ズレ」ハードオフセットシャドウ、マストヘッド下の2色二重罫線 | 同左 |
+| 面 | `--yorox-surface`(紙より一段明るい。カード・入力欄・パネル) | 紙より一段明るい藍 |
+| 状態色 | `--yorox-danger`(赤)/ `--yorox-success`(緑)/ `--yorox-warning`(黄土) | 明度を上げた同色相 |
+| 署名的ディテール | **主ボタン(`.btn`)だけ**の「版ズレ」ハードオフセットシャドウ、ヘッダー下の2色二重罫線 | 同左 |
 
 ダークモードは `prefers-color-scheme: dark` でトークンを再定義するだけ
 (色相は変えず明度・彩度のみ移動)。カスタムテーマでも同じ手法で両対応できる。
+
+## 部品クラス(`src/styles.css` の `@layer components`)
+
+見た目の階層は「意味のあるクラス」で表し、ページ側で枠線の太さや色を直接組まない。
+
+| クラス | 用途 |
+| --- | --- |
+| `.btn` / `.btn-quiet` / `.btn-danger` | 主操作(1画面に原則ひとつ)/ 二次操作 / 戻せない操作 |
+| `.input` `.field-label` `.field-hint` | 入力欄とラベル・補足 |
+| `.section-title` / `.panel` `.panel-title` | ページ内の大見出し / 関連する操作のまとまり |
+| `.notice` + `-error` `-success` `-warning` `-neutral` | 状態を伝える帯(文字はインク色、意味は左帯と地色) |
+| `.badge` `.badge-accent` `.badge-danger` | 小さな状態ラベル |
+| `.disclosure` / `.disclosure-flat` | 枠付きの折りたたみ / 面の中の折りたたみ |
+| `.tabs` | ページ内アンカーのタブ |
+
+ピンク(accent)はブランドと主ボタンの署名に限定し、エラー・削除には使わない(`danger` を使う)。
 
 デザイン上の規律(hallmark 準拠): 純黒・純白は使わない / アクセントは画面の
 数%以下 / フォーカスリングは即時表示 / モーションは hover/focus の状態遷移のみ /
