@@ -23,7 +23,7 @@ ENV NODE_ENV=production \
     MIGRATIONS_DIR=/app/drizzle/migrations
 # ランタイムで必要なのはネイティブ依存の better-sqlite3 と nodemailer のみ
 # (それ以外はサーバーバンドルに同梱される)
-RUN npm install --no-save --omit=dev better-sqlite3@13 nodemailer@9 \
+RUN npm install --no-save --omit=dev better-sqlite3@13 nodemailer@^10.2.1 \
   && npm cache clean --force
 COPY --from=build /repo/packages/app/dist ./dist
 COPY --from=build /repo/packages/app/drizzle ./drizzle
