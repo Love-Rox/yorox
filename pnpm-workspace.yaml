@@ -3,3 +3,10 @@ packages:
 allowBuilds:
   esbuild: true
   workerd: true
+# 脆弱性対応で間接依存だけを上げる。上の部品(miniflare)が版を固定していて
+# 上の部品を上げても直らないものに限る。miniflare が直った版に追従したら外す。
+overrides:
+  # miniflare@4.20260730.0 が undici@7.28.0 を固定(7.30.1 未満に既知の脆弱性。同じ 7 系で直る)
+  undici@7: ^7.30.1
+  # miniflare@4.20260730.0 が sharp@0.35.2 を固定(0.35.5 未満に既知の脆弱性。同じ 0.35 系で直る)
+  sharp@0.35: ^0.35.5
