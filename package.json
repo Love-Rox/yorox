@@ -2,7 +2,7 @@
   "name": "yorox-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@12.15.0",
   "scripts": {
     "dev": "pnpm --filter @yorox/app dev",
     "build": "pnpm -r build",
